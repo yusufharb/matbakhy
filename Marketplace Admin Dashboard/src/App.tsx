@@ -60,6 +60,7 @@ import {
   PlatformSettingsScreen,
 } from "./components/AdminExtras"
 import { api } from "./services/api"
+import { translations } from "./data/i18n"
 import type { PortalMode, Locale } from "./types"
 
 type Page = "overview" | "kyc" | "catalog" | "finance" | "cms" | "supplier" | "team" | "audit" | "settings"
@@ -195,7 +196,9 @@ const suppliers = [
   },
 ]
 
-function Logo({ collapsed }: { collapsed: boolean }) {
+function Logo({ collapsed, locale }: { collapsed: boolean; locale: Locale }) {
+  const isRtl = locale === "ar"
+  const t = translations[locale].brand
   return (
     <div className="brand">
       <div className="brand-mark">
@@ -203,8 +206,8 @@ function Logo({ collapsed }: { collapsed: boolean }) {
       </div>
       {!collapsed && (
         <div>
-          <b>NEXUS</b>
-          <span>MARKETPLACE OS</span>
+          <b>{t.name}</b>
+          <span>{t.sub}</span>
         </div>
       )}
     </div>
@@ -259,17 +262,19 @@ function CardTitle({
 type HeaderProps = {
   page: Page
   onMenu: () => void
+  locale: Locale
 }
 
-function Header({ page, onMenu }: HeaderProps) {
-  const meta = pageMeta[page]
+function Header({ page, onMenu, locale }: HeaderProps) {
+  const isRtl = locale === "ar"
+  const meta = translations[locale].pages[page] || pageMeta[page]
   return (
     <header className="topbar">
       <div className="page-heading">
         <button
           className="mobile-menu icon-btn"
           onClick={onMenu}
-          aria-label="Open navigation"
+          aria-label={isRtl ? "فتح القائمة" : "Open navigation"}
         >
           <Menu size={18} />
         </button>
@@ -283,19 +288,26 @@ function Header({ page, onMenu }: HeaderProps) {
         <label className="global-search">
           <Search size={16} />
           <input
-            aria-label="Search platform"
-            placeholder="Search orders, suppliers, entries…"
+            aria-label={isRtl ? "بحث في المنصة" : "Search platform"}
+            placeholder={
+              isRtl
+                ? "ابحث في الطلبات، الموردين، القيود..."
+                : "Search orders, suppliers, entries…"
+            }
           />
           <kbd>⌘ K</kbd>
         </label>
-        <button className="icon-btn has-indicator" aria-label="Notifications">
+        <button
+          className="icon-btn has-indicator"
+          aria-label={isRtl ? "التنبيهات" : "Notifications"}
+        >
           <Bell size={18} />
         </button>
         <button className="profile">
           <span className="avatar">AM</span>
           <span>
-            <b>Amal Mansour</b>
-            <small>Super administrator</small>
+            <b>{isRtl ? "أمل منصور" : "Amal Mansour"}</b>
+            <small>{isRtl ? "مدير عام المنصة" : "Super administrator"}</small>
           </span>
           <ChevronDown size={14} />
         </button>
@@ -310,24 +322,26 @@ function Stat({
   note,
   up,
   icon: Icon,
+  tone = "emerald",
 }: {
   label: string
   value: string
   note: string
   up?: boolean
-  icon: typeof Store
+  icon: any
+  tone?: "emerald" | "blue" | "purple" | "amber" | "rose"
 }) {
   return (
     <Card className="stat-card">
       <div className="stat-top">
-        <span className="stat-icon">
-          <Icon size={17} />
+        <span className={`stat-icon ${tone}`}>
+          <Icon size={20} strokeWidth={2.2} />
         </span>
         <span className={up === false ? "trend down" : "trend"}>
           {up === false ? (
-            <ArrowDownRight size={13} />
+            <ArrowDownRight size={13} className="rtl-flip" />
           ) : (
-            <ArrowUpRight size={13} />
+            <ArrowUpRight size={13} className="rtl-flip" />
           )}
           {note}
         </span>
@@ -338,59 +352,75 @@ function Stat({
   )
 }
 
-function Overview({ navigate }: { navigate: (page: Page) => void }) {
+function Overview({
+  navigate,
+  locale,
+}: {
+  navigate: (page: Page) => void
+  locale: Locale
+}) {
+  const isRtl = locale === "ar"
+  const t = translations[locale].overview
+
   return (
     <div className="page-grid">
       <div className="kpi-ribbon">
         <Stat
-          label="Gross merchandise value"
+          label={t.gmv}
           value="$12.48M"
-          note="18.4%"
+          note="+18.4%"
           icon={CircleDollarSign}
+          tone="emerald"
         />
         <Stat
-          label="Net commission revenue"
+          label={t.commission}
           value="$1.06M"
-          note="12.2%"
+          note="+12.2%"
           icon={Banknote}
+          tone="blue"
         />
         <Stat
-          label="Active suppliers / merchants"
+          label={t.activeSuppliers}
           value="842 / 3,194"
-          note="6.8%"
+          note="+6.8%"
           icon={Users}
+          tone="purple"
         />
         <Stat
-          label="Dispute rate"
+          label={t.disputeRate}
           value="0.42%"
-          note="0.08%"
+          note="-0.08%"
           up={false}
           icon={Flag}
+          tone="rose"
         />
         <Stat
-          label="Total orders"
+          label={t.totalOrders}
           value="48,920"
-          note="14.6%"
+          note="+14.6%"
           icon={PackageCheck}
+          tone="amber"
         />
       </div>
 
       <div className="overview-main">
         <Card className="gmv-card">
           <CardTitle
-            title="GMV performance"
-            hint="Gross merchandise value · trailing 12 months"
+            title={t.gmvChartTitle}
+            hint={t.gmvChartHint}
             action={
               <div className="segmented">
-                <button>7D</button>
-                <button>30D</button>
-                <button className="active">12M</button>
+                <button>{isRtl ? "7 أيام" : "7D"}</button>
+                <button>{isRtl ? "30 يوماً" : "30D"}</button>
+                <button className="active">
+                  {isRtl ? "12 شهراً" : "12M"}
+                </button>
               </div>
             }
           />
           <div className="chart-summary">
             <strong>$12.48M</strong>
-            <Badge tone="green">+18.4% YoY</Badge>
+            <Badge tone="green">{isRtl ? "+18.4% سنوياً" : "+18.4% YoY"}</Badge>
           </div>
           <div className="line-chart" aria-label="GMV line chart">
             <div className="axis-labels">
@@ -402,8 +432,8 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
             <svg viewBox="0 0 760 230" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#16a678" stopOpacity=".24" />
-                  <stop offset="100%" stopColor="#16a678" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#10b981" stopOpacity=".24" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
                 </linearGradient>
               </defs>
               <g className="grid-lines">
@@ -424,25 +454,43 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
               <line className="marker" x1="565" y1="72" x2="565" y2="215" />
             </svg>
             <div className="chart-tooltip">
-              <span>APR 2025</span>
+              <span>{isRtl ? "أبريل 2025" : "APR 2025"}</span>
               <b>$1.08M</b>
-              <small>+22.1% from Mar</small>
+              <small>
+                {isRtl ? "+22.1% عن مارس" : "+22.1% from Mar"}
+              </small>
             </div>
             <div className="month-row">
-              {[
-                "Jul",
-                "Aug",
-                "Sep",
-                "Oct",
-                "Nov",
-                "Dec",
-                "Jan",
-                "Feb",
-                "Mar",
-                "Apr",
-                "May",
-                "Jun",
-              ].map((m) => (
+              {(isRtl
+                ? [
+                    "يوليو",
+                    "أغسطس",
+                    "سبتمبر",
+                    "أكتوبر",
+                    "نوفمبر",
+                    "ديسمبر",
+                    "يناير",
+                    "فبراير",
+                    "مارس",
+                    "أبريل",
+                    "مايو",
+                    "يونيو",
+                  ]
+                : [
+                    "Jul",
+                    "Aug",
+                    "Sep",
+                    "Oct",
+                    "Nov",
+                    "Dec",
+                    "Jan",
+                    "Feb",
+                    "Mar",
+                    "Apr",
+                    "May",
+                    "Jun",
+                  ]
+              ).map((m) => (
                 <span key={m}>{m}</span>
               ))}
             </div>
@@ -451,14 +499,22 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
 
         <Card className="flow-card">
           <CardTitle
-            title="Financial flow"
-            hint="Current settlement cycle"
-            action={<Badge tone="blue">T+2 cycle</Badge>}
+            title={isRtl ? "التدفقات المالية والسيولة" : "Financial flow"}
+            hint={isRtl ? "دورة التسوية الحالية" : "Current settlement cycle"}
+            action={
+              <Badge tone="blue">
+                {isRtl ? "دورة T+2" : "T+2 cycle"}
+              </Badge>
+            }
           />
           <div className="flow-total">
-            <span>Gross payments</span>
+            <span>
+              {isRtl ? "إجمالي المدفوعات المستلمة" : "Gross payments"}
+            </span>
             <strong>$2,840,620</strong>
-            <small>June 01–18, 2025</small>
+            <small>
+              {isRtl ? "01 يونيو – 18 يونيو 2025" : "June 01–18, 2025"}
+            </small>
           </div>
           <div className="flow-bar">
             <span style={{ width: "82%" }} />
@@ -469,30 +525,41 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
             <div>
               <i className="green" />
               <span>
-                <b>Supplier escrow</b>
-                <small>82.0% of gross</small>
+                <b>{isRtl ? "أموال الضمان للموردين" : "Supplier escrow"}</b>
+                <small>
+                  {isRtl ? "82.0% من الإجمالي" : "82.0% of gross"}
+                </small>
               </span>
               <strong>$2,329,308</strong>
             </div>
             <div>
               <i className="blue" />
               <span>
-                <b>Platform commission</b>
-                <small>13.0% blended take</small>
+                <b>
+                  {isRtl ? "عمولة المنصة المحققة" : "Platform commission"}
+                </b>
+                <small>
+                  {isRtl ? "13.0% متوسط النسبة" : "13.0% blended take"}
+                </small>
               </span>
               <strong>$369,281</strong>
             </div>
             <div>
               <i className="amber" />
               <span>
-                <b>Gateway fees</b>
-                <small>5.0% processing</small>
+                <b>{isRtl ? "رسوم بوابات الدفع" : "Gateway fees"}</b>
+                <small>
+                  {isRtl ? "5.0% معالجة العمليات" : "5.0% processing"}
+                </small>
               </span>
               <strong>$142,031</strong>
             </div>
           </div>
           <button className="text-button" onClick={() => navigate("finance")}>
-            Open settlement details <ArrowRight size={14} />
+            {isRtl
+              ? "عرض تفاصيل القيود والتسوية"
+              : "Open settlement details"}{" "}
+            <ArrowRight size={14} className="rtl-flip" />
           </button>
         </Card>
       </div>
@@ -500,8 +567,12 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
       <div className="overview-bottom">
         <Card className="queue-card">
           <CardTitle
-            title="Action queue"
-            hint="Priority items needing your team"
+            title={isRtl ? "قائمة الإجراءات العاجلة" : "Action queue"}
+            hint={
+              isRtl
+                ? "مهام تتطلب اتخاذ قرار من الفريق"
+                : "Priority items needing your team"
+            }
             action={
               <button className="icon-btn">
                 <SlidersHorizontal size={16} />
@@ -514,44 +585,73 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
                 <ShieldCheck size={18} />
               </span>
               <span>
-                <b>Supplier KYC submissions</b>
-                <small>5 nearing SLA · oldest 19h</small>
+                <b>
+                  {isRtl
+                    ? "طلبات اعتماد الموردين الجديدة"
+                    : "Supplier KYC submissions"}
+                </b>
+                <small>
+                  {isRtl
+                    ? "5 طلبات قاربت المهلة · الأقدم منذ 19 ساعة"
+                    : "5 nearing SLA · oldest 19h"}
+                </small>
               </span>
               <strong>12</strong>
-              <ChevronRight size={16} />
+              <ChevronRight size={16} className="rtl-flip" />
             </button>
             <button onClick={() => navigate("catalog")}>
               <span className="queue-icon blue">
                 <PackageCheck size={18} />
               </span>
               <span>
-                <b>Product approvals waiting</b>
-                <small>8 high-value listings</small>
+                <b>
+                  {isRtl
+                    ? "منتجات بانتظار الموافقة في الكتالوج"
+                    : "Product approvals waiting"}
+                </b>
+                <small>
+                  {isRtl
+                    ? "8 منتجات عالية القيمة"
+                    : "8 high-value listings"}
+                </small>
               </span>
               <strong>35</strong>
-              <ChevronRight size={16} />
+              <ChevronRight size={16} className="rtl-flip" />
             </button>
             <button onClick={() => navigate("finance")}>
               <span className="queue-icon red">
                 <AlertTriangle size={18} />
               </span>
               <span>
-                <b>Active disputes</b>
-                <small>$18,420 value at risk</small>
+                <b>
+                  {isRtl ? "نزاعات تجارية مفتوحة" : "Active disputes"}
+                </b>
+                <small>
+                  {isRtl
+                    ? "18,420$ قيمة تحت المراجعة"
+                    : "$18,420 value at risk"}
+                </small>
               </span>
               <strong>3</strong>
-              <ChevronRight size={16} />
+              <ChevronRight size={16} className="rtl-flip" />
             </button>
           </div>
         </Card>
 
         <Card className="category-card">
           <CardTitle
-            title="Category distribution"
-            hint="GMV contribution this month"
+            title={
+              isRtl ? "توزيع المبيعات حسب الفئات" : "Category distribution"
+            }
+            hint={
+              isRtl
+                ? "مساهمة كل تصنيف في مبيعات الشهر"
+                : "GMV contribution this month"
+            }
             action={
               <button className="text-button">
-                Full report <ArrowRight size={13} />
+                {isRtl ? "التقرير الكامل" : "Full report"}{" "}
+                <ArrowRight size={13} className="rtl-flip" />
               </button>
             }
           />
@@ -559,16 +659,41 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
             <div className="donut">
               <div>
                 <b>$2.84M</b>
-                <span>MONTHLY GMV</span>
+                <span>{isRtl ? "المبيعات" : "MONTHLY GMV"}</span>
               </div>
             </div>
             <div className="legend">
               {[
-                ["Electronics", "32%", "$908.9K", "green"],
-                ["Home & living", "24%", "$681.7K", "blue"],
-                ["Business supplies", "19%", "$539.7K", "purple"],
-                ["Food & beverage", "15%", "$426.1K", "amber"],
-                ["Other", "10%", "$284.0K", "slate"],
+                [
+                  isRtl ? "الإلكترونيات والتقنية" : "Electronics",
+                  "32%",
+                  "$908.9K",
+                  "green",
+                ],
+                [
+                  isRtl ? "المنزل والمفروشات" : "Home & living",
+                  "24%",
+                  "$681.7K",
+                  "blue",
+                ],
+                [
+                  isRtl ? "المستلزمات التجارية" : "Business supplies",
+                  "19%",
+                  "$539.7K",
+                  "purple",
+                ],
+                [
+                  isRtl ? "الأغذية والمشروبات" : "Food & beverage",
+                  "15%",
+                  "$426.1K",
+                  "amber",
+                ],
+                [
+                  isRtl ? "فئات أخرى متنوعة" : "Other",
+                  "10%",
+                  "$284.0K",
+                  "slate",
+                ],
               ].map((x) => (
                 <div key={x[0]}>
                   <i className={x[3]} />
@@ -584,33 +709,44 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
         </Card>
 
         <Card className="health-card">
-          <CardTitle title="Platform health" hint="Systems & SLA status" />
+          <CardTitle
+            title={isRtl ? "كفاءة وصحة الأنظمة" : "Platform health"}
+            hint={
+              isRtl
+                ? "مؤشرات التوفر ومستوى الخدمة SLA"
+                : "Systems & SLA status"
+            }
+          />
           <div className="health-score">
             <div>
-              <strong>98.7</strong>
-              <span>HEALTH SCORE</span>
+              <strong>98.7%</strong>
+              <span>
+                {isRtl ? "مؤشر الكفاءة العام" : "HEALTH SCORE"}
+              </span>
             </div>
-            <Badge tone="green">All systems operational</Badge>
+            <Badge tone="green">
+              {isRtl ? "جميع الأنظمة تعمل بكفاءة" : "All systems operational"}
+            </Badge>
           </div>
           <div className="health-metrics">
             <div>
               <span>
                 <i className="green" />
-                Payment success
+                {isRtl ? "نجاح عمليات الدفع" : "Payment success"}
               </span>
               <b>99.82%</b>
             </div>
             <div>
               <span>
                 <i className="green" />
-                API uptime
+                {isRtl ? "توفر خوادم الـ API" : "API uptime"}
               </span>
               <b>99.99%</b>
             </div>
             <div>
               <span>
                 <i className="amber" />
-                KYC SLA
+                {isRtl ? "التزام سرعة التحقق KYC" : "KYC SLA"}
               </span>
               <b>94.2%</b>
             </div>
@@ -621,7 +757,9 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
   )
 }
 
-function KycScreen() {
+function KycScreen({ locale = "en" }: { locale?: Locale }) {
+  const isRtl = locale === "ar"
+  const t = translations[locale].kyc
   const [selected, setSelected] = useState<any | null>(null)
   const [filter, setFilter] = useState("All statuses")
   const [message, setMessage] = useState("")
@@ -638,10 +776,10 @@ function KycScreen() {
             reg: o.commercial_reg_no || "CR-102948",
             country:
               o.country_code === "SA"
-                ? "Saudi Arabia"
+                ? isRtl ? "المملكة العربية السعودية" : "Saudi Arabia"
                 : o.country_code === "DE"
-                  ? "Germany"
-                  : "United Arab Emirates",
+                  ? isRtl ? "ألمانيا" : "Germany"
+                  : isRtl ? "الإمارات العربية المتحدة" : "United Arab Emirates",
             flag: o.country_code || "SA",
             date: new Date(o.created_at).toLocaleDateString(),
             status:
@@ -659,7 +797,7 @@ function KycScreen() {
       }
     }
     loadSuppliers()
-  }, [])
+  }, [locale, isRtl])
 
   const filtered = supplierList.filter(
     (s) => filter === "All statuses" || s.status === filter,
@@ -698,53 +836,69 @@ function KycScreen() {
       <div className="toolbar">
         <label className="table-search">
           <Search size={15} />
-          <input placeholder="Search company or registration…" />
+          <input placeholder={t.searchPlaceholder} />
         </label>
         <div className="toolbar-right">
           <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-            <option>All statuses</option>
-            <option>Review required</option>
-            <option>Documents pending</option>
-            <option>Verified</option>
-            <option>Escalated</option>
+            <option value="All statuses">{t.allStatuses}</option>
+            <option value="Review required">
+              {isRtl ? "مراجعة مطلوبة" : "Review required"}
+            </option>
+            <option value="Documents pending">
+              {isRtl ? "بانتظار المستندات" : "Documents pending"}
+            </option>
+            <option value="Verified">
+              {isRtl ? "معتمد ونشط" : "Verified"}
+            </option>
+            <option value="Escalated">
+              {isRtl ? "مرفوع للإدارة" : "Escalated"}
+            </option>
           </select>
           <button className="secondary-btn">
-            <Filter size={15} /> More filters
+            <Filter size={15} /> {t.filterBtn}
           </button>
           <button className="primary-btn">
-            <Plus size={15} /> Invite supplier
+            <Plus size={15} /> {isRtl ? "دعوة مورد جديد" : "Invite supplier"}
           </button>
         </div>
       </div>
       <div className="mini-stats">
         <div>
-          <span>Pending review</span>
+          <span>{t.statPending}</span>
           <b>12</b>
-          <small>5 due today</small>
+          <small>{isRtl ? "5 مستحقة اليوم" : "5 due today"}</small>
         </div>
         <div>
-          <span>Average review time</span>
+          <span>{isRtl ? "متوسط سرعة المراجعة" : "Average review time"}</span>
           <b>6h 24m</b>
-          <small className="positive">↓ 18% this month</small>
+          <small className="positive">
+            ↓ {isRtl ? "18% تحسن هذا الشهر" : "18% this month"}
+          </small>
         </div>
         <div>
-          <span>Approval rate</span>
+          <span>{isRtl ? "نسبة القبول والاعتماد" : "Approval rate"}</span>
           <b>84.6%</b>
-          <small>Last 30 days</small>
+          <small>{isRtl ? "خلال آخر 30 يوماً" : "Last 30 days"}</small>
         </div>
         <div>
-          <span>High-risk escalations</span>
+          <span>{isRtl ? "حالات عالية المخاطر" : "High-risk escalations"}</span>
           <b>3</b>
-          <small className="negative">Needs attention</small>
+          <small className="negative">
+            {isRtl ? "تحتاج اهتماماً عاجلاً" : "Needs attention"}
+          </small>
         </div>
       </div>
       <Card className="table-card">
         <CardTitle
-          title="Applications"
-          hint="126 supplier applications · updated just now"
+          title={isRtl ? "طلبات تسجيل الموردين" : "Applications"}
+          hint={
+            isRtl
+              ? "126 طلباً مسجلاً · تحديث فوري مباشر"
+              : "126 supplier applications · updated just now"
+          }
           action={
             <button className="secondary-btn">
-              <ArrowDownRight size={14} /> Export
+              <ArrowDownRight size={14} className="rtl-flip" /> {t.exportBtn}
             </button>
           }
         />
@@ -755,12 +909,12 @@ function KycScreen() {
                 <th>
                   <input type="checkbox" />
                 </th>
-                <th>Company name</th>
-                <th>Commercial reg #</th>
-                <th>Country</th>
-                <th>Submission date</th>
-                <th>KYC status</th>
-                <th>Risk</th>
+                <th>{t.colCompany}</th>
+                <th>{t.colCrNumber}</th>
+                <th>{isRtl ? "الدولة والرمز" : "Country"}</th>
+                <th>{t.colSubmitted}</th>
+                <th>{t.colStatus}</th>
+                <th>{t.colRisk}</th>
                 <th />
               </tr>
             </thead>
@@ -832,10 +986,11 @@ function KycScreen() {
           <aside className="drawer">
             <div className="drawer-header">
               <div>
-                <span>SUPPLIER APPLICATION</span>
+                <span>{t.drawerTitle}</span>
                 <h2>{selected.name}</h2>
                 <p>
-                  {selected.reg} · Submitted {selected.date}
+                  {selected.reg} · {isRtl ? "تاريخ التقديم" : "Submitted"}{" "}
+                  {selected.date}
                 </p>
               </div>
               <button className="icon-btn" onClick={() => setSelected(null)}>
@@ -853,33 +1008,41 @@ function KycScreen() {
                 <span>
                   <Check size={12} />
                 </span>
-                <b>Company</b>
+                <b>{isRtl ? "بيانات المنشأة" : "Company"}</b>
               </div>
               <i />
               <div className="done">
                 <span>
                   <Check size={12} />
                 </span>
-                <b>Documents</b>
+                <b>{isRtl ? "المستندات" : "Documents"}</b>
               </div>
               <i />
               <div className="current">
                 <span>3</span>
-                <b>Decision</b>
+                <b>{isRtl ? "القرار النهائي" : "Decision"}</b>
               </div>
             </div>
             <div className="drawer-body">
               <div className="review-section">
                 <div className="section-heading">
                   <div>
-                    <h4>Registration documents</h4>
-                    <p>2 documents · digitally verified</p>
+                    <h4>{isRtl ? "وثائق السجل والترخيص" : "Registration documents"}</h4>
+                    <p>
+                      {isRtl
+                        ? "وثيقتان رسميتان · تم التحقق رقمياً"
+                        : "2 documents · digitally verified"}
+                    </p>
                   </div>
-                  <Badge tone="green">Checks passed</Badge>
+                  <Badge tone="green">
+                    {isRtl ? "مطابق للشروط" : "Checks passed"}
+                  </Badge>
                 </div>
                 <div className="doc-tabs">
-                  <button className="active">Commercial registration</button>
-                  <button>Tax certificate</button>
+                  <button className="active">
+                    {isRtl ? "شهادة السجل التجاري" : "Commercial registration"}
+                  </button>
+                  <button>{isRtl ? "الشهادة الضريبية" : "Tax certificate"}</button>
                 </div>
                 <div className="pdf-preview">
                   <div className="pdf-toolbar">
@@ -892,8 +1055,12 @@ function KycScreen() {
                   </div>
                   <div className="paper">
                     <div className="doc-seal">KSA</div>
-                    <h5>MINISTRY OF COMMERCE</h5>
-                    <p>COMMERCIAL REGISTRATION CERTIFICATE</p>
+                    <h5>{isRtl ? "وزارة التجارة" : "MINISTRY OF COMMERCE"}</h5>
+                    <p>
+                      {isRtl
+                        ? "شهادة قيد السجل التجاري المعتمدة"
+                        : "COMMERCIAL REGISTRATION CERTIFICATE"}
+                    </p>
                     <hr />
                     <div className="doc-lines">
                       <span />
@@ -902,53 +1069,85 @@ function KycScreen() {
                       <span />
                       <span />
                     </div>
-                    <div className="verified-stamp">DIGITALLY VERIFIED</div>
+                    <div className="verified-stamp">
+                      {isRtl ? "تم التحقق الرقمي" : "DIGITALLY VERIFIED"}
+                    </div>
                   </div>
                 </div>
               </div>
               <div className="review-section">
                 <div className="section-heading">
                   <div>
-                    <h4>Bank account verification</h4>
-                    <p>Beneficiary ownership and IBAN validation</p>
+                    <h4>{isRtl ? "التحقق من الحساب البنكي" : "Bank account verification"}</h4>
+                    <p>
+                      {isRtl
+                        ? "مطابقة اسم المستفيد ورقم الآيبان IBAN"
+                        : "Beneficiary ownership and IBAN validation"}
+                    </p>
                   </div>
-                  <Badge tone="green">Matched</Badge>
+                  <Badge tone="green">
+                    {isRtl ? "مطابق 100%" : "Matched"}
+                  </Badge>
                 </div>
                 <div className="detail-grid">
                   <span>
-                    Account holder<b>Noura Foods Trading Co.</b>
+                    {isRtl ? "اسم صاحب الحساب:" : "Account holder:"}
+                    <b>Noura Foods Trading Co.</b>
                   </span>
                   <span>
-                    Bank<b>Saudi Awwal Bank</b>
+                    {isRtl ? "البنك المعتمد:" : "Bank:"}
+                    <b>{isRtl ? "البنك السعودي الأول (SABB)" : "Saudi Awwal Bank"}</b>
                   </span>
                   <span className="wide">
-                    IBAN<b className="mono">SA03 8000 0000 6080 1016 7519</b>
+                    {isRtl ? "رقم الآيبان (IBAN):" : "IBAN:"}
+                    <b className="mono">SA03 8000 0000 6080 1016 7519</b>
                   </span>
                 </div>
               </div>
               <div className="review-section">
-                <h4>Compliance note</h4>
-                <textarea placeholder="Add an internal note for the audit trail…" />
+                <h4>{isRtl ? "ملاحظات فريق الامتثال" : "Compliance note"}</h4>
+                <textarea
+                  placeholder={
+                    isRtl
+                      ? "أضف ملاحظة داخلية لتدقيق ومتابعة القرار المحاسبي..."
+                      : "Add an internal note for the audit trail…"
+                  }
+                />
               </div>
             </div>
             <div className="drawer-actions">
               <button
                 className="secondary-btn danger"
-                onClick={() => act("Application rejected", "reject")}
+                onClick={() =>
+                  act(isRtl ? "تم رفض الطلب" : "Application rejected", "reject")
+                }
               >
-                Reject with reason
+                {t.btnReject}
               </button>
               <button
                 className="secondary-btn"
-                onClick={() => act("Document request sent")}
+                onClick={() =>
+                  act(
+                    isRtl
+                      ? "تم إرسال طلب استكمال الوثائق"
+                      : "Document request sent",
+                  )
+                }
               >
-                Request documents
+                {isRtl ? "طلب استكمال وثائق" : "Request documents"}
               </button>
               <button
                 className="primary-btn"
-                onClick={() => act("Supplier approved successfully", "approve")}
+                onClick={() =>
+                  act(
+                    isRtl
+                      ? "تم اعتماد المورد وتفعيله بنجاح"
+                      : "Supplier approved successfully",
+                    "approve",
+                  )
+                }
               >
-                <Check size={15} /> Approve supplier
+                <Check size={15} /> {t.btnApprove}
               </button>
             </div>
           </aside>
@@ -958,21 +1157,43 @@ function KycScreen() {
   )
 }
 
-function CatalogScreen() {
-  const [category, setCategory] = useState("Electronics")
-  const [attributes, setAttributes] = useState([
-    "Brand",
-    "Model number",
-    "Warranty period",
-    "Country of origin",
-  ])
+function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
+  const isRtl = locale === "ar"
+  const [category, setCategory] = useState(isRtl ? "إلكترونيات" : "Electronics")
+  const [attributes, setAttributes] = useState(
+    isRtl
+      ? [
+          "العلامة التجارية",
+          "رقم الموديل",
+          "فترة الضمان",
+          "بلد المنشأ",
+        ]
+      : [
+          "Brand",
+          "Model number",
+          "Warranty period",
+          "Country of origin",
+        ],
+  )
   const [approved, setApproved] = useState(false)
+
+  const categories = [
+    { name: isRtl ? "إلكترونيات" : "Electronics", count: "42", top: true },
+    { name: isRtl ? "كمبيوتر وأجهزة لوحية" : "Computers & tablets", count: "14", top: false },
+    { name: isRtl ? "أجهزة وهواتف ذكية" : "Mobile devices", count: "11", top: false },
+    { name: isRtl ? "صوتيات ومرئيات" : "Audio & video", count: "17", top: false },
+    { name: isRtl ? "مستلزمات المنزل" : "Home & living", count: "36", top: true },
+    { name: isRtl ? "مستلزمات الأعمال والشركات" : "Business supplies", count: "28", top: true },
+    { name: isRtl ? "أغذية ومشروبات" : "Food & beverage", count: "19", top: true },
+    { name: isRtl ? "صحة وعناية شخصية" : "Health & beauty", count: "24", top: true },
+  ]
+
   return (
     <div className="catalog-layout">
       <Card className="tree-panel">
         <CardTitle
-          title="Category tree"
-          hint="248 active categories"
+          title={isRtl ? "شجرة الفئات والتصنيفات" : "Category tree"}
+          hint={isRtl ? "248 فئة نشطة" : "248 active categories"}
           action={
             <button className="icon-btn">
               <Plus size={16} />
@@ -981,27 +1202,20 @@ function CatalogScreen() {
         />
         <label className="table-search compact">
           <Search size={14} />
-          <input placeholder="Find category…" />
+          <input
+            placeholder={isRtl ? "ابحث عن فئة…" : "Find category…"}
+          />
         </label>
         <div className="category-tree">
-          {([
-            ["Electronics", "42", true],
-            ["Computers & tablets", "14", false],
-            ["Mobile devices", "11", false],
-            ["Audio & video", "17", false],
-            ["Home & living", "36", true],
-            ["Business supplies", "28", true],
-            ["Food & beverage", "19", true],
-            ["Health & beauty", "24", true],
-          ] as const).map(([name, count, top]) => (
+          {categories.map(({ name, count, top }) => (
             <button
               key={name}
               className={`${name === category ? "selected" : ""} ${
                 !top ? "nested" : ""
               }`}
-              onClick={() => setCategory(name as string)}
+              onClick={() => setCategory(name)}
             >
-              {top ? <ChevronRight size={14} /> : <span />}
+              {top ? <ChevronRight size={14} className="rtl-flip" /> : <span />}
               <FolderTree size={15} />
               <b>{name}</b>
               <em>{count}</em>
@@ -1012,8 +1226,8 @@ function CatalogScreen() {
         <div className="tree-footer">
           <Settings size={15} />
           <span>
-            <b>Taxonomy health</b>
-            <small>96% schema coverage</small>
+            <b>{isRtl ? "صحة شجرة التصنيفات" : "Taxonomy health"}</b>
+            <small>{isRtl ? "تغطية 96% للمخطط" : "96% schema coverage"}</small>
           </span>
         </div>
       </Card>
@@ -1021,34 +1235,64 @@ function CatalogScreen() {
       <div className="catalog-main">
         <Card className="schema-card">
           <CardTitle
-            title={`${category} attribute schema`}
-            hint="Define required data for supplier listings"
+            title={
+              isRtl
+                ? `مخطط خصائص ${category}`
+                : `${category} attribute schema`
+            }
+            hint={
+              isRtl
+                ? "تحديد البيانات الإلزامية لقوائم الموردين"
+                : "Define required data for supplier listings"
+            }
             action={
               <div className="header-inline">
-                <Badge tone="green">Published v3.4</Badge>
-                <button className="secondary-btn">View history</button>
+                <Badge tone="green">
+                  {isRtl ? "منشور الإصدار 3.4" : "Published v3.4"}
+                </Badge>
+                <button className="secondary-btn">
+                  {isRtl ? "عرض السجل" : "View history"}
+                </button>
               </div>
             }
           />
           <div className="schema-row header">
-            <span>Attribute name</span>
-            <span>Type</span>
-            <span>Requirement</span>
-            <span>Options</span>
+            <span>{isRtl ? "اسم الخاصية" : "Attribute name"}</span>
+            <span>{isRtl ? "النوع" : "Type"}</span>
+            <span>{isRtl ? "درجة الإلزام" : "Requirement"}</span>
+            <span>{isRtl ? "الخيارات" : "Options"}</span>
           </div>
           {attributes.map((a, i) => (
             <div className="schema-row" key={a}>
               <span>
                 <GripVertical size={14} />
                 <b>{a}</b>
-                {i === 2 && <Badge tone="blue">New</Badge>}
+                {i === 2 && (
+                  <Badge tone="blue">{isRtl ? "جديد" : "New"}</Badge>
+                )}
               </span>
               <span>
-                {i === 2 ? "Number + unit" : i === 3 ? "Single select" : "Text"}
+                {i === 2
+                  ? isRtl
+                    ? "رقم + وحدة قياس"
+                    : "Number + unit"
+                  : i === 3
+                    ? isRtl
+                      ? "اختيار فردي"
+                      : "Single select"
+                    : isRtl
+                      ? "نص"
+                      : "Text"}
               </span>
               <span>
                 <Badge tone={i < 3 ? "amber" : "neutral"}>
-                  {i < 3 ? "Required" : "Optional"}
+                  {i < 3
+                    ? isRtl
+                      ? "إلزامي"
+                      : "Required"
+                    : isRtl
+                      ? "اختياري"
+                      : "Optional"}
                 </Badge>
               </span>
               <span>
@@ -1063,25 +1307,34 @@ function CatalogScreen() {
             onClick={() =>
               setAttributes([
                 ...attributes,
-                `Custom attribute ${attributes.length + 1}`,
+                isRtl
+                  ? `خاصية مخصصة ${attributes.length + 1}`
+                  : `Custom attribute ${attributes.length + 1}`,
               ])
             }
           >
-            <Plus size={15} /> Add custom attribute
+            <Plus size={15} />{" "}
+            {isRtl ? "إضافة خاصية مخصصة" : "Add custom attribute"}
           </button>
         </Card>
 
         <Card className="moderation-card">
           <CardTitle
-            title="Product moderation"
-            hint="35 pending · next: E-12882"
+            title={isRtl ? "تدقيق واعتماد المنتجات" : "Product moderation"}
+            hint={
+              isRtl
+                ? "35 بانتظار المراجعة · التالي: E-12882"
+                : "35 pending · next: E-12882"
+            }
             action={
               <div className="header-inline">
                 <button className="secondary-btn">
-                  <ArrowRight size={14} className="rotate-180" /> Previous
+                  <ArrowRight size={14} className="rotate-180 rtl-flip" />{" "}
+                  {isRtl ? "السابق" : "Previous"}
                 </button>
                 <button className="secondary-btn">
-                  Next <ArrowRight size={14} />
+                  {isRtl ? "التالي" : "Next"}{" "}
+                  <ArrowRight size={14} className="rtl-flip" />
                 </button>
               </div>
             }
@@ -1091,16 +1344,20 @@ function CatalogScreen() {
               <div>
                 <CheckCircle2 size={28} />
               </div>
-              <h3>Product approved</h3>
+              <h3>
+                {isRtl ? "تم اعتماد المنتج بنجاح" : "Product approved"}
+              </h3>
               <p>
-                “Nova X1 Noise-Cancelling Headphones” is now in the global
-                catalog.
+                {isRtl
+                  ? "«سماعات نوفا إكس 1 العازلة للضوضاء» أصبحت الآن متاحة رسمياً في الكتالوج الموحد."
+                  : "“Nova X1 Noise-Cancelling Headphones” is now in the global catalog."}
               </p>
               <button
                 className="primary-btn"
                 onClick={() => setApproved(false)}
               >
-                Review next product <ArrowRight size={14} />
+                {isRtl ? "مراجعة المنتج التالي" : "Review next product"}{" "}
+                <ArrowRight size={14} className="rtl-flip" />
               </button>
             </div>
           ) : (
@@ -1108,14 +1365,21 @@ function CatalogScreen() {
               <div className="product-summary">
                 <div className="product-visual">
                   <Headphones size={52} />
-                  <span>4 IMAGES</span>
+                  <span>{isRtl ? "4 صور" : "4 IMAGES"}</span>
                 </div>
                 <div>
-                  <Badge tone="amber">Awaiting review</Badge>
-                  <h3>Nova X1 Noise-Cancelling Headphones</h3>
+                  <Badge tone="amber">
+                    {isRtl ? "بانتظار المراجعة" : "Awaiting review"}
+                  </Badge>
+                  <h3>
+                    {isRtl
+                      ? "سماعات نوفا إكس 1 اللاسلكية العازلة للضوضاء"
+                      : "Nova X1 Noise-Cancelling Headphones"}
+                  </h3>
                   <p>
-                    Submitted by <b>Atlas Digital Distribution</b> · 42 minutes
-                    ago
+                    {isRtl
+                      ? "مقدم من شركة أطلس للتوزيع الرقمي · قبل 42 دقيقة"
+                      : "Submitted by Atlas Digital Distribution · 42 minutes ago"}
                   </p>
                   <div className="product-codes">
                     <span>
@@ -1129,53 +1393,94 @@ function CatalogScreen() {
                 <div className="ai-score">
                   <Sparkles size={15} />
                   <span>
-                    <b>92%</b> quality score
+                    <b>92%</b> {isRtl ? "درجة الجودة" : "quality score"}
                   </span>
                 </div>
               </div>
               <div className="diff-labels">
-                <span>SUPPLIER SUBMISSION</span>
-                <span>GLOBAL CATALOG STANDARD</span>
+                <span>
+                  {isRtl ? "بيانات المورد المقدمة" : "SUPPLIER SUBMISSION"}
+                </span>
+                <span>
+                  {isRtl
+                    ? "معيار الكتالوج الموحد"
+                    : "GLOBAL CATALOG STANDARD"}
+                </span>
               </div>
               <div className="diff-grid">
                 <div className="diff-cell changed">
-                  <span>Product title</span>
-                  <p>Nova X1 Headphone Wireless Bluetooth ANC Black</p>
+                  <span>{isRtl ? "عنوان المنتج" : "Product title"}</span>
+                  <p>
+                    {isRtl
+                      ? "سماعة نوفا إكس 1 بلوتوث عازلة أسود"
+                      : "Nova X1 Headphone Wireless Bluetooth ANC Black"}
+                  </p>
                 </div>
                 <div className="diff-cell good">
-                  <span>Recommended title</span>
-                  <p>Nova X1 Wireless Noise-Cancelling Headphones — Black</p>
+                  <span>
+                    {isRtl
+                      ? "العنوان المعتمد والموصى به"
+                      : "Recommended title"}
+                  </span>
+                  <p>
+                    {isRtl
+                      ? "سماعات نوفا إكس 1 اللاسلكية العازلة للضوضاء — أسود"
+                      : "Nova X1 Wireless Noise-Cancelling Headphones — Black"}
+                  </p>
                 </div>
                 <div className="diff-cell">
-                  <span>Warranty period</span>
-                  <p>12 months</p>
+                  <span>{isRtl ? "مدة الضمان" : "Warranty period"}</span>
+                  <p>{isRtl ? "12 شهراً" : "12 months"}</p>
                 </div>
                 <div className="diff-cell good">
-                  <span>Schema validation</span>
+                  <span>
+                    {isRtl ? "التحقق من صحة المخطط" : "Schema validation"}
+                  </span>
                   <p>
-                    <CheckCircle2 size={14} /> 12 months · format valid
+                    <CheckCircle2 size={14} />{" "}
+                    {isRtl
+                      ? "12 شهراً · تنسيق رقمي صحيح"
+                      : "12 months · format valid"}
                   </p>
                 </div>
                 <div className="diff-cell warning">
-                  <span>Key features</span>
-                  <p>ANC, Bluetooth, long battery, fast charge</p>
+                  <span>{isRtl ? "الميزات الرئيسية" : "Key features"}</span>
+                  <p>
+                    {isRtl
+                      ? "عزل ضوضاء، بلوتوث، بطارية تدوم طويلاً، شحن سريع"
+                      : "ANC, Bluetooth, long battery, fast charge"}
+                  </p>
                 </div>
                 <div className="diff-cell good">
-                  <span>Normalized attributes</span>
-                  <p>ANC · Bluetooth 5.3 · 40h battery · USB-C fast charge</p>
+                  <span>
+                    {isRtl
+                      ? "الخصائص المعيارية الموحدة"
+                      : "Normalized attributes"}
+                  </span>
+                  <p>
+                    {isRtl
+                      ? "عزل ANC نشط · بلوتوث 5.3 · بطارية 40 ساعة · منفذ Type-C سريع"
+                      : "ANC · Bluetooth 5.3 · 40h battery · USB-C fast charge"}
+                  </p>
                 </div>
               </div>
               <div className="moderation-actions">
                 <button className="secondary-btn">
-                  <Eye size={15} /> Preview listing
+                  <Eye size={15} />{" "}
+                  {isRtl ? "معاينة العرض" : "Preview listing"}
                 </button>
                 <span />
-                <button className="secondary-btn">Request revision</button>
+                <button className="secondary-btn">
+                  {isRtl ? "طلب مراجعة وتعديل" : "Request revision"}
+                </button>
                 <button
                   className="primary-btn"
                   onClick={() => setApproved(true)}
                 >
-                  <Check size={15} /> Approve to global catalog
+                  <Check size={15} />{" "}
+                  {isRtl
+                    ? "اعتماد في الكتالوج الموحد"
+                    : "Approve to global catalog"}
                 </button>
               </div>
             </>
@@ -1186,7 +1491,9 @@ function CatalogScreen() {
   )
 }
 
-function FinanceScreen() {
+function FinanceScreen({ locale = "en" }: { locale?: Locale }) {
+  const isRtl = locale === "ar"
+  const t = translations[locale].finance
   const [globalRate, setGlobalRate] = useState(10)
   const [tab, setTab] = useState<"ledger" | "commission" | "payouts">("ledger")
   const [approved, setApproved] = useState<string[]>([])
@@ -1246,15 +1553,15 @@ function FinanceScreen() {
         if (res && res.journal_entries && res.journal_entries.length > 0) {
           const mapped = res.journal_entries.map((je) => [
             je.entry_number,
-            je.action || "Order settlement",
-            "Gateway Clearing (1010)",
-            "Supplier Escrow (2020)",
+            je.action || (isRtl ? "تسوية طلب شراء" : "Order settlement"),
+            isRtl ? "حساب تسوية البوابة (1010)" : "Gateway Clearing (1010)",
+            isRtl ? "حساب ضمان الموردين (2020)" : "Supplier Escrow (2020)",
             `$${((je.lines?.[0]?.amount || 0) / 100).toFixed(2)}`,
             new Date(je.posted_at).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             }),
-            "Posted",
+            isRtl ? "مقيد" : "Posted",
           ])
           setLiveEntries(mapped)
         }
@@ -1263,32 +1570,39 @@ function FinanceScreen() {
       }
     }
     loadLedger()
-  }, [])
+  }, [locale, isRtl])
 
   return (
     <>
       <div className="finance-hero">
         <div>
-          <span>SETTLED BALANCE</span>
+          <span>{isRtl ? "المبالغ المسواة للموردين" : "SETTLED BALANCE"}</span>
           <strong>$8,294,120.82</strong>
           <small>
-            <ArrowUpRight size={13} /> $184,290 settled today
+            <ArrowUpRight size={13} className="rtl-flip" />{" "}
+            {isRtl ? "تمت تسوية 184,290$ اليوم" : "$184,290 settled today"}
           </small>
         </div>
         <div>
-          <span>ESCROW LIABILITY</span>
+          <span>{isRtl ? "أموال الضمان المعلقة" : "ESCROW LIABILITY"}</span>
           <strong>$2,329,308.00</strong>
-          <small>Across 1,284 open orders</small>
+          <small>
+            {isRtl ? "تغطي 1,284 طلباً قيد الشحن والتسليم" : "Across 1,284 open orders"}
+          </small>
         </div>
         <div>
-          <span>COMMISSION MTD</span>
+          <span>{isRtl ? "صافي عمولات المنصة" : "COMMISSION MTD"}</span>
           <strong>$369,281.42</strong>
-          <small className="positive">+12.2% vs last month</small>
+          <small className="positive">
+            +12.2% {isRtl ? "نمو عن الشهر السابق" : "vs last month"}
+          </small>
         </div>
         <div>
-          <span>PAYOUTS PENDING</span>
+          <span>{isRtl ? "طلبات صرف بانتظار الاعتماد" : "PAYOUTS PENDING"}</span>
           <strong>$418,920.00</strong>
-          <small className="negative">7 flagged for review</small>
+          <small className="negative">
+            {isRtl ? "7 طلبات تحتاج مراجعة" : "7 flagged for review"}
+          </small>
         </div>
       </div>
       <div className="page-tabs">
@@ -1296,35 +1610,46 @@ function FinanceScreen() {
           className={tab === "ledger" ? "active" : ""}
           onClick={() => setTab("ledger")}
         >
-          <BookOpen size={15} /> Journal ledger
+          <BookOpen size={15} /> {t.tabLedger}
         </button>
         <button
           className={tab === "commission" ? "active" : ""}
           onClick={() => setTab("commission")}
         >
-          <SlidersHorizontal size={15} /> Commission rules
+          <SlidersHorizontal size={15} /> {t.tabCommission}
         </button>
         <button
           className={tab === "payouts" ? "active" : ""}
           onClick={() => setTab("payouts")}
         >
-          <WalletCards size={15} /> Supplier payouts <b>18</b>
+          <WalletCards size={15} /> {t.tabPayouts} <b>18</b>
         </button>
       </div>
       {tab === "ledger" && (
         <Card className="table-card">
           <CardTitle
-            title="Immutable journal entries"
-            hint="Double-entry ledger · all amounts balanced"
+            title={
+              isRtl
+                ? "سجل القيود المحاسبية المزدوجة"
+                : "Immutable journal entries"
+            }
+            hint={
+              isRtl
+                ? "دفتر الأستاذ العام · جميع المبالغ متوازنة بدقة (Debit = Credit)"
+                : "Double-entry ledger · all amounts balanced"
+            }
             action={
               <div className="header-inline">
                 <Badge tone="green">
-                  <LockKeyhole size={11} /> Integrity verified
+                  <LockKeyhole size={11} />{" "}
+                  {isRtl ? "النزاهة موثقة 100%" : "Integrity verified"}
                 </Badge>
                 <button className="secondary-btn">
-                  <Filter size={14} /> Filter
+                  <Filter size={14} /> {isRtl ? "تصفية" : "Filter"}
                 </button>
-                <button className="secondary-btn">Export CSV</button>
+                <button className="secondary-btn">
+                  {isRtl ? "تصدير CSV" : "Export CSV"}
+                </button>
               </div>
             }
           />
@@ -1332,13 +1657,13 @@ function FinanceScreen() {
             <table>
               <thead>
                 <tr>
-                  <th>Entry ID</th>
-                  <th>Reference</th>
-                  <th>Debit account</th>
-                  <th>Credit account</th>
-                  <th>Balanced amount</th>
-                  <th>Timestamp</th>
-                  <th>Status</th>
+                  <th>{t.colEntryId}</th>
+                  <th>{t.colReference}</th>
+                  <th>{t.colDebit}</th>
+                  <th>{t.colCredit}</th>
+                  <th>{t.colAmount}</th>
+                  <th>{t.colTimestamp}</th>
+                  <th>{t.colStatus}</th>
                   <th />
                 </tr>
               </thead>
@@ -1373,10 +1698,18 @@ function FinanceScreen() {
           <div className="ledger-proof">
             <ShieldCheck size={16} />
             <span>
-              <b>Ledger integrity confirmed</b> · Debits = Credits · Last audit
-              hash: <code>0x8f24…e91c</code>
+              <b>
+                {isRtl
+                  ? "نزاهة الدفتر المالي مؤكدة"
+                  : "Ledger integrity confirmed"}
+              </b>{" "}
+              · {isRtl ? "إجمالي المدين = إجمالي الدائن" : "Debits = Credits"} ·{" "}
+              {isRtl ? "بصمة التجزئة:" : "Last audit hash:"}{" "}
+              <code>0x8f24…e91c</code>
             </span>
-            <small>Verified 2 min ago</small>
+            <small>
+              {isRtl ? "تم الفحص قبل دقيقتين" : "Verified 2 min ago"}
+            </small>
           </div>
         </Card>
       )}
@@ -1594,16 +1927,29 @@ function FinanceScreen() {
   )
 }
 
-function CmsScreen() {
+function CmsScreen({ locale = "en" }: { locale?: Locale }) {
+  const isRtl = locale === "ar"
   const [sections, setSections] = useState([
-    { name: "Hero carousel", type: "3 slides · Auto-rotate", active: true },
-    { name: "Category grid", type: "8 featured categories", active: true },
     {
-      name: "Featured products",
-      type: "Personalized collection",
+      name: isRtl ? "سلايدر العروض الترويجية" : "Hero carousel",
+      type: isRtl ? "3 شرائح · تدوير تلقائي" : "3 slides · Auto-rotate",
       active: true,
     },
-    { name: "Supplier spotlight", type: "4 curated suppliers", active: false },
+    {
+      name: isRtl ? "شبكة الفئات المميزة" : "Category grid",
+      type: isRtl ? "8 فئات رئيسية" : "8 featured categories",
+      active: true,
+    },
+    {
+      name: isRtl ? "المنتجات المختارة للتوريد" : "Featured products",
+      type: isRtl ? "مجموعة مخصصة للمشتري" : "Personalized collection",
+      active: true,
+    },
+    {
+      name: isRtl ? "موردون معتمدون ومميزون" : "Supplier spotlight",
+      type: isRtl ? "4 موردين مختارين" : "4 curated suppliers",
+      active: false,
+    },
   ])
   const [saved, setSaved] = useState(false)
   const move = (i: number, dir: number) => {
@@ -1618,12 +1964,15 @@ function CmsScreen() {
       <div>
         <div className="cms-toolbar">
           <div>
-            <Badge tone="green">Published</Badge>
-            <span>Last updated 14 minutes ago</span>
+            <Badge tone="green">{isRtl ? "منشور ومفعّل" : "Published"}</Badge>
+            <span>
+              {isRtl ? "آخر تحديث قبل 14 دقيقة" : "Last updated 14 minutes ago"}
+            </span>
           </div>
           <div>
             <button className="secondary-btn">
-              <Eye size={14} /> Preview storefront
+              <Eye size={14} />{" "}
+              {isRtl ? "معاينة واجهة المتجر" : "Preview storefront"}
             </button>
             <button
               className="primary-btn"
@@ -1633,17 +1982,27 @@ function CmsScreen() {
               }}
             >
               {saved ? <CheckCircle2 size={14} /> : null}
-              {saved ? "Changes published" : "Publish changes"}
+              {saved
+                ? isRtl
+                  ? "تم نشر التعديلات"
+                  : "Changes published"
+                : isRtl
+                  ? "نشر التعديلات"
+                  : "Publish changes"}
             </button>
           </div>
         </div>
         <Card className="section-builder">
           <CardTitle
-            title="Homepage sections"
-            hint="Reorder and configure storefront modules"
+            title={isRtl ? "أقسام الصفحة الرئيسية" : "Homepage sections"}
+            hint={
+              isRtl
+                ? "إعادة ترتيب وتخصيص وحدات المتجر"
+                : "Reorder and configure storefront modules"
+            }
             action={
               <button className="secondary-btn">
-                <Plus size={14} /> Add section
+                <Plus size={14} /> {isRtl ? "إضافة قسم" : "Add section"}
               </button>
             }
           />
@@ -1668,7 +2027,13 @@ function CmsScreen() {
                   <small>{s.type}</small>
                 </span>
                 <Badge tone={s.active ? "green" : "neutral"}>
-                  {s.active ? "Visible" : "Hidden"}
+                  {s.active
+                    ? isRtl
+                      ? "مرئي"
+                      : "Visible"
+                    : isRtl
+                      ? "مخفي"
+                      : "Hidden"}
                 </Badge>
                 <div className="reorder">
                   <button onClick={() => move(i, -1)}>↑</button>
@@ -1683,12 +2048,24 @@ function CmsScreen() {
         </Card>
         <Card className="localization-card">
           <CardTitle
-            title="Hero marketing banner"
-            hint="Edit localized content side by side"
+            title={
+              isRtl
+                ? "شريط الترويج الإعلاني الرئيسي"
+                : "Hero marketing banner"
+            }
+            hint={
+              isRtl
+                ? "تحرير المحتوى المترجم جنباً إلى جنب"
+                : "Edit localized content side by side"
+            }
             action={
               <div className="header-inline">
-                <Badge tone="green">EN complete</Badge>
-                <Badge tone="amber">AR review</Badge>
+                <Badge tone="green">
+                  {isRtl ? "اكتمل الإنجليزي" : "EN complete"}
+                </Badge>
+                <Badge tone="amber">
+                  {isRtl ? "مراجعة العربي" : "AR review"}
+                </Badge>
               </div>
             }
           />
@@ -1701,7 +2078,7 @@ function CmsScreen() {
             <div>
               <span>ع</span>
               <b>العربية</b>
-              <small>Right-to-left</small>
+              <small>{isRtl ? "من اليمين إلى اليسار" : "Right-to-left"}</small>
             </div>
           </div>
           <div className="locale-row">
@@ -1737,11 +2114,18 @@ function CmsScreen() {
           <div className="translation-status">
             <Languages size={16} />
             <span>
-              <b>Content parity: 96%</b>
-              <small>Arabic headline updated since last review</small>
+              <b>
+                {isRtl ? "تطابق المحتوى: 96%" : "Content parity: 96%"}
+              </b>
+              <small>
+                {isRtl
+                  ? "تم تحديث العنوان العربي منذ آخر مراجعة"
+                  : "Arabic headline updated since last review"}
+              </small>
             </span>
             <button className="text-button">
-              Mark reviewed <Check size={13} />
+              {isRtl ? "تأكيد المراجعة" : "Mark reviewed"}{" "}
+              <Check size={13} />
             </button>
           </div>
         </Card>
@@ -1894,12 +2278,14 @@ function SupplierKpi({
   detail,
   icon: Icon,
   featured,
+  tone = "emerald",
 }: {
   label: string
   value: string
   detail: string
-  icon: typeof Store
+  icon: any
   featured?: boolean
+  tone?: "emerald" | "blue" | "purple" | "amber" | "rose"
 }) {
   return (
     <Card className={`supplier-kpi ${featured ? "featured" : ""}`}>
@@ -1908,9 +2294,9 @@ function SupplierKpi({
         <strong>{value}</strong>
         <small>{detail}</small>
       </div>
-      <i>
-        <Icon size={18} />
-      </i>
+      <span className={`kpi-icon-badge ${featured ? "featured-badge" : tone}`}>
+        <Icon size={20} strokeWidth={2.2} />
+      </span>
     </Card>
   )
 }
@@ -1919,46 +2305,70 @@ function SupplierOverview({
   openOrders,
   setOpenOrders,
   openOrder,
+  locale = "en",
 }: {
   openOrders: string[]
   setOpenOrders: (orders: string[]) => void
   openOrder: (id: string) => void
+  locale?: Locale
 }) {
+  const isRtl = locale === "ar"
   return (
     <>
       <div className="supplier-kpis">
         <SupplierKpi
-          label="Net sales"
+          label={isRtl ? "صافي المبيعات" : "Net sales"}
           value="$48,290"
-          detail="+12.8% from last month"
+          detail={
+            isRtl ? "+12.8% مقارنة بالشهر السابق" : "+12.8% from last month"
+          }
           icon={ArrowUpRight}
+          tone="emerald"
         />
         <SupplierKpi
-          label="Suborders needing action"
+          label={
+            isRtl ? "طلبات بانتظار اتخاذ إجراء" : "Suborders needing action"
+          }
           value={`${openOrders.length}`}
-          detail="Oldest waiting 42 minutes"
+          detail={
+            isRtl
+              ? "الأقدم قيد الانتظار منذ 42 دقيقة"
+              : "Oldest waiting 42 minutes"
+          }
           icon={Clock3}
+          tone="amber"
         />
         <SupplierKpi
-          label="Available for payout"
+          label={isRtl ? "الرصيد المتاح للسحب" : "Available for payout"}
           value="$18,642.50"
-          detail="Ready to withdraw now"
+          detail={
+            isRtl
+              ? "جاهز للتحويل الفوري إلى حسابك"
+              : "Ready to withdraw now"
+          }
           icon={WalletCards}
           featured
         />
         <SupplierKpi
-          label="Low-stock items"
+          label={isRtl ? "تنبيهات انخفاض المخزون" : "Low-stock items"}
           value="4"
-          detail="Below 5 available units"
+          detail={
+            isRtl ? "أقل من 5 وحدات بالمستودع" : "Below 5 available units"
+          }
           icon={AlertTriangle}
+          tone="rose"
         />
       </div>
       <div className="supplier-overview-grid">
         <Card className="supplier-actions">
           <CardTitle
-            title="Daily action queue"
-            hint="Thursday, 19 June"
-            action={<Badge tone="amber">8 open</Badge>}
+            title={isRtl ? "قائمة المهام اليومية" : "Daily action queue"}
+            hint={isRtl ? "الخميس، 19 يونيو" : "Thursday, 19 June"}
+            action={
+              <Badge tone="amber">
+                {isRtl ? "8 مفتوحة" : "8 open"}
+              </Badge>
+            }
           />
           <div className="daily-actions">
             <button>
@@ -1966,59 +2376,89 @@ function SupplierOverview({
                 <PackageCheck size={18} />
               </span>
               <span>
-                <b>5 orders to pack today</b>
-                <small>2 must be ready before 14:00</small>
+                <b>
+                  {isRtl
+                    ? "5 طلبات للتجهيز اليوم"
+                    : "5 orders to pack today"}
+                </b>
+                <small>
+                  {isRtl
+                    ? "2 يجب تجهيزها قبل 14:00"
+                    : "2 must be ready before 14:00"}
+                </small>
               </span>
               <strong>5</strong>
-              <ArrowRight size={15} />
+              <ArrowRight size={15} className="rtl-flip" />
             </button>
             <button>
               <span className="queue-icon red">
                 <AlertTriangle size={18} />
               </span>
               <span>
-                <b>2 stock alerts</b>
-                <small>Vista Pro camera is below safety stock</small>
+                <b>
+                  {isRtl ? "تنبيهان لنقص المخزون" : "2 stock alerts"}
+                </b>
+                <small>
+                  {isRtl
+                    ? "كاميرا Vista Pro أقل من حد الأمان"
+                    : "Vista Pro camera is below safety stock"}
+                </small>
               </span>
               <strong>2</strong>
-              <ArrowRight size={15} />
+              <ArrowRight size={15} className="rtl-flip" />
             </button>
             <button>
               <span className="queue-icon blue">
                 <RefreshCcw size={18} />
               </span>
               <span>
-                <b>1 refund request</b>
-                <small>Response due in 18 hours</small>
+                <b>
+                  {isRtl
+                    ? "طلب استرجاع بانتظار الرد"
+                    : "1 refund request"}
+                </b>
+                <small>
+                  {isRtl
+                    ? "مطلوب الرد خلال 18 ساعة"
+                    : "Response due in 18 hours"}
+                </small>
               </span>
               <strong>1</strong>
-              <ArrowRight size={15} />
+              <ArrowRight size={15} className="rtl-flip" />
             </button>
           </div>
         </Card>
         <Card className="supplier-revenue">
           <CardTitle
-            title="Sales revenue"
-            hint="Gross sales and transparent deductions"
+            title={
+              isRtl
+                ? "عوائد المبيعات وصافي الأرباح"
+                : "Sales revenue"
+            }
+            hint={
+              isRtl
+                ? "إجمالي المبيعات وخصومات عمولة المنصة الشفافة"
+                : "Gross sales and transparent deductions"
+            }
             action={
               <select>
-                <option>Last 30 days</option>
-                <option>Last 90 days</option>
+                <option>{isRtl ? "آخر 30 يوماً" : "Last 30 days"}</option>
+                <option>{isRtl ? "آخر 90 يوماً" : "Last 90 days"}</option>
               </select>
             }
           />
           <div className="revenue-totals">
             <div>
-              <span>Gross sales</span>
+              <span>{isRtl ? "إجمالي المبيعات" : "Gross sales"}</span>
               <b>$53,655.56</b>
             </div>
             <div className="deduction">
-              <span>Platform commission</span>
+              <span>{isRtl ? "عمولة المنصة" : "Platform commission"}</span>
               <b>− $5,365.56</b>
               <small>10.0%</small>
             </div>
             <div>
-              <span>Net sales</span>
+              <span>{isRtl ? "صافي الأرباح" : "Net sales"}</span>
               <b>$48,290.00</b>
             </div>
           </div>
@@ -3172,7 +3612,9 @@ function SupplierDialog({
   )
 }
 
-function SupplierPortal() {
+function SupplierPortal({ locale = "en" }: { locale?: Locale }) {
+  const isRtl = locale === "ar"
+  const t = translations[locale].supplierPortal
   const [tab, setTab] = useState<SupplierTab>("home")
   const [modal, setModal] = useState<SupplierModal>(null)
   const [openOrders, setOpenOrders] = useState(["SO-10482", "SO-10479"])
@@ -3183,11 +3625,32 @@ function SupplierPortal() {
     icon: typeof Store
     badge?: string
   }[] = [
-    { id: "home", label: "Operations overview", icon: LayoutDashboard },
-    { id: "offers", label: "Catalog & offers", icon: Box },
-    { id: "inventory", label: "Pricing & inventory", icon: Warehouse },
-    { id: "orders", label: "Fulfillment", icon: Truck, badge: "5" },
-    { id: "wallet", label: "Wallet & earnings", icon: WalletCards },
+    {
+      id: "home",
+      label: isRtl ? "نظرة عامة على العمليات" : "Operations overview",
+      icon: LayoutDashboard,
+    },
+    {
+      id: "offers",
+      label: isRtl ? "الكتالوج والعروض" : "Catalog & offers",
+      icon: Box,
+    },
+    {
+      id: "inventory",
+      label: isRtl ? "التسعير والمخزون" : "Pricing & inventory",
+      icon: Warehouse,
+    },
+    {
+      id: "orders",
+      label: isRtl ? "تجهيز وشحن الطلبات" : "Fulfillment",
+      icon: Truck,
+      badge: "5",
+    },
+    {
+      id: "wallet",
+      label: isRtl ? "المحفظة والأرباح" : "Wallet & earnings",
+      icon: WalletCards,
+    },
   ]
   return (
     <div className="supplier-portal">
@@ -3195,14 +3658,21 @@ function SupplierPortal() {
         <div>
           <span className="supplier-logo">NF</span>
           <span>
-            <b>Noura Foods & Technology</b>
-            <small>Verified Gold supplier · ID SUP-01942</small>
+            <b>
+              {isRtl
+                ? "مؤسسة نورة للمنتجات والأغذية"
+                : "Noura Foods & Technology"}
+            </b>
+            <small>
+              {isRtl ? "مورد ذهبي معتمد" : "Verified Gold supplier"} · ID
+              SUP-01942
+            </small>
           </span>
         </div>
         <div>
-          <span>Fulfillment SLA</span>
+          <span>{isRtl ? "مؤشر الالتزام SLA" : "Fulfillment SLA"}</span>
           <b>96.8%</b>
-          <Badge tone="green">Healthy</Badge>
+          <Badge tone="green">{isRtl ? "ممتاز 96.8%" : "Healthy"}</Badge>
         </div>
       </div>
       <div className="supplier-tabs">
@@ -3224,6 +3694,7 @@ function SupplierPortal() {
             openOrders={openOrders}
             setOpenOrders={setOpenOrders}
             openOrder={setSelectedOrder}
+            locale={locale}
           />
         )}
         {tab === "offers" && <SupplierOffers setModal={setModal} />}
@@ -3413,12 +3884,46 @@ export default function App() {
             mobileOpen ? "mobile-open" : ""
           }`}
         >
-          <Logo collapsed={collapsed} />
+          <Logo collapsed={collapsed} locale={locale} />
           <nav>
             <span className="nav-label">
-              {!collapsed ? "WORKSPACES" : "•••"}
+              {!collapsed ? translations[locale].nav.workspaces : "•••"}
             </span>
-            {nav.map((item) => (
+            {[
+              {
+                id: "overview" as Page,
+                label: translations[locale].nav.overview,
+                icon: LayoutDashboard,
+              },
+              {
+                id: "kyc" as Page,
+                label: translations[locale].nav.kyc,
+                icon: ShieldCheck,
+                badge: "12",
+              },
+              {
+                id: "catalog" as Page,
+                label: translations[locale].nav.catalog,
+                icon: Box,
+                badge: "35",
+              },
+              {
+                id: "finance" as Page,
+                label: translations[locale].nav.finance,
+                icon: ReceiptText,
+                badge: "3",
+              },
+              {
+                id: "cms" as Page,
+                label: translations[locale].nav.cms,
+                icon: Store,
+              },
+              {
+                id: "supplier" as Page,
+                label: translations[locale].nav.supplier,
+                icon: Store,
+              },
+            ].map((item) => (
               <button
                 key={item.id}
                 title={collapsed ? item.label : undefined}
@@ -3431,28 +3936,28 @@ export default function App() {
               </button>
             ))}
             <span className="nav-label nav-secondary">
-              {!collapsed ? "ADMINISTRATION" : "•••"}
+              {!collapsed ? translations[locale].nav.administration : "•••"}
             </span>
             <button
               className={page === "team" ? "active" : ""}
               onClick={() => navigate("team")}
             >
               <Users size={18} />
-              <span>Team & roles</span>
+              <span>{translations[locale].nav.team}</span>
             </button>
             <button
               className={page === "audit" ? "active" : ""}
               onClick={() => navigate("audit")}
             >
               <ClipboardCheck size={18} />
-              <span>Audit log</span>
+              <span>{translations[locale].nav.audit}</span>
             </button>
             <button
               className={page === "settings" ? "active" : ""}
               onClick={() => navigate("settings")}
             >
               <Settings size={18} />
-              <span>Platform settings</span>
+              <span>{translations[locale].nav.settings}</span>
             </button>
           </nav>
           <div className="sidebar-footer">
@@ -3460,10 +3965,10 @@ export default function App() {
               <div className="support-card">
                 <Headphones size={18} />
                 <span>
-                  <b>Priority support</b>
-                  <small>Avg. response 4 min</small>
+                  <b>{translations[locale].nav.support}</b>
+                  <small>{translations[locale].nav.supportTime}</small>
                 </span>
-                <ChevronRight size={14} />
+                <ChevronRight size={14} className="rtl-flip" />
               </div>
             )}
             <button
@@ -3471,11 +3976,11 @@ export default function App() {
               onClick={() => setCollapsed(!collapsed)}
             >
               {collapsed ? (
-                <PanelLeftOpen size={17} />
+                <PanelLeftOpen size={17} className="rtl-flip" />
               ) : (
                 <>
-                  <PanelLeftClose size={17} />
-                  <span>Collapse sidebar</span>
+                  <PanelLeftClose size={17} className="rtl-flip" />
+                  <span>{translations[locale].nav.collapse}</span>
                   <kbd>⌥ S</kbd>
                 </>
               )}
@@ -3486,17 +3991,19 @@ export default function App() {
           <div className="mobile-scrim" onClick={() => setMobileOpen(false)} />
         )}
         <main className="workspace">
-          <Header page={page} onMenu={() => setMobileOpen(true)} />
+          <Header page={page} onMenu={() => setMobileOpen(true)} locale={locale} />
           <div className="content">
-            {page === "overview" && <Overview navigate={navigate} />}
-            {page === "kyc" && <KycScreen />}
-            {page === "catalog" && <CatalogScreen />}
-            {page === "finance" && <FinanceScreen />}
-            {page === "cms" && <CmsScreen />}
-            {page === "supplier" && <SupplierPortal />}
-            {page === "team" && <TeamRolesScreen />}
-            {page === "audit" && <AuditLogScreen />}
-            {page === "settings" && <PlatformSettingsScreen />}
+            {page === "overview" && (
+              <Overview navigate={navigate} locale={locale} />
+            )}
+            {page === "kyc" && <KycScreen locale={locale} />}
+            {page === "catalog" && <CatalogScreen locale={locale} />}
+            {page === "finance" && <FinanceScreen locale={locale} />}
+            {page === "cms" && <CmsScreen locale={locale} />}
+            {page === "supplier" && <SupplierPortal locale={locale} />}
+            {page === "team" && <TeamRolesScreen locale={locale} />}
+            {page === "audit" && <AuditLogScreen locale={locale} />}
+            {page === "settings" && <PlatformSettingsScreen locale={locale} />}
           </div>
         </main>
       </div>
