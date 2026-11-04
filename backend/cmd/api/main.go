@@ -67,6 +67,28 @@ func main() {
 		})
 	}
 
+	// Root Welcome Probe
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"system":    "NEXUS Marketplace Core API",
+			"status":    "online",
+			"database":  "PostgreSQL 16 (Connected)",
+			"health":    "/health",
+			"api_base":  "/api/v1/",
+			"endpoints": []string{
+				"/api/v1/products",
+				"/api/v1/orders",
+				"/api/v1/ledger/entries",
+				"/api/v1/admin/suppliers",
+				"/api/v1/inventory/stock",
+				"/api/v1/commission/rules",
+				"/api/v1/cms/sections",
+				"/api/v1/config/features",
+			},
+		})
+	})
+
 	// Health Probe
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

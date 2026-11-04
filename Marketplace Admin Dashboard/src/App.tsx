@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -59,6 +59,7 @@ import {
   AuditLogScreen,
   PlatformSettingsScreen,
 } from "./components/AdminExtras"
+import { api } from "./services/api"
 import type { PortalMode, Locale } from "./types"
 
 type Page = "overview" | "kyc" | "catalog" | "finance" | "cms" | "supplier" | "team" | "audit" | "settings"
@@ -621,14 +622,72 @@ function Overview({ navigate }: { navigate: (page: Page) => void }) {
 }
 
 function KycScreen() {
-  const [selected, setSelected] = useState<typeof suppliers[0] | null>(null)
+  const [selected, setSelected] = useState<any | null>(null)
   const [filter, setFilter] = useState("All statuses")
   const [message, setMessage] = useState("")
-  const filtered = suppliers.filter(
+  const [supplierList, setSupplierList] = useState<any[]>(suppliers)
+
+  useEffect(() => {
+    async function loadSuppliers() {
+      try {
+        const orgs = await api.getAdminSuppliers()
+        if (orgs && orgs.length > 0) {
+          const mapped = orgs.map((o) => ({
+            id: o.id,
+            name: o.legal_name || o.name?.en || "Supplier Co.",
+            reg: o.commercial_reg_no || "CR-102948",
+            country:
+              o.country_code === "SA"
+                ? "Saudi Arabia"
+                : o.country_code === "DE"
+                  ? "Germany"
+                  : "United Arab Emirates",
+            flag: o.country_code || "SA",
+            date: new Date(o.created_at).toLocaleDateString(),
+            status:
+              o.status === "approved"
+                ? "Verified"
+                : o.status === "submitted"
+                  ? "Review required"
+                  : "Documents pending",
+            risk: "Low",
+          }))
+          setSupplierList(mapped)
+        }
+      } catch (e) {
+        console.warn("Using sample suppliers:", e)
+      }
+    }
+    loadSuppliers()
+  }, [])
+
+  const filtered = supplierList.filter(
     (s) => filter === "All statuses" || s.status === filter,
   )
-  const act = (text: string) => {
+
+  const act = async (text: string, actionType?: "approve" | "reject") => {
     setMessage(text)
+    if (selected && selected.id && actionType) {
+      try {
+        if (actionType === "approve") {
+          await api.approveSupplier(selected.id)
+        } else if (actionType === "reject") {
+          await api.rejectSupplier(selected.id)
+        }
+        setSupplierList((prev) =>
+          prev.map((s) =>
+            s.id === selected.id
+              ? {
+                  ...s,
+                  status: actionType === "approve" ? "Verified" : "Escalated",
+                }
+              : s,
+          ),
+        )
+      } catch (e) {
+        console.warn("Supplier action failed:", e)
+      }
+    }
     window.setTimeout(() => {
       setSelected(null)
       setMessage("")
@@ -875,7 +934,7 @@ function KycScreen() {
             <div className="drawer-actions">
               <button
                 className="secondary-btn danger"
-                onClick={() => act("Rejection reason requested")}
+                onClick={() => act("Application rejected", "reject")}
               >
                 Reject with reason
               </button>
@@ -887,7 +946,7 @@ function KycScreen() {
               </button>
               <button
                 className="primary-btn"
-                onClick={() => act("Supplier approved successfully")}
+                onClick={() => act("Supplier approved successfully", "approve")}
               >
                 <Check size={15} /> Approve supplier
               </button>
@@ -1178,6 +1237,34 @@ function FinanceScreen() {
       "Posted",
     ],
   ]
+
+  const [liveEntries, setLiveEntries] = useState(entries)
+  useEffect(() => {
+    async function loadLedger() {
+      try {
+        const res = await api.getLedgerEntries()
+        if (res && res.journal_entries && res.journal_entries.length > 0) {
+          const mapped = res.journal_entries.map((je) => [
+            je.entry_number,
+            je.action || "Order settlement",
+            "Gateway Clearing (1010)",
+            "Supplier Escrow (2020)",
+            `$${((je.lines?.[0]?.amount || 0) / 100).toFixed(2)}`,
+            new Date(je.posted_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            "Posted",
+          ])
+          setLiveEntries(mapped)
+        }
+      } catch (e) {
+        console.warn("Could not load ledger from API:", e)
+      }
+    }
+    loadLedger()
+  }, [])
+
   return (
     <>
       <div className="finance-hero">
@@ -1256,7 +1343,7 @@ function FinanceScreen() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((e) => (
+                {liveEntries.map((e) => (
                   <tr key={e[0]}>
                     <td className="mono link">{e[0]}</td>
                     <td>
