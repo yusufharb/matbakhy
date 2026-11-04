@@ -1,0 +1,25 @@
+# Binaries & build artifacts
+bin/
+*.exe
+dist/
+build/
+.next/
+
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test temp files
+test_checkout.json
+patch_suborder.json

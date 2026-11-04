@@ -1,0 +1,10 @@
+{
+  "description": "Manage marketplace operations from one dashboard with supplier verification, product moderation, financial controls, and multilingual storefront tools for administrators.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
