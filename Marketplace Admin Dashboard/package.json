@@ -1,5 +1,6 @@
 {
-  "name": "figma-make-app",
+  "name": "nexus-marketplace-core",
+  "description": "NEXUS Reusable Marketplace Core Engine — Enterprise Operating System",
   "private": true,
   "version": "1.0.0",
   "type": "module",

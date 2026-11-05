@@ -1,0 +1,28 @@
+{
+  "name": "nexus-marketplace-core-engine",
+  "version": "1.0.0",
+  "description": "Enterprise Reusable Multi-Vendor Marketplace Core Engine",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fork": "node scripts/create-fork.mjs",
+    "dev:frontend": "npm --prefix \"Marketplace Admin Dashboard\" run dev",
+    "build:frontend": "npm --prefix \"Marketplace Admin Dashboard\" run build",
+    "start:infra": "docker compose -f deploy/docker-compose.yml up -d",
+    "stop:infra": "docker compose -f deploy/docker-compose.yml down"
+  },
+  "keywords": [
+    "marketplace",
+    "multi-vendor",
+    "b2b",
+    "b2c",
+    "golang",
+    "react",
+    "cairo-font",
+    "arabic-rtl",
+    "double-entry-ledger",
+    "modular-monolith"
+  ],
+  "author": "NEXUS Core Team",
+  "license": "UNLICENSED"
+}

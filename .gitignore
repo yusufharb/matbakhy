@@ -1,25 +1,62 @@
-# Binaries & build artifacts
+# ==============================================================================
+# Marketplace Core — Master .gitignore
+# ==============================================================================
+
+# Compiled Binaries & Build Outputs
 bin/
 *.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 dist/
+dist-ssr/
 build/
 .next/
+out/
 
-# Node dependencies
+# Go Artifacts
+*.test
+*.out
+backend/bin/
+
+# Node Dependencies & Logs
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
 
-# Environment and secrets
+# Environment & Secrets (Never commit credentials)
 .env
 .env.local
 .env.*.local
+*.env
+!*.env.example
 
-# OS files
+# Database data directories & dumps
+pgdata/
+*.sql.gz
+*.dump
+
+# Operating System Files
 .DS_Store
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# Test temp files
-test_checkout.json
-patch_suborder.json
+# IDE & Editor Folders
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary test & debug files
+*.tmp
+test_*.json
+patch_*.json
+scratch/

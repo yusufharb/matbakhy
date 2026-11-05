@@ -1,0 +1,62 @@
+name: Marketplace Core CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  backend-check:
+    name: Backend Build & Tests (Go 1.22+)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+
+      - name: Verify Backend Modules & Build
+        run: |
+          cd backend
+          go mod verify
+          go build -v -o bin/api ./cmd/api
+
+  frontend-check:
+    name: Frontend Build (Vite + React + TS)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'Marketplace Admin Dashboard/package.json'
+
+      - name: Install dependencies
+        run: |
+          cd "Marketplace Admin Dashboard"
+          npm ci || npm install
+
+      - name: Production Build
+        run: |
+          cd "Marketplace Admin Dashboard"
+          npm run build
+
+  docker-compose-check:
+    name: Docker Infrastructure Config Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Config
+        run: |
+          docker compose -f deploy/docker-compose.yml config
