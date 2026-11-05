@@ -808,166 +808,167 @@ export const translations: Record<Locale, TranslationDictionary> = {
 
       success: "تمت العملية بنجاح",
     },
-  },
 
-  b2b: {
-    brandTitle: "منصة المشتريات المؤسسية",
+    b2b: {
+      brandTitle: "منصة المشتريات المؤسسية",
 
-    brandSub: "بوابة المشتريات للشركات والمصانع",
+      brandSub: "بوابة المشتريات للشركات والمصانع",
 
-    navDashboard: "لوحة التحكم",
+      navDashboard: "لوحة التحكم",
 
-    navCatalog: "كتالوج الجملة",
+      navCatalog: "كتالوج الجملة",
 
-    navCart: "سلة المشتريات",
+      navCart: "سلة المشتريات",
 
-    navOrders: "أوامر التوريد",
+      navOrders: "أوامر التوريد",
 
-    navWarehouses: "مستودعات الاستلام",
+      navWarehouses: "مستودعات الاستلام",
 
-    navTeam: "إدارة الفريق والصلاحيات",
+      navTeam: "إدارة الفريق والصلاحيات",
 
-    navWallet: "المحفظة المؤسسية",
+      navWallet: "المحفظة المؤسسية",
 
-    navKYC: "توثيق المنشأة",
+      navKYC: "توثيق المنشأة",
 
-    navProfile: "الملف القانوني",
+      navProfile: "الملف القانوني",
 
-    onboardingTitle: "توثيق الشركة والتحقق التجاري",
+      onboardingTitle: "توثيق الشركة والتحقق التجاري",
 
-    onboardingSubtitle:
-      "يرجى تقديم بيانات السجل التجاري والشهادة الضريبية لاعتماد الحساب",
+      onboardingSubtitle:
+        "يرجى تقديم بيانات السجل التجاري والشهادة الضريبية لاعتماد الحساب",
 
-    crLabel: "رقم السجل التجاري (CR)",
+      crLabel: "رقم السجل التجاري (CR)",
 
-    vatLabel: "الرقم الضريبي (VAT)",
+      vatLabel: "الرقم الضريبي (VAT)",
 
-    submitApplication: "إرسال طلب الاعتماد",
+      submitApplication: "إرسال طلب الاعتماد",
 
-    underReview: "قيد المراجعة والتدقيق",
+      underReview: "قيد المراجعة والتدقيق",
 
-    approvedBadge: "منشأة معتمدة رسمياً",
+      approvedBadge: "منشأة معتمدة رسمياً",
 
-    minOrderQty: "الحد الأدنى للطلب (MOQ)",
+      minOrderQty: "الحد الأدنى للطلب (MOQ)",
 
-    volumePricing: "جدول تسعير الكميات والخصومات",
+      volumePricing: "جدول تسعير الكميات والخصومات",
 
-    supplierComparison: "مقارنة عروض الموردين المعتمدين",
+      supplierComparison: "مقارنة عروض الموردين المعتمدين",
 
-    leadTimeDays: "أيام التجهيز والشحن",
+      leadTimeDays: "أيام التجهيز والشحن",
 
-    addToCartBtn: "إضافة لأمر التوريد",
+      addToCartBtn: "إضافة لأمر التوريد",
 
-    inStockUnits: "وحدة متوفرة في المستودعات",
+      inStockUnits: "وحدة متوفرة في المستودعات",
 
-    outOfStockBadge: "غير متوفر لدى المورد",
+      outOfStockBadge: "غير متوفر لدى المورد",
 
-    supplierSubtotal: "المجموع الفرعي للمورد",
+      supplierSubtotal: "المجموع الفرعي للمورد",
 
-    destinationWarehouse: "مستودع الاستلام المخصص",
+      destinationWarehouse: "مستودع الاستلام المخصص",
 
-    poReferenceNumber: "رقم أمر الشراء الداخلي (PO)",
+      poReferenceNumber: "رقم أمر الشراء الداخلي (PO)",
 
-    proceedToCheckout: "متابعة وتأكيد أمر التوريد",
+      proceedToCheckout: "متابعة وتأكيد أمر التوريد",
 
-    warehousesTitle: "مستودعات وأرصفة الاستلام",
+      warehousesTitle: "مستودعات وأرصفة الاستلام",
 
-    warehousesSubtitle:
-      "إدارة مواقع استلام البضائع ومواصفات منصات التفريغ والرافعات",
+      warehousesSubtitle:
+        "إدارة مواقع استلام البضائع ومواصفات منصات التفريغ والرافعات",
 
-    addWarehouseBtn: "إضافة مستودع استلام جديد",
+      addWarehouseBtn: "إضافة مستودع استلام جديد",
 
-    dockType: "نوع رصيف التفريغ",
+      dockType: "نوع رصيف التفريغ",
 
-    receivingHours: "ساعات استقبال الشاحنات",
+      receivingHours: "ساعات استقبال الشاحنات",
 
-    defaultBadge: "المستودع الرئيسي",
+      defaultBadge: "المستودع الرئيسي",
 
-    teamTitle: "فريق العمل والصلاحيات المؤسسية",
+      teamTitle: "فريق العمل والصلاحيات المؤسسية",
 
-    teamSubtitle: "إدارة الموظفين وتعيين أدوار المشتريات والمالية والمستودعات",
+      teamSubtitle:
+        "إدارة الموظفين وتعيين أدوار المشتريات والمالية والمستودعات",
 
-    inviteMemberBtn: "دعوة موظف جديد",
+      inviteMemberBtn: "دعوة موظف جديد",
 
-    walletTitle: "المحفظة والحساب المالي للشركة",
+      walletTitle: "المحفظة والحساب المالي للشركة",
 
-    walletSubtitle:
-      "إدارة الرصيد المالي المعتمد في دفتر الأستاذ وسجل المعاملات",
+      walletSubtitle:
+        "إدارة الرصيد المالي المعتمد في دفتر الأستاذ وسجل المعاملات",
 
-    availableBalance: "الرصيد المتاح للصرف",
+      availableBalance: "الرصيد المتاح للصرف",
 
-    heldInOrders: "مبالغ محجوزة تحت الطلب",
+      heldInOrders: "مبالغ محجوزة تحت الطلب",
 
-    totalBalance: "إجمالي الرصيد المؤسسي",
+      totalBalance: "إجمالي الرصيد المؤسسي",
 
-    topupWalletBtn: "شحن رصيد المحفظة",
+      topupWalletBtn: "شحن رصيد المحفظة",
 
-    statementTitle: "كشف العمليات وسجل القيود المحاسبية",
-  },
+      statementTitle: "كشف العمليات وسجل القيود المحاسبية",
+    },
 
-  b2c: {
-    brandTitle: "نكسوس للتجزئة",
+    b2c: {
+      brandTitle: "نكسوس للتجزئة",
 
-    brandSub: "تسوق الأفراد والاحتياجات اليومية",
+      brandSub: "تسوق الأفراد والاحتياجات اليومية",
 
-    navHome: "الرئيسية",
+      navHome: "الرئيسية",
 
-    navCatalog: "المنتجات",
+      navCatalog: "المنتجات",
 
-    navCart: "السلة",
+      navCart: "السلة",
 
-    navOrders: "طلباتي",
+      navOrders: "طلباتي",
 
-    navAddresses: "عناويني",
+      navAddresses: "عناويني",
 
-    navWallet: "محفظتي",
+      navWallet: "محفظتي",
 
-    navProfile: "حسابي",
+      navProfile: "حسابي",
 
-    heroTitle: "أفضل المنتجات بأفضل الأسعار",
+      heroTitle: "أفضل المنتجات بأفضل الأسعار",
 
-    heroSubtitle:
-      "آلاف المنتجات الأصلية مع توصيل سريع وضمان حقيقي حتى باب منزلك",
+      heroSubtitle:
+        "آلاف المنتجات الأصلية مع توصيل سريع وضمان حقيقي حتى باب منزلك",
 
-    shopDealsBtn: "تسوق العروض المميزة",
+      shopDealsBtn: "تسوق العروض المميزة",
 
-    trendingDeals: "العروض الأكثر طلباً اليوم",
+      trendingDeals: "العروض الأكثر طلباً اليوم",
 
-    featuredCategories: "تصفح حسب الفئات",
+      featuredCategories: "تصفح حسب الفئات",
 
-    searchPlaceholder: "ابحث عن أي منتج أو ماركة أو فئة...",
+      searchPlaceholder: "ابحث عن أي منتج أو ماركة أو فئة...",
 
-    addToCartBtn: "أضف إلى السلة",
+      addToCartBtn: "أضف إلى السلة",
 
-    buyNowBtn: "شراء فوري",
+      buyNowBtn: "شراء فوري",
 
-    retailPrice: "السعر شامل الضريبة",
+      retailPrice: "السعر شامل الضريبة",
 
-    emptyCartMsg: "سلة التسوق فارغة، تصفح المنتجات وأضف ما يعجبك!",
+      emptyCartMsg: "سلة التسوق فارغة، تصفح المنتجات وأضف ما يعجبك!",
 
-    checkoutBtn: "إتمام الشراء الآن",
+      checkoutBtn: "إتمام الشراء الآن",
 
-    step1Address: "عنوان التوصيل الشخصي",
+      step1Address: "عنوان التوصيل الشخصي",
 
-    step2Payment: "طريقة الدفع وتأكيد الطلب",
+      step2Payment: "طريقة الدفع وتأكيد الطلب",
 
-    orderTotal: "المبلغ الإجمالي شامل الضريبة",
+      orderTotal: "المبلغ الإجمالي شامل الضريبة",
 
-    placeOrderBtn: "تأكيد الطلب والدفع",
+      placeOrderBtn: "تأكيد الطلب والدفع",
 
-    addressBookTitle: "دفتر العناوين المحفوظة",
+      addressBookTitle: "دفتر العناوين المحفوظة",
 
-    addNewAddress: "إضافة عنوان جديد",
+      addNewAddress: "إضافة عنوان جديد",
 
-    walletTitle: "محفظة العميل الشخصية",
+      walletTitle: "محفظة العميل الشخصية",
 
-    consumerBalance: "الرصيد المتاح في المحفظة",
+      consumerBalance: "الرصيد المتاح في المحفظة",
 
-    quickTopupPrompt: "شحن رصيد فوري عبر البطاقة أو المحافظ الإلكترونية",
+      quickTopupPrompt: "شحن رصيد فوري عبر البطاقة أو المحافظ الإلكترونية",
 
-    ordersTitle: "سجل الطلبات وتتبع الشحنات",
+      ordersTitle: "سجل الطلبات وتتبع الشحنات",
 
-    trackOrderBtn: "تتبع الشحنة مع المندوب",
+      trackOrderBtn: "تتبع الشحنة مع المندوب",
+    },
   },
 
   en: {
