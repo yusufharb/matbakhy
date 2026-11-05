@@ -34,6 +34,10 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error": "Forbidden: user does not belong to an active organization"}`, http.StatusForbidden)
 			return
 		}
+		if req.MerchantID != "" && req.MerchantID != claims.OrgID {
+			http.Error(w, `{"error": "Forbidden: cannot check out on behalf of another merchant organization"}`, http.StatusForbidden)
+			return
+		}
 		req.MerchantID = claims.OrgID
 	} else if req.MerchantID == "" {
 		req.MerchantID = claims.OrgID

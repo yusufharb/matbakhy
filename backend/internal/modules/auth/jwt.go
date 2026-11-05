@@ -70,14 +70,14 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-// GenerateJWT creates a signed token valid for 72 hours
+// GenerateJWT creates a signed access token valid for 15 minutes
 func GenerateJWT(userID, email, orgID, role string) (string, error) {
 	secret, err := getJWTSecret()
 	if err != nil {
 		return "", err
 	}
 
-	expirationTime := time.Now().Add(72 * time.Hour)
+	expirationTime := time.Now().Add(15 * time.Minute)
 	claims := &Claims{
 		UserID: userID,
 		Email:  email,

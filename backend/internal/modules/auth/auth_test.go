@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func init() {
@@ -200,3 +201,93 @@ func TestJSONErrorFormat(t *testing.T) {
 		t.Fatalf("unexpected JSON error format: %+v", body)
 	}
 }
+
+// 8. Test Login Rate Limiting (Brute-Force Protection)
+func TestLoginRateLimiter(t *testing.T) {
+	limiter := NewLoginRateLimiter(3, 100*time.Millisecond)
+	targetEmail := "victim@domain.com"
+
+	// Initially not blocked
+	if limiter.IsBlocked(targetEmail) {
+		t.Fatalf("expected target not to be blocked initially")
+	}
+
+	// 1st failure
+	limiter.RecordFailure(targetEmail)
+	if limiter.IsBlocked(targetEmail) {
+		t.Fatalf("expected target not to be blocked after 1 failure")
+	}
+
+	// 2nd failure
+	limiter.RecordFailure(targetEmail)
+	if limiter.IsBlocked(targetEmail) {
+		t.Fatalf("expected target not to be blocked after 2 failures")
+	}
+
+	// 3rd failure -> should now be blocked!
+	limiter.RecordFailure(targetEmail)
+	if !limiter.IsBlocked(targetEmail) {
+		t.Fatalf("expected target to be blocked after 3 failures")
+	}
+
+	// Other emails should NOT be blocked
+	if limiter.IsBlocked("innocent@domain.com") {
+		t.Fatalf("unrelated email should not be blocked")
+	}
+
+	// Wait for lockout window to expire (100ms)
+	time.Sleep(120 * time.Millisecond)
+	if limiter.IsBlocked(targetEmail) {
+		t.Fatalf("expected target to be unblocked after lockout window expires")
+	}
+
+	// Successful login clears failures
+	limiter.RecordFailure(targetEmail)
+	limiter.RecordSuccess(targetEmail)
+	if limiter.IsBlocked(targetEmail) {
+		t.Fatalf("expected target to be cleared after success")
+	}
+}
+
+// 9. Test Cryptographic Refresh Token Generation and Hashing
+func TestGenerateAndHashRefreshToken(t *testing.T) {
+	token1, hash1, err := GenerateRefreshToken()
+	if err != nil {
+		t.Fatalf("failed to generate refresh token: %v", err)
+	}
+
+	if len(token1) != 64 {
+		t.Fatalf("expected 64-char hex string (32 random bytes), got %d chars", len(token1))
+	}
+
+	expectedHash := HashToken(token1)
+	if hash1 != expectedHash {
+		t.Fatalf("hash mismatch: expected %s, got %s", expectedHash, hash1)
+	}
+
+	// Distinct tokens each call
+	token2, hash2, _ := GenerateRefreshToken()
+	if token1 == token2 || hash1 == hash2 {
+		t.Fatalf("expected cryptographically distinct tokens and hashes")
+	}
+}
+
+// 10. Test Access Token 15-Minute Expiry
+func TestAccessToken15MinExpiry(t *testing.T) {
+	token, err := GenerateJWT("user-123", "user@nexus.market", "org-1", "merchant_admin")
+	if err != nil {
+		t.Fatalf("failed to generate JWT: %v", err)
+	}
+
+	claims, err := ValidateJWT(token)
+	if err != nil {
+		t.Fatalf("failed to validate JWT: %v", err)
+	}
+
+	// Check that expiration is between 14 and 16 minutes from now
+	remaining := time.Until(claims.ExpiresAt.Time)
+	if remaining < 14*time.Minute || remaining > 16*time.Minute {
+		t.Fatalf("expected access token lifetime ~15m, got remaining duration: %v", remaining)
+	}
+}
+

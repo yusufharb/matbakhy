@@ -3,14 +3,27 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 type Handler struct {
-	repo *Repository
+	repo    *Repository
+	limiter *LoginRateLimiter
 }
 
 func NewHandler(repo *Repository) *Handler {
-	return &Handler{repo: repo}
+	return &Handler{
+		repo:    repo,
+		limiter: NewLoginRateLimiter(5, 15*time.Minute),
+	}
+}
+
+// NewHandlerWithLimiter allows initializing with a custom limiter (useful for tests)
+func NewHandlerWithLimiter(repo *Repository, limiter *LoginRateLimiter) *Handler {
+	return &Handler{
+		repo:    repo,
+		limiter: limiter,
+	}
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -20,16 +33,35 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check brute-force lockout
+	if h.limiter != nil && h.limiter.IsBlocked(req.Email) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(`{"error": "Too many failed login attempts. Account temporarily locked.", "code": 429}`))
+		return
+	}
+
 	user, err := h.repo.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
+		if h.limiter != nil {
+			h.limiter.RecordFailure(req.Email)
+		}
 		http.Error(w, `{"error": "Invalid email or password"}`, http.StatusUnauthorized)
 		return
 	}
 
 	// Enforce strict bcrypt authentication (no backdoors)
 	if !CheckPasswordHash(req.Password, user.PasswordHash) {
+		if h.limiter != nil {
+			h.limiter.RecordFailure(req.Email)
+		}
 		http.Error(w, `{"error": "Invalid email or password"}`, http.StatusUnauthorized)
 		return
+	}
+
+	// Reset failed attempts upon successful authentication
+	if h.limiter != nil {
+		h.limiter.RecordSuccess(req.Email)
 	}
 
 	memberships, _ := h.repo.GetMembershipsForUser(r.Context(), user.ID)
@@ -47,11 +79,90 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Issue refresh token
+	var refreshToken string
+	plainRefreshToken, tokenHash, err := GenerateRefreshToken()
+	if err == nil {
+		expiresAt := time.Now().Add(7 * 24 * time.Hour)
+		if err := h.repo.CreateSession(r.Context(), user.ID, tokenHash, expiresAt); err == nil {
+			refreshToken = plainRefreshToken
+		}
+	}
+
 	resp := AuthResponse{
-		Token:       token,
-		User:        *user,
-		Role:        activeRole,
-		Memberships: memberships,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *user,
+		Role:         activeRole,
+		Memberships:  memberships,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	var req RefreshTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RefreshToken == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "refresh_token is required", "code": 400}`))
+		return
+	}
+
+	tokenHash := HashToken(req.RefreshToken)
+	session, err := h.repo.GetSessionByTokenHash(r.Context(), tokenHash)
+	if err != nil || session == nil || session.Revoked || time.Now().After(session.ExpiresAt) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error": "Invalid or expired refresh token", "code": 401}`))
+		return
+	}
+
+	user, err := h.repo.GetUserByID(r.Context(), session.UserID)
+	if err != nil || user == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error": "User not found", "code": 401}`))
+		return
+	}
+
+	memberships, _ := h.repo.GetMembershipsForUser(r.Context(), user.ID)
+	var activeOrgID, activeRole string
+	if len(memberships) > 0 {
+		activeOrgID = memberships[0].OrgID
+		activeRole = memberships[0].RoleName
+	} else {
+		activeRole = "user"
+	}
+
+	newAccessToken, err := GenerateJWT(user.ID, user.Email, activeOrgID, activeRole)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Failed to create access token", "code": 500}`))
+		return
+	}
+
+	newPlainToken, newTokenHash, err := GenerateRefreshToken()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Failed to generate refresh token", "code": 500}`))
+		return
+	}
+
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
+	if err := h.repo.RotateSession(r.Context(), session.ID, user.ID, newTokenHash, expiresAt); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Failed to rotate session", "code": 500}`))
+		return
+	}
+
+	resp := RefreshTokenResponse{
+		Token:        newAccessToken,
+		RefreshToken: newPlainToken,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

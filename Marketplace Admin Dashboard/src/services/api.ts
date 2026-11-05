@@ -172,12 +172,16 @@ export interface AuthSession {
   }[]
 }
 
-// Demo Persona Credentials for Development Portal Switching
-const PERSONA_CREDENTIALS: Record<string, { email: string; password: string }> = {
-  admin: { email: 'amal@nexus.market', password: 'NexusPassword2026!' },
-  supplier: { email: 'supplier@nourafoods.com', password: 'NexusPassword2026!' },
-  merchant: { email: 'buyer@meridian.com', password: 'NexusPassword2026!' },
-}
+const isDev = Boolean(import.meta.env.DEV)
+
+// Demo Persona Credentials for Development Portal Switching (stripped from production builds)
+const PERSONA_CREDENTIALS: Record<string, { email: string; password: string }> = isDev
+  ? {
+      admin: { email: 'amal@nexus.market', password: 'NexusPassword2026!' },
+      supplier: { email: 'supplier@nourafoods.com', password: 'NexusPassword2026!' },
+      merchant: { email: 'buyer@meridian.com', password: 'NexusPassword2026!' },
+    }
+  : {}
 
 class AuthTokenManager {
   private activePortal: 'admin' | 'supplier' | 'merchant' = 'admin'
@@ -221,6 +225,10 @@ class AuthTokenManager {
   }
 
   async acquireTokenForPortal(portal: 'admin' | 'supplier' | 'merchant'): Promise<string> {
+    if (!isDev) {
+      throw new Error('Auto-login persona credentials are restricted to development builds. Please log in explicitly.')
+    }
+
     const existing = this.getToken(portal)
     if (existing) return existing
 

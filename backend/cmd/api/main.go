@@ -77,7 +77,7 @@ func main() {
 
 	// Middlewares
 	authOnly := auth.RequireAuth
-	adminOnly := auth.RequireRole("platform_admin", "super_admin")
+	adminOnly := auth.RequireRole("platform_admin", "super_admin", "finance_admin", "finance")
 	supplierOrAdmin := auth.RequireRole("supplier_admin", "supplier", "supplier_staff", "platform_admin", "super_admin")
 
 	mux := http.NewServeMux()
@@ -137,6 +137,7 @@ func main() {
 	// Auth & Identity (Public)
 	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
+	mux.HandleFunc("POST /api/v1/auth/refresh", authHandler.RefreshToken)
 
 	// Catalog (Public Read)
 	mux.HandleFunc("GET /api/v1/products", catalogHandler.ListProducts)
@@ -184,8 +185,8 @@ func main() {
 	mux.HandleFunc("GET /api/v1/inventory/stock", wrap(inventoryHandler.ListStock, supplierOrAdmin))
 	mux.HandleFunc("POST /api/v1/inventory/adjust", wrap(inventoryHandler.AdjustStock, supplierOrAdmin))
 
-	// Ledger Accounts (Scoped)
-	mux.HandleFunc("GET /api/v1/ledger/accounts", wrap(walletHandler.ListAccounts, authOnly))
+	// Ledger Accounts (Platform Admin & Finance only)
+	mux.HandleFunc("GET /api/v1/ledger/accounts", wrap(walletHandler.ListAccounts, adminOnly))
 
 	// Global Handler Pipeline: CORS -> Auth Context Extraction -> Router
 	handler := corsMiddleware(auth.AuthMiddleware(mux))

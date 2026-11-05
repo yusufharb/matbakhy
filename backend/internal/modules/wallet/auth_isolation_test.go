@@ -107,4 +107,52 @@ func TestWalletHandlerAuthIsolation(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200 OK for platform_admin accessing ledger entries, got %d", rec.Code)
 	}
+
+	// Case 7: Supplier role accessing GET /ledger/accounts -> 403 Forbidden
+	accountsHandler := auth.AuthMiddleware(auth.RequireRole("platform_admin", "super_admin", "finance_admin", "finance")(http.HandlerFunc(walletHandler.ListAccounts)))
+	req = httptest.NewRequest("GET", "/api/v1/ledger/accounts", nil)
+	req.Header.Set("Authorization", "Bearer "+supplierAToken)
+	rec = httptest.NewRecorder()
+	accountsHandler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden when supplier attempts to list ledger accounts, got %d", rec.Code)
+	}
+
+	// Case 8: Merchant role accessing GET /ledger/accounts -> 403 Forbidden
+	merchantToken, _ := auth.GenerateJWT(
+		"a0000000-0000-0000-0000-000000000004",
+		"buyer@meridian.com",
+		"b0000000-0000-0000-0000-000000000004",
+		"merchant_admin",
+	)
+	req = httptest.NewRequest("GET", "/api/v1/ledger/accounts", nil)
+	req.Header.Set("Authorization", "Bearer "+merchantToken)
+	rec = httptest.NewRecorder()
+	accountsHandler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden when merchant attempts to list ledger accounts, got %d", rec.Code)
+	}
+
+	// Case 9: Merchant role accessing GET /ledger/entries -> 403 Forbidden
+	entriesHandler := auth.AuthMiddleware(auth.RequireRole("platform_admin", "super_admin", "finance_admin", "finance")(http.HandlerFunc(walletHandler.ListJournalEntries)))
+	req = httptest.NewRequest("GET", "/api/v1/ledger/entries", nil)
+	req.Header.Set("Authorization", "Bearer "+merchantToken)
+	rec = httptest.NewRecorder()
+	entriesHandler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden when merchant attempts to list ledger entries, got %d", rec.Code)
+	}
+
+	// Case 10: Platform Admin accessing GET /ledger/accounts -> 200 OK
+	req = httptest.NewRequest("GET", "/api/v1/ledger/accounts", nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	rec = httptest.NewRecorder()
+	accountsHandler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for platform_admin accessing ledger accounts, got %d", rec.Code)
+	}
 }
