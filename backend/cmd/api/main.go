@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/marketplace/core/internal/database"
@@ -14,9 +15,13 @@ import (
 	"github.com/marketplace/core/internal/modules/commission"
 	"github.com/marketplace/core/internal/modules/config"
 	"github.com/marketplace/core/internal/modules/inventory"
+	"github.com/marketplace/core/internal/modules/invoice"
 	"github.com/marketplace/core/internal/modules/order"
+	"github.com/marketplace/core/internal/modules/payment"
 	"github.com/marketplace/core/internal/modules/platform"
+	"github.com/marketplace/core/internal/modules/storage"
 	"github.com/marketplace/core/internal/modules/wallet"
+	"github.com/marketplace/core/internal/worker"
 )
 
 // wrap chains multiple middlewares onto an http.HandlerFunc
@@ -67,6 +72,29 @@ func main() {
 	walletRepo := wallet.NewRepository(db.Pool)
 	configRepo := config.NewRepository(db.Pool)
 	idemStore := platform.NewIdempotencyStore(db.Pool)
+	payRepo := payment.NewRepository(db.Pool)
+
+	var gateway payment.PaymentGateway
+	if os.Getenv("STRIPE_SECRET_KEY") != "" {
+		gateway = payment.NewStripeGateway(os.Getenv("STRIPE_SECRET_KEY"), os.Getenv("STRIPE_WEBHOOK_SECRET"))
+	} else {
+		gateway = payment.NewMockGateway(os.Getenv("GATEWAY_WEBHOOK_SECRET"), os.Getenv("APP_URL"))
+	}
+
+	storageSvc := storage.NewService(storage.Config{
+		Endpoint:        os.Getenv("STORAGE_ENDPOINT"),
+		Region:          os.Getenv("STORAGE_REGION"),
+		AccessKeyID:     os.Getenv("STORAGE_ACCESS_KEY"),
+		SecretAccessKey: os.Getenv("STORAGE_SECRET_KEY"),
+		PublicBaseURL:   os.Getenv("STORAGE_PUBLIC_URL"),
+	})
+
+	invGen := invoice.NewGenerator(db.Pool)
+	invHandler := invoice.NewHandler(invGen)
+
+	// Start Background Asynchronous Outbox Worker
+	outboxWorker := worker.NewOutboxWorker(db.Pool, invGen, 3*time.Second)
+	outboxWorker.Start(ctx)
 
 	// 5. Initialize HTTP Handlers
 	authHandler := auth.NewHandler(authRepo)
@@ -76,6 +104,8 @@ func main() {
 	orderHandler := order.NewHandler(orderRepo, idemStore)
 	walletHandler := wallet.NewHandler(walletRepo, idemStore)
 	configHandler := config.NewHandler(configRepo)
+	payHandler := payment.NewHandler(payRepo, gateway)
+	storageHandler := storage.NewHandler(storageSvc)
 
 	// Middlewares
 	authOnly := auth.RequireAuth
@@ -84,10 +114,25 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// CORS Middleware
+	// CORS Middleware with Production Origin Whitelisting
+	allowedOriginsEnv := os.Getenv("CORS_ALLOWED_ORIGINS")
 	corsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			origin := r.Header.Get("Origin")
+			if allowedOriginsEnv == "" || allowedOriginsEnv == "*" {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else {
+				allowed := false
+				for _, o := range strings.Split(allowedOriginsEnv, ",") {
+					if strings.TrimSpace(o) == origin {
+						allowed = true
+						break
+					}
+				}
+				if allowed {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+				}
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Idempotency-Key")
 			if r.Method == http.MethodOptions {
@@ -155,6 +200,9 @@ func main() {
 	mux.HandleFunc("GET /api/v1/cms/sections", configHandler.ListCMSSections)
 	mux.HandleFunc("GET /api/v1/config/features", configHandler.GetFeatures)
 
+	// Payments (Public Webhook)
+	mux.HandleFunc("POST /api/v1/payments/webhook", payHandler.HandleWebhook)
+
 	// --------------------------------------------------------------------------
 	// Protected Endpoints
 	// --------------------------------------------------------------------------
@@ -164,9 +212,17 @@ func main() {
 	mux.HandleFunc("GET /api/v1/auth/me/contexts", wrap(authHandler.GetMeContexts, authOnly))
 	mux.HandleFunc("POST /api/v1/auth/switch-context", wrap(authHandler.SwitchContext, authOnly))
 
+	// Cloud Object Storage (Presigned Uploads for Media & KYC Documents)
+	mux.HandleFunc("POST /api/v1/storage/upload-url", wrap(storageHandler.RequestUploadURL, authOnly))
+
 	// Orders & Checkout (Authenticated users / merchants / customers)
 	mux.HandleFunc("POST /api/v1/checkout", wrap(orderHandler.Checkout, authOnly))
 	mux.HandleFunc("GET /api/v1/orders", wrap(orderHandler.ListOrders, authOnly))
+	mux.HandleFunc("GET /api/v1/payments/{order_id}", wrap(payHandler.GetPaymentStatus, authOnly))
+
+	// Tax Invoices (B2B & B2C Compliant)
+	mux.HandleFunc("GET /api/v1/invoices/order/{order_id}", wrap(invHandler.GetInvoiceByOrderID, authOnly))
+	mux.HandleFunc("POST /api/v1/invoices/order/{order_id}/generate", wrap(invHandler.GenerateInvoice, authOnly))
 
 	// Customer Personal Logistics & Wallet (B2C)
 	mux.HandleFunc("GET /api/v1/customer/addresses", wrap(orderHandler.ListCustomerAddresses, authOnly))

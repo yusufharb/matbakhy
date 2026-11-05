@@ -41,7 +41,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Verify Migrations (000001 - 000012) & Seeds
+      - name: Verify Migrations (000001 - 000014) & Seeds
         env:
           PGPASSWORD: postgres_ci_password
         run: |
@@ -53,6 +53,8 @@ jobs:
           psql -h localhost -U postgres -d marketplace_core -f backend/db/seeds/system_seed.sql
           echo "Applying demo seed..."
           psql -h localhost -U postgres -d marketplace_core -f backend/db/seeds/demo_seed.sql
+          echo "Applying MRO industrial client seed..."
+          psql -h localhost -U postgres -d marketplace_core -f backend/db/seeds/mro_industrial_seed.sql
 
       - name: Verify Backend Modules & Build
         run: |
@@ -105,6 +107,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate Docker Compose Config
+      - name: Validate Dev & Production Docker Compose Config
+        env:
+          POSTGRES_PASSWORD: ci_test_password_for_config_validation
+          JWT_SECRET: ci_test_jwt_secret_for_config_validation_32_chars
         run: |
           docker compose -f deploy/docker-compose.yml config
+          docker compose -f deploy/production-compose.yml config

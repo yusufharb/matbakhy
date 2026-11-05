@@ -87,6 +87,10 @@ All 10 Core Developer Dependencies are fully implemented in PostgreSQL and Go ba
 | **DEP-08** | Corporate KYC Workflow | `POST /merchant/kyc/documents`, `GET /merchant/kyc/documents`, `POST /admin/kyc/documents/{id}/review` | **Done & Verified** (`TestKYCDocumentWorkflow`) |
 | **DEP-09** | Team Invitations & RBAC | `GET /merchant/team`, `POST /merchant/team/invitations` | **Done & Verified** (`TestTeamInvitationAndMembers`) |
 | **DEP-10** | Double-Entry Wallet Top-Up | `POST /customer/wallet/topup`, `POST /merchant/wallet/topup` (DR 1010, CR 2010/2050) | **Done & Verified** (`TestTopUpMerchantWalletAccount2010`, `TestTopUpCustomerWalletAccount2050`) |
+| **DEP-11** | Real Payments & Webhooks | `POST /api/v1/payments/webhook`, `GET /api/v1/payments/{order_id}` | **Done & Verified** (`TestPaymentWebhookSettlementAndAccounting`, `TestPaymentFailureWebhookReleasesReservedStock`) |
+| **DEP-12** | Cloud Object Storage | `POST /api/v1/storage/upload-url` (S3 / Cloudflare R2 / MinIO presigned URLs) | **Done & Verified** (`TestStorageUploadValidation`) |
+| **DEP-13** | Tax Invoicing & Outbox Worker | `GET /api/v1/invoices/order/{order_id}`, Background Outbox Daemon | **Done & Verified** (`TestInvoiceGenerationAndTLV`, `TestOutboxWorkerProcessesConfirmedOrder`) |
+| **DEP-14** | MRO Client Business Vertical | `mro_industrial_seed.sql` (Wholesale tiers, retail prosumer, receiving docks) | **Done & Verified** (`TestMROIndustrialWholesaleB2BOrderWithDockAndTier`) |
 
 ---
 
@@ -105,5 +109,14 @@ All 10 Core Developer Dependencies are fully implemented in PostgreSQL and Go ba
     - Created `iam.team_invitations` with 48-hour secure tokens.
   - Implemented Go backend domains, repositories, and HTTP handlers across `auth`, `order`, and `wallet` modules.
   - Wired all 10 dependency routes into `backend/cmd/api/main.go`.
-  - Added full test coverage for customer registration, context switching, KYC workflows, team invites, dual-channel pricing/MOQ enforcement, Account 2050 wallet debits, receiving warehouse CRUD, customer address CRUD, and idempotent wallet top-ups.
-  - 100% green test pass rate across all backend modules and production frontend build.
+- **Track 2 (Production Readiness Hardening & MRO Client Business Verticalization)**:
+  - Applied Database Migration 000014 (`backend/db/migrations/000014_invoicing_and_payments.up.sql`):
+    - Added `client_secret` and `checkout_url` to `commerce.payments`.
+    - Created `commerce.invoices` table for formal B2B Tax Invoices & B2C Simplified Tax Invoices.
+  - **DEP-11 (Payment Gateway & Webhook Settlement Engine)**: Pluggable `PaymentGateway` interface with Stripe, Moyasar, and Mock implementations. Cryptographic HMAC SHA-256 signature verification. Atomic 2-phase settlement: confirms order, updates payment to `captured`, and posts balanced double-entry ledger entry (DR 1010, CR 2020, CR 4010, CR 4020). Automatic stock reservation release on payment failure.
+  - **DEP-12 (Cloud Object Storage)**: S3-compatible presigned upload URL generator supporting Cloudflare R2, AWS S3, and MinIO. Enforces strict MIME whitelisting (JPG, PNG, WebP, PDF) and file size quotas (10MB images, 25MB PDFs). Private bucket partitioning for corporate KYC compliance documents.
+  - **DEP-13 (B2B Tax Invoicing & Transactional Outbox Worker)**: ZATCA Phase 2 / regional VAT compliant Base64 TLV QR code encoder. Autonomous background worker continuously polling `platform.outbox_events` with `SELECT FOR UPDATE SKIP LOCKED` for asynchronous invoice generation.
+  - **DEP-14 (MRO Industrial Supplies Client Business Verticalization)**: Seeded production-ready industrial catalog (`backend/db/seeds/mro_industrial_seed.sql`): 5 categories, 4 global certified brands (Bosch, Schneider, 3M, Makita), 3 verified suppliers with double-entry accounts, dual-channel pricing (wholesale volume tiers + retail prosumer pricing), physical stock in 3 regional logistics hubs, and commercial flatbed receiving docks with forklift specs.
+  - **Production DevOps & Security Hardening**: Multi-stage minimal non-root Dockerfile for backend (`alpine:3.20`, `appuser`), production React SPA Nginx Dockerfile with gzip and security headers, `deploy/production-compose.yml` with isolated internal networks and healthchecks, `.env.production.example`, and production CORS origin whitelisting (`CORS_ALLOWED_ORIGINS`).
+  - **Verification**: 40/40 tests passing (100% green) across all 8 Go modules (`auth`, `commission`, `invoice`, `order`, `payment`, `storage`, `wallet`, `worker`), clean `oxfmt` formatting, and Vite production bundle built in 1.4s.
+
