@@ -22,7 +22,8 @@ INSERT INTO ledger.accounts (id, owner_type, owner_id, currency, account_code, n
 VALUES 
     ('20000000-0000-0000-0000-000000001010', 'platform', 'b0000000-0000-0000-0000-000000000001', 'USD', '1010', 'Gateway Clearing Asset Account'),
     ('20000000-0000-0000-0000-000000001020', 'platform', 'b0000000-0000-0000-0000-000000000001', 'USD', '1020', 'Platform Operating Bank Account'),
-    ('20000000-0000-0000-0000-000000004010', 'platform', 'b0000000-0000-0000-0000-000000000001', 'USD', '4010', 'Platform Commission Revenue')
+    ('20000000-0000-0000-0000-000000004010', 'platform', 'b0000000-0000-0000-0000-000000000001', 'USD', '4010', 'Platform Commission Revenue'),
+    ('20000000-0000-0000-0000-000000004020', 'platform', 'b0000000-0000-0000-0000-000000000001', 'USD', '4020', 'Platform Shipping Revenue')
 ON CONFLICT (id) DO NOTHING;
 
 -- 4. Global Commission Policy Default

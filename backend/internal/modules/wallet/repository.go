@@ -318,9 +318,9 @@ func (r *Repository) CreatePayoutRequest(ctx context.Context, supplierID string,
 
 	// 4. Create balanced journal entry: DEBIT 2030 (reduces available), CREDIT 2040 (places funds on hold)
 	payoutID := uuid.New().String()
-	payoutNumber := fmt.Sprintf("PO-%s-%04d", time.Now().Format("20060102"), time.Now().UnixNano()%10000)
+	payoutNumber := fmt.Sprintf("PO-%s-%09d", time.Now().Format("20060102"), time.Now().UnixNano()%1000000000)
 	jeID := uuid.New().String()
-	jeNumber := fmt.Sprintf("JE-HOLD-%d-%06d", time.Now().Unix(), (time.Now().UnixNano()/1000)%1000000)
+	jeNumber := fmt.Sprintf("JE-HOLD-%d-%s", time.Now().Unix(), jeID[:8])
 
 	latestHash, err := r.GetLatestJournalEntryHash(ctx, tx)
 	if err != nil {
@@ -373,5 +373,197 @@ func (r *Repository) CreatePayoutRequest(ctx context.Context, supplierID string,
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit payout transaction: %w", err)
 	}
+	return &pr, nil
+}
+
+// ApprovePayout clears the hold in Account 2040 and credits Platform Operating Bank Account 1020 (cash leaves the bank).
+func (r *Repository) ApprovePayout(ctx context.Context, payoutID string, approvedBy string) (*PayoutRequest, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var pr PayoutRequest
+	err = tx.QueryRow(ctx, `
+		SELECT id, payout_number, supplier_id, amount, currency, bank_name, iban, status, coalesce(risk_flag, 'Clear'), created_at
+		FROM ledger.payout_requests
+		WHERE id = $1
+		FOR UPDATE
+	`, payoutID).Scan(&pr.ID, &pr.PayoutNumber, &pr.SupplierID, &pr.AmountCents, &pr.Currency, &pr.BankName, &pr.IBAN, &pr.Status, &pr.RiskFlag, &pr.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("payout request not found: %w", err)
+	}
+
+	if pr.Status != "pending" {
+		return nil, fmt.Errorf("payout request %s is not pending (current status: %s)", payoutID, pr.Status)
+	}
+
+	// 1. Ensure supplier payout hold account 2040 exists
+	var sup2040ID string
+	err = tx.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE owner_id = $1 AND account_code = '2040' LIMIT 1`, pr.SupplierID).Scan(&sup2040ID)
+	if err != nil {
+		return nil, fmt.Errorf("supplier hold account 2040 not found: %w", err)
+	}
+
+	// 2. Ensure platform operating bank account 1020 exists
+	var bank1020ID string
+	err = tx.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1020' LIMIT 1`).Scan(&bank1020ID)
+	if err != nil {
+		return nil, fmt.Errorf("platform operating bank account 1020 not found: %w", err)
+	}
+
+	// 3. Post balanced disbursement journal entry:
+	// DEBIT Account 2040 (clears the hold liability)
+	// CREDIT Account 1020 (operating bank asset decreases as funds are disbursed)
+	jeID := uuid.New().String()
+	jeNumber := fmt.Sprintf("JE-PAYOUT-%d-%s", time.Now().Unix(), jeID[:8])
+
+	latestHash, err := r.GetLatestJournalEntryHash(ctx, tx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest ledger hash: %w", err)
+	}
+	payoutHash := ComputeJournalEntryHash(latestHash, jeNumber, "payout", pr.ID, "payout_cleared", pr.Currency, "posted", "idem-pay-"+pr.ID)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.journal_entries (
+			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key, prev_hash, hash
+		) VALUES ($1, $2, 'payout', $3, 'payout_cleared', $4, $5, 'posted', $6, $7, $8)
+	`, jeID, jeNumber, pr.ID, "Disbursement for payout "+pr.PayoutNumber, pr.Currency, "idem-pay-"+pr.ID, latestHash, payoutHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create payout disbursement journal entry: %w", err)
+	}
+
+	// DEBIT Account 2040 (decreases liability)
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
+		VALUES (gen_random_uuid(), $1, $2, 'debit', $3)
+	`, jeID, sup2040ID, pr.AmountCents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to debit account 2040: %w", err)
+	}
+
+	// CREDIT Account 1020 (decreases asset)
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
+		VALUES (gen_random_uuid(), $1, $2, 'credit', $3)
+	`, jeID, bank1020ID, pr.AmountCents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to credit bank account 1020: %w", err)
+	}
+
+	// 4. Update payout request status
+	now := time.Now()
+	_, err = tx.Exec(ctx, `
+		UPDATE ledger.payout_requests
+		SET status = 'approved', approved_by = $1, approved_at = $2
+		WHERE id = $3
+	`, approvedBy, now, pr.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update payout request status: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit payout approval transaction: %w", err)
+	}
+
+	pr.Status = "approved"
+	pr.ApprovedAt = &now
+	return &pr, nil
+}
+
+// RejectPayout clears the hold in Account 2040 and credits Account 2030 (funds returned to available balance).
+func (r *Repository) RejectPayout(ctx context.Context, payoutID string, rejectedBy string, reason string) (*PayoutRequest, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var pr PayoutRequest
+	err = tx.QueryRow(ctx, `
+		SELECT id, payout_number, supplier_id, amount, currency, bank_name, iban, status, coalesce(risk_flag, 'Clear'), created_at
+		FROM ledger.payout_requests
+		WHERE id = $1
+		FOR UPDATE
+	`, payoutID).Scan(&pr.ID, &pr.PayoutNumber, &pr.SupplierID, &pr.AmountCents, &pr.Currency, &pr.BankName, &pr.IBAN, &pr.Status, &pr.RiskFlag, &pr.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("payout request not found: %w", err)
+	}
+
+	if pr.Status != "pending" {
+		return nil, fmt.Errorf("payout request %s is not pending (current status: %s)", payoutID, pr.Status)
+	}
+
+	// 1. Ensure supplier payout hold account 2040 exists
+	var sup2040ID string
+	err = tx.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE owner_id = $1 AND account_code = '2040' LIMIT 1`, pr.SupplierID).Scan(&sup2040ID)
+	if err != nil {
+		return nil, fmt.Errorf("supplier hold account 2040 not found: %w", err)
+	}
+
+	// 2. Ensure supplier available account 2030 exists
+	var sup2030ID string
+	err = tx.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE owner_id = $1 AND account_code = '2030' LIMIT 1`, pr.SupplierID).Scan(&sup2030ID)
+	if err != nil {
+		return nil, fmt.Errorf("supplier available account 2030 not found: %w", err)
+	}
+
+	// 3. Post balanced rejection journal entry:
+	// DEBIT Account 2040 (clears the hold liability)
+	// CREDIT Account 2030 (restores available payable liability)
+	jeID := uuid.New().String()
+	jeNumber := fmt.Sprintf("JE-REJECT-%d-%s", time.Now().Unix(), jeID[:8])
+
+	latestHash, err := r.GetLatestJournalEntryHash(ctx, tx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest ledger hash: %w", err)
+	}
+	payoutHash := ComputeJournalEntryHash(latestHash, jeNumber, "payout", pr.ID, "payout_rejected", pr.Currency, "posted", "idem-rej-"+pr.ID)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.journal_entries (
+			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key, prev_hash, hash
+		) VALUES ($1, $2, 'payout', $3, 'payout_rejected', $4, $5, 'posted', $6, $7, $8)
+	`, jeID, jeNumber, pr.ID, "Rejection release for payout "+pr.PayoutNumber+": "+reason, pr.Currency, "idem-rej-"+pr.ID, latestHash, payoutHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create payout rejection journal entry: %w", err)
+	}
+
+	// DEBIT Account 2040 (decreases hold)
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
+		VALUES (gen_random_uuid(), $1, $2, 'debit', $3)
+	`, jeID, sup2040ID, pr.AmountCents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to debit account 2040: %w", err)
+	}
+
+	// CREDIT Account 2030 (restores available)
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
+		VALUES (gen_random_uuid(), $1, $2, 'credit', $3)
+	`, jeID, sup2030ID, pr.AmountCents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to credit account 2030: %w", err)
+	}
+
+	// 4. Update payout request status
+	now := time.Now()
+	_, err = tx.Exec(ctx, `
+		UPDATE ledger.payout_requests
+		SET status = 'rejected', approved_by = $1, approved_at = $2
+		WHERE id = $3
+	`, rejectedBy, now, pr.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update payout request status: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit payout rejection transaction: %w", err)
+	}
+
+	pr.Status = "rejected"
+	pr.ApprovedAt = &now
 	return &pr, nil
 }

@@ -322,7 +322,7 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	// CREDIT: Each Supplier Escrow (Account 2020) for their SupplierNet
 	// CREDIT: Platform Commission Revenue (Account 4010) for total commission + shipping
 	journalEntryID := uuid.New().String()
-	jeNumber := fmt.Sprintf("JE-%d-%06d", time.Now().Unix(), (time.Now().UnixNano()/1000)%1000000)
+	jeNumber := fmt.Sprintf("JE-%d-%s", time.Now().Unix(), journalEntryID[:8])
 
 	// Fetch previous hash and compute current cryptographic entry hash
 	_, _ = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(742910)")
@@ -405,7 +405,8 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 		return nil, fmt.Errorf("platform revenue account 4010 missing: %w", err)
 	}
 
-	var totalPlatformCredit int64
+	var totalCommissionCredit int64
+	var totalShippingCredit int64
 
 	// 2. Credit each Supplier's Escrow Account 2020
 	for _, g := range groups {
@@ -436,19 +437,47 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 			return nil, fmt.Errorf("failed to credit supplier escrow: %w", err)
 		}
 
-		// Platform keeps commission + shipping
-		totalPlatformCredit += (g.CommissionAmt + g.Shipping)
+		totalCommissionCredit += g.CommissionAmt
+		totalShippingCredit += g.Shipping
 	}
 
-	// 3. Credit Platform Commission Revenue for remaining balance
-	// Total Debits (parentGrandTotal) == Total Credits (sum(SupplierNet) + totalPlatformCredit)
-	if totalPlatformCredit > 0 {
+	// 3. Credit Platform Commission Revenue 4010
+	if totalCommissionCredit > 0 {
 		_, err = tx.Exec(ctx, `
 			INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
 			VALUES (gen_random_uuid(), $1, $2, 'credit', $3)
-		`, journalEntryID, platformRevAccID, totalPlatformCredit)
+		`, journalEntryID, platformRevAccID, totalCommissionCredit)
 		if err != nil {
-			return nil, fmt.Errorf("failed to credit platform revenue: %w", err)
+			return nil, fmt.Errorf("failed to credit platform commission revenue: %w", err)
+		}
+	}
+
+	// 4. Credit Platform Shipping Revenue 4020
+	if totalShippingCredit > 0 {
+		var platformShipAccID string
+		err = tx.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '4020' LIMIT 1`).Scan(&platformShipAccID)
+		if err != nil {
+			var platformOrgID string
+			_ = tx.QueryRow(ctx, `SELECT id FROM iam.organizations WHERE type = 'platform' LIMIT 1`).Scan(&platformOrgID)
+			if platformOrgID == "" {
+				platformOrgID = "b0000000-0000-0000-0000-000000000001"
+			}
+			platformShipAccID = uuid.New().String()
+			_, err = tx.Exec(ctx, `
+				INSERT INTO ledger.accounts (id, owner_type, owner_id, currency, account_code, name)
+				VALUES ($1, 'platform', $2, $3, '4020', 'Platform Shipping Revenue')
+			`, platformShipAccID, platformOrgID, orderCurrency)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create shipping revenue account 4020: %w", err)
+			}
+		}
+
+		_, err = tx.Exec(ctx, `
+			INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
+			VALUES (gen_random_uuid(), $1, $2, 'credit', $3)
+		`, journalEntryID, platformShipAccID, totalShippingCredit)
+		if err != nil {
+			return nil, fmt.Errorf("failed to credit platform shipping revenue: %w", err)
 		}
 	}
 

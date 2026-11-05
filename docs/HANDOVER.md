@@ -166,3 +166,17 @@ node scripts/test-stage-c.mjs   # Stock Guards & Cryptographic Hash Chain
   1. Create `backend/db/migrations/XXXXXX_name.up.sql`.
   2. Create matching `backend/db/migrations/XXXXXX_name.down.sql`.
   3. Verify both application and rollback on a local database before committing.
+
+---
+
+## 7. Known Risks & Architectural Limitations
+
+### 1. Global Advisory Lock on Ledger Hash Chain (`pg_advisory_xact_lock(742910)`)
+- **Mechanism:** To guarantee a strictly linear, tamper-evident cryptographic hash chain across concurrent database writes, `GetLatestJournalEntryHash` acquires a PostgreSQL transaction-scoped advisory lock (`pg_advisory_xact_lock(742910)`).
+- **Limitation & Trade-off:** This serializes journal entry creation across concurrent transactions. While perfect for audit integrity and preventing chain forks under moderate to high throughput, under massive concurrency (>500–1,000 writes/sec), this global advisory lock will become a latency bottleneck.
+- **Recommended Evolution (Phase 6):** Transition from synchronous per-entry locking in the hot checkout path to an asynchronous ledger block/epoch sealer (e.g. batching journal entries into periodic Merkle tree blocks or epoch seals via a background worker).
+
+### 2. Node-Local In-Memory Rate Limiter (`LoginRateLimiter`)
+- **Mechanism:** Failed login attempts are tracked in-process using a Go `sync.RWMutex` and sliding-window slice (`auth.LoginRateLimiter`), enforcing 5 strikes per 15-minute lockout.
+- **Limitation:** The limiter state resides purely in application process memory. In a horizontally scaled deployment with multiple backend instances behind a round-robin load balancer, an attacker's requests distributed across nodes will not accumulate against a unified strike threshold.
+- **Recommended Evolution (Phase 6):** Once Valkey/Redis is brought online in Phase 6, migrate the rate limiter from in-memory maps to atomic Redis operations (`INCR` with `EXPIRE` window).

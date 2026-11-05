@@ -174,6 +174,8 @@ func main() {
 	mux.HandleFunc("GET /api/v1/ledger/entries", wrap(walletHandler.ListJournalEntries, adminOnly))
 	mux.HandleFunc("POST /api/v1/ledger/entries", wrap(walletHandler.PostJournalEntry, adminOnly))
 	mux.HandleFunc("GET /api/v1/ledger/verify-chain", wrap(walletHandler.VerifyLedgerChain, adminOnly))
+	mux.HandleFunc("POST /api/v1/admin/payouts/{id}/approve", wrap(walletHandler.ApprovePayout, adminOnly))
+	mux.HandleFunc("POST /api/v1/admin/payouts/{id}/reject", wrap(walletHandler.RejectPayout, adminOnly))
 
 	// Supplier Portal APIs (Supplier or Admin)
 	mux.HandleFunc("GET /api/v1/supplier/offers", wrap(catalogHandler.ListSupplierOffers, supplierOrAdmin))

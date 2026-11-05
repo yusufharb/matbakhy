@@ -309,3 +309,65 @@ func (h *Handler) VerifyLedgerChain(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(report)
 }
+
+func (h *Handler) ApprovePayout(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+	if claims.Role != "platform_admin" && claims.Role != "super_admin" && claims.Role != "finance_admin" {
+		http.Error(w, `{"error": "Forbidden: platform finance role required to approve payouts"}`, http.StatusForbidden)
+		return
+	}
+
+	payoutID := r.PathValue("id")
+	if payoutID == "" {
+		http.Error(w, `{"error": "payout id is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	payout, err := h.repo.ApprovePayout(r.Context(), payoutID, claims.UserID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(payout)
+}
+
+func (h *Handler) RejectPayout(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+	if claims.Role != "platform_admin" && claims.Role != "super_admin" && claims.Role != "finance_admin" {
+		http.Error(w, `{"error": "Forbidden: platform finance role required to reject payouts"}`, http.StatusForbidden)
+		return
+	}
+
+	payoutID := r.PathValue("id")
+	if payoutID == "" {
+		http.Error(w, `{"error": "payout id is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	if req.Reason == "" {
+		req.Reason = "Rejected by administrator"
+	}
+
+	payout, err := h.repo.RejectPayout(r.Context(), payoutID, claims.UserID, req.Reason)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(payout)
+}
