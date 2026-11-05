@@ -1,4 +1,13 @@
-import { ShieldCheck, Store, ShoppingBag, Globe, Activity } from "lucide-react"
+import { useState } from "react"
+import {
+  ShieldCheck,
+  Store,
+  ShoppingBag,
+  Globe,
+  Building2,
+  User,
+  ChevronDown,
+} from "lucide-react"
 import type { PortalMode, Locale } from "../types"
 
 interface Props {
@@ -15,6 +24,10 @@ export function PortalSwitcher({
   setLocale,
 }: Props) {
   const isRtl = locale === "ar"
+  const [showContextDropdown, setShowContextDropdown] = useState(false)
+
+  // Map legacy 'merchant' to 'b2b' for highlighting
+  const currentMode = portal === "merchant" ? "b2b" : portal
 
   return (
     <div
@@ -92,7 +105,7 @@ export function PortalSwitcher({
         </div>
       </div>
 
-      {/* Switcher Pills (Centered) */}
+      {/* Switcher Pills (4 Portals: B2C, B2B, Supplier, Admin) */}
       <div
         style={{
           display: "flex",
@@ -104,15 +117,16 @@ export function PortalSwitcher({
           border: "1px solid #1f2937",
         }}
       >
+        {/* B2C Consumer Storefront */}
         <button
-          onClick={() => setPortal("admin")}
+          onClick={() => setPortal("b2c")}
           style={{
             border: 0,
             background:
-              portal === "admin"
-                ? "linear-gradient(135deg, #059669, #047857)"
+              currentMode === "b2c"
+                ? "linear-gradient(135deg, #10b981, #059669)"
                 : "transparent",
-            color: portal === "admin" ? "#ffffff" : "#94a3b8",
+            color: currentMode === "b2c" ? "#ffffff" : "#94a3b8",
             padding: "6px 14px",
             borderRadius: 7,
             fontSize: 13,
@@ -123,22 +137,54 @@ export function PortalSwitcher({
             cursor: "pointer",
             transition: "all 0.18s ease",
             boxShadow:
-              portal === "admin" ? "0 2px 6px rgba(5, 150, 105, 0.35)" : "none",
+              currentMode === "b2c"
+                ? "0 2px 6px rgba(16, 185, 129, 0.35)"
+                : "none",
           }}
         >
-          <ShieldCheck size={16} />
-          <span>{isRtl ? "لوحة الإدارة المركزية" : "Super Admin"}</span>
+          <ShoppingBag size={16} />
+          <span>{isRtl ? "متجر المستهلك (B2C)" : "Consumer Store (B2C)"}</span>
         </button>
 
+        {/* B2B Merchant Procurement Portal */}
+        <button
+          onClick={() => setPortal("b2b")}
+          style={{
+            border: 0,
+            background:
+              currentMode === "b2b"
+                ? "linear-gradient(135deg, #2563eb, #1d4ed8)"
+                : "transparent",
+            color: currentMode === "b2b" ? "#ffffff" : "#94a3b8",
+            padding: "6px 14px",
+            borderRadius: 7,
+            fontSize: 13,
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+            transition: "all 0.18s ease",
+            boxShadow:
+              currentMode === "b2b"
+                ? "0 2px 6px rgba(37, 99, 235, 0.35)"
+                : "none",
+          }}
+        >
+          <Building2 size={16} />
+          <span>{isRtl ? "بوابة الشركات (B2B)" : "B2B Procurement"}</span>
+        </button>
+
+        {/* Supplier Portal */}
         <button
           onClick={() => setPortal("supplier")}
           style={{
             border: 0,
             background:
-              portal === "supplier"
+              currentMode === "supplier"
                 ? "linear-gradient(135deg, #059669, #047857)"
                 : "transparent",
-            color: portal === "supplier" ? "#ffffff" : "#94a3b8",
+            color: currentMode === "supplier" ? "#ffffff" : "#94a3b8",
             padding: "6px 14px",
             borderRadius: 7,
             fontSize: 13,
@@ -149,24 +195,25 @@ export function PortalSwitcher({
             cursor: "pointer",
             transition: "all 0.18s ease",
             boxShadow:
-              portal === "supplier"
+              currentMode === "supplier"
                 ? "0 2px 6px rgba(5, 150, 105, 0.35)"
                 : "none",
           }}
         >
           <Store size={16} />
-          <span>{isRtl ? "بوابة الموردين والتجار" : "Supplier Portal"}</span>
+          <span>{isRtl ? "بوابة الموردين" : "Supplier"}</span>
         </button>
 
+        {/* Admin Dashboard */}
         <button
-          onClick={() => setPortal("merchant")}
+          onClick={() => setPortal("admin")}
           style={{
             border: 0,
             background:
-              portal === "merchant"
-                ? "linear-gradient(135deg, #059669, #047857)"
+              currentMode === "admin"
+                ? "linear-gradient(135deg, #7c3aed, #6d28d9)"
                 : "transparent",
-            color: portal === "merchant" ? "#ffffff" : "#94a3b8",
+            color: currentMode === "admin" ? "#ffffff" : "#94a3b8",
             padding: "6px 14px",
             borderRadius: 7,
             fontSize: 13,
@@ -177,56 +224,171 @@ export function PortalSwitcher({
             cursor: "pointer",
             transition: "all 0.18s ease",
             boxShadow:
-              portal === "merchant"
-                ? "0 2px 6px rgba(5, 150, 105, 0.35)"
+              currentMode === "admin"
+                ? "0 2px 6px rgba(124, 58, 237, 0.35)"
                 : "none",
           }}
         >
-          <ShoppingBag size={16} />
-          <span>{isRtl ? "واجهة المتجر التجاري" : "Storefront"}</span>
+          <ShieldCheck size={16} />
+          <span>{isRtl ? "الإدارة المركزية" : "Admin"}</span>
         </button>
       </div>
 
-      {/* Right Controls: Database status + Language Switcher */}
+      {/* Right Controls: Context Switcher + Language Selector */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 12,
-            color: "#94a3b8",
-            background: "rgba(255, 255, 255, 0.04)",
-            padding: "4px 10px",
-            borderRadius: 6,
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-          }}
-        >
-          <Activity size={14} color="#34d399" />
-          <span style={{ fontWeight: 600 }}>PostgreSQL 16</span>
+        {/* Active Identity Context Badge */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setShowContextDropdown(!showContextDropdown)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid #334155",
+              padding: "5px 12px",
+              borderRadius: 8,
+              color: "#f8fafc",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {currentMode === "b2b" ? (
+              <Building2 size={14} color="#60a5fa" />
+            ) : (
+              <User size={14} color="#34d399" />
+            )}
+            <span>
+              {currentMode === "b2b"
+                ? isRtl
+                  ? "مجموعة الأمل (B2B)"
+                  : "Al-Amal Retail (B2B)"
+                : isRtl
+                  ? "سارة الزهراني (B2C)"
+                  : "Sara (Consumer)"}
+            </span>
+            <ChevronDown size={14} color="#94a3b8" />
+          </button>
+
+          {/* Context Dropdown Menu */}
+          {showContextDropdown && (
+            <div
+              style={{
+                position: "absolute",
+                top: 42,
+                right: isRtl ? "auto" : 0,
+                left: isRtl ? 0 : "auto",
+                background: "#111827",
+                border: "1px solid #334155",
+                borderRadius: 8,
+                padding: "8px",
+                width: 240,
+                boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
+                zIndex: 60,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#64748b",
+                  padding: "4px 8px",
+                }}
+              >
+                {isRtl ? "سياق الحساب النشط" : "SWITCH ACCOUNT CONTEXT"}
+              </div>
+
+              <button
+                onClick={() => {
+                  setPortal("b2b")
+                  setShowContextDropdown(false)
+                }}
+                style={{
+                  width: "100%",
+                  textAlign: isRtl ? "right" : "left",
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: 0,
+                  background:
+                    currentMode === "b2b"
+                      ? "rgba(37, 99, 235, 0.15)"
+                      : "transparent",
+                  color: currentMode === "b2b" ? "#60a5fa" : "#cbd5e1",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                }}
+              >
+                <Building2 size={14} />
+                <div>
+                  <div>Al-Amal Retail Group</div>
+                  <small style={{ color: "#34d399" }}>
+                    Approved B2B Merchant
+                  </small>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setPortal("b2c")
+                  setShowContextDropdown(false)
+                }}
+                style={{
+                  width: "100%",
+                  textAlign: isRtl ? "right" : "left",
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: 0,
+                  background:
+                    currentMode === "b2c"
+                      ? "rgba(16, 185, 129, 0.15)"
+                      : "transparent",
+                  color: currentMode === "b2c" ? "#34d399" : "#cbd5e1",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                }}
+              >
+                <User size={14} />
+                <div>
+                  <div>Sara Al-Zahrani</div>
+                  <small style={{ color: "#94a3b8" }}>
+                    Personal Retail Shopper
+                  </small>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Language Toggle Button */}
+        {/* Language Switcher */}
         <button
-          onClick={() => setLocale(locale === "en" ? "ar" : "en")}
+          onClick={() => setLocale(locale === "ar" ? "en" : "ar")}
           style={{
             border: "1px solid #334155",
-            background: "#1e293b",
+            background: "rgba(255, 255, 255, 0.05)",
             color: "#f8fafc",
-            padding: "6px 14px",
+            padding: "5px 12px",
             borderRadius: 8,
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 700,
             display: "flex",
             alignItems: "center",
-            gap: 8,
+            gap: 6,
             cursor: "pointer",
-            transition: "all 0.18s ease",
+            transition: "all 0.15s ease",
           }}
-          title={isRtl ? "Switch to English" : "التبديل إلى اللغة العربية"}
+          title={isRtl ? "Switch to English" : "التبديل إلى العربية"}
         >
-          <Globe size={15} color="#38bdf8" />
-          <span>{locale === "en" ? "🇸🇦 العربية (Cairo)" : "🇺🇸 English"}</span>
+          <Globe size={14} color="#34d399" />
+          <span>{locale === "ar" ? "English" : "العربية"}</span>
         </button>
       </div>
     </div>

@@ -54,6 +54,8 @@ import {
 } from "lucide-react"
 import { PortalSwitcher } from "./components/PortalSwitcher"
 import { MerchantStorefront } from "./components/MerchantStorefront"
+import { B2BPortal } from "./components/b2b/B2BPortal"
+import { B2CPortal } from "./components/b2c/B2CPortal"
 import {
   TeamRolesScreen,
   AuditLogScreen,
@@ -3814,25 +3816,35 @@ function SupplierPortal({ locale = "en" }: { locale?: Locale }) {
 }
 
 export default function App() {
-  const [portal, setPortal] = useState<PortalMode>("admin")
-  const [locale, setLocale] = useState<Locale>("en")
+  const [portal, setPortal] = useState<PortalMode>(
+    localStorage.getItem("nexus_active_portal") as PortalMode || "b2c",
+  )
+  const [locale, setLocale] = useState<Locale>(
+    localStorage.getItem("nexus_locale") as Locale || "ar",
+  )
   const [page, setPage] = useState<Page>("overview")
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     api.setPortal(portal)
+    localStorage.setItem("nexus_active_portal", portal)
   }, [portal])
+
+  useEffect(() => {
+    document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
+    document.documentElement.lang = locale
+    localStorage.setItem("nexus_locale", locale)
+  }, [locale])
 
   const handleLocaleChange = (l: Locale) => {
     setLocale(l)
-    document.documentElement.dir = l === "ar" ? "rtl" : "ltr"
-    document.documentElement.lang = l
   }
 
   const handlePortalChange = (p: PortalMode) => {
     setPortal(p)
     api.setPortal(p)
+    localStorage.setItem("nexus_active_portal", p)
     if (p === "supplier") {
       setPage("supplier")
     } else if (p === "admin" && page === "supplier") {
@@ -3850,16 +3862,38 @@ export default function App() {
     setMobileOpen(false)
   }
 
-  if (portal === "merchant") {
+  if (portal === "b2b" || portal === "merchant") {
     return (
-      <div style={{ minHeight: "100vh", background: "#f8faf9" }}>
+      <div style={{ minHeight: "100vh", background: "#0b0f19" }}>
         <PortalSwitcher
           portal={portal}
           setPortal={handlePortalChange}
           locale={locale}
           setLocale={handleLocaleChange}
         />
-        <MerchantStorefront locale={locale} setLocale={handleLocaleChange} />
+        <B2BPortal
+          locale={locale}
+          setLocale={handleLocaleChange}
+          onSwitchPortal={(p) => handlePortalChange(p)}
+        />
+      </div>
+    )
+  }
+
+  if (portal === "b2c") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#090d16" }}>
+        <PortalSwitcher
+          portal={portal}
+          setPortal={handlePortalChange}
+          locale={locale}
+          setLocale={handleLocaleChange}
+        />
+        <B2CPortal
+          locale={locale}
+          setLocale={handleLocaleChange}
+          onSwitchPortal={(p) => handlePortalChange(p)}
+        />
       </div>
     )
   }
