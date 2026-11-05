@@ -22,10 +22,11 @@ var (
 )
 
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	OrgID  string `json:"org_id,omitempty"`
-	Role   string `json:"role,omitempty"`
+	UserID      string `json:"user_id"`
+	Email       string `json:"email"`
+	OrgID       string `json:"org_id,omitempty"`
+	Role        string `json:"role,omitempty"`
+	ContextType string `json:"context_type,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -72,6 +73,15 @@ func CheckPasswordHash(password, hash string) bool {
 
 // GenerateJWT creates a signed access token valid for 15 minutes
 func GenerateJWT(userID, email, orgID, role string) (string, error) {
+	ctxType := "merchant"
+	if orgID == "" {
+		ctxType = "b2c_customer"
+	}
+	return GenerateContextJWT(userID, email, orgID, role, ctxType)
+}
+
+// GenerateContextJWT creates a signed access token bound to a specific context
+func GenerateContextJWT(userID, email, orgID, role, contextType string) (string, error) {
 	secret, err := getJWTSecret()
 	if err != nil {
 		return "", err
@@ -79,10 +89,11 @@ func GenerateJWT(userID, email, orgID, role string) (string, error) {
 
 	expirationTime := time.Now().Add(15 * time.Minute)
 	claims := &Claims{
-		UserID: userID,
-		Email:  email,
-		OrgID:  orgID,
-		Role:   role,
+		UserID:      userID,
+		Email:       email,
+		OrgID:       orgID,
+		Role:        role,
+		ContextType: contextType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

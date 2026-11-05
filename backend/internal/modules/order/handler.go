@@ -113,14 +113,18 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orderType := r.URL.Query().Get("order_type")
 	merchantID := ""
+	userID := ""
+
 	if claims.Role == "platform_admin" || claims.Role == "super_admin" {
 		merchantID = r.URL.Query().Get("merchant_id")
+		userID = r.URL.Query().Get("user_id")
+	} else if claims.Role == "customer" || claims.OrgID == "" {
+		orderType = "b2c"
+		userID = claims.UserID
 	} else {
-		if claims.OrgID == "" {
-			http.Error(w, `{"error": "Forbidden: organization required"}`, http.StatusForbidden)
-			return
-		}
+		orderType = "b2b"
 		requested := r.URL.Query().Get("merchant_id")
 		if requested != "" && requested != claims.OrgID {
 			http.Error(w, `{"error": "Forbidden: cannot view orders of another organization"}`, http.StatusForbidden)
@@ -129,7 +133,7 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		merchantID = claims.OrgID
 	}
 
-	orders, err := h.repo.ListOrders(r.Context(), merchantID)
+	orders, err := h.repo.ListOrders(r.Context(), orderType, merchantID, userID)
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 		return
@@ -224,3 +228,132 @@ func (h *Handler) UpdateSuborderStatus(w http.ResponseWriter, r *http.Request) {
 		"status":  body.Status,
 	})
 }
+
+// ListMerchantWarehouses handles GET /api/v1/merchant/warehouses
+func (h *Handler) ListMerchantWarehouses(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	warehouses, err := h.repo.ListMerchantWarehouses(r.Context(), claims.OrgID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"warehouses": warehouses,
+		"count":      len(warehouses),
+	})
+}
+
+// CreateMerchantWarehouse handles POST /api/v1/merchant/warehouses
+func (h *Handler) CreateMerchantWarehouse(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	var req CreateMerchantWarehouseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
+		return
+	}
+
+	wh, err := h.repo.CreateMerchantWarehouse(r.Context(), claims.OrgID, req)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(wh)
+}
+
+// DeleteMerchantWarehouse handles DELETE /api/v1/merchant/warehouses/{id}
+func (h *Handler) DeleteMerchantWarehouse(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	id := r.PathValue("id")
+	if err := h.repo.DeleteMerchantWarehouse(r.Context(), claims.OrgID, id); err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Warehouse deleted successfully"})
+}
+
+// ListCustomerAddresses handles GET /api/v1/customer/addresses
+func (h *Handler) ListCustomerAddresses(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	addresses, err := h.repo.ListCustomerAddresses(r.Context(), claims.UserID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"addresses": addresses,
+		"count":     len(addresses),
+	})
+}
+
+// CreateCustomerAddress handles POST /api/v1/customer/addresses
+func (h *Handler) CreateCustomerAddress(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	var req CreateCustomerAddressRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
+		return
+	}
+
+	addr, err := h.repo.CreateCustomerAddress(r.Context(), claims.UserID, req)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(addr)
+}
+
+// DeleteCustomerAddress handles DELETE /api/v1/customer/addresses/{id}
+func (h *Handler) DeleteCustomerAddress(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	id := r.PathValue("id")
+	if err := h.repo.DeleteCustomerAddress(r.Context(), claims.UserID, id); err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Address deleted successfully"})
+}
+

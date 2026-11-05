@@ -147,6 +147,38 @@ func (r *Repository) PostJournalEntry(ctx context.Context, entry JournalEntry) (
 		return nil, err
 	}
 
+	// Idempotency check: if entry with identical key already exists, return it
+	if entry.IdempotencyKey != "" {
+		var existing JournalEntry
+		err := r.pool.QueryRow(ctx, `
+			SELECT id, entry_number, reference_type, reference_id, action, description,
+			       currency, status, idempotency_key, posted_at, coalesce(prev_hash, ''), coalesce(hash, '')
+			FROM ledger.journal_entries
+			WHERE idempotency_key = $1
+			LIMIT 1
+		`, entry.IdempotencyKey).Scan(
+			&existing.ID, &existing.EntryNumber, &existing.ReferenceType, &existing.ReferenceID,
+			&existing.Action, &existing.Description, &existing.Currency, &existing.Status,
+			&existing.IdempotencyKey, &existing.PostedAt, &existing.PrevHash, &existing.Hash,
+		)
+		if err == nil {
+			lineRows, lineErr := r.pool.Query(ctx, `
+				SELECT id, account_id, entry_type, amount
+				FROM ledger.lines WHERE journal_entry_id = $1
+			`, existing.ID)
+			if lineErr == nil {
+				defer lineRows.Close()
+				for lineRows.Next() {
+					var l LedgerLine
+					if scanErr := lineRows.Scan(&l.ID, &l.AccountID, &l.EntryType, &l.Amount); scanErr == nil {
+						existing.Lines = append(existing.Lines, l)
+					}
+				}
+			}
+			return &existing, nil
+		}
+	}
+
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -567,3 +599,92 @@ func (r *Repository) RejectPayout(ctx context.Context, payoutID string, rejected
 	pr.ApprovedAt = &now
 	return &pr, nil
 }
+
+// GetWalletBalance returns the current balance of Account 2010 (for merchant) or Account 2050 (for customer)
+func (r *Repository) GetWalletBalance(ctx context.Context, ownerType, ownerID string) (*AccountBalance, error) {
+	accCode := "2010"
+	accName := "Merchant Wallet Account"
+	if ownerType == "customer" {
+		accCode = "2050"
+		accName = "Customer Wallet Account"
+	}
+
+	query := `
+		SELECT a.id, a.owner_type, a.owner_id, a.account_code, a.name, a.currency,
+		       coalesce(SUM(CASE WHEN l.entry_type = 'credit' THEN l.amount ELSE -l.amount END), 0) as balance
+		FROM ledger.accounts a
+		LEFT JOIN ledger.lines l ON l.account_id = a.id
+		WHERE a.owner_type = $1 AND a.owner_id = $2 AND a.account_code = $3
+		GROUP BY a.id
+	`
+	var ab AccountBalance
+	err := r.pool.QueryRow(ctx, query, ownerType, ownerID, accCode).Scan(
+		&ab.ID, &ab.OwnerType, &ab.OwnerID, &ab.AccountCode, &ab.Name, &ab.Currency, &ab.Balance,
+	)
+	if err != nil {
+		return &AccountBalance{
+			OwnerType:   ownerType,
+			OwnerID:     ownerID,
+			AccountCode: accCode,
+			Name:        accName,
+			Currency:    config.ResolveCurrency(""),
+			Balance:     0,
+		}, nil
+	}
+	return &ab, nil
+}
+
+// TopUpWallet performs an atomic, balanced top-up:
+// DEBIT Account 1010 (Gateway Clearing Asset)
+// CREDIT Account 2010 (Merchant) or 2050 (Customer)
+func (r *Repository) TopUpWallet(ctx context.Context, ownerType, ownerID string, amountCents int64, currency, idempotencyKey string) (*JournalEntry, error) {
+	if amountCents <= 0 {
+		return nil, fmt.Errorf("topup amount must be positive")
+	}
+
+	curr := config.ResolveCurrency(currency)
+	accCode := "2010"
+	accName := "Merchant Wallet Account"
+	if ownerType == "customer" {
+		accCode = "2050"
+		accName = "Customer Wallet Account"
+	}
+
+	// 1. Ensure wallet account exists
+	var walletAccID string
+	err := r.pool.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE owner_type = $1 AND owner_id = $2 AND account_code = $3 LIMIT 1`, ownerType, ownerID, accCode).Scan(&walletAccID)
+	if err != nil {
+		walletAccID = uuid.New().String()
+		_, err = r.pool.Exec(ctx, `
+			INSERT INTO ledger.accounts (id, owner_type, owner_id, currency, account_code, name)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, walletAccID, ownerType, ownerID, curr, accCode, accName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create wallet account: %w", err)
+		}
+	}
+
+	// 2. Ensure clearing account 1010 exists
+	var clearingAccID string
+	err = r.pool.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1010' LIMIT 1`).Scan(&clearingAccID)
+	if err != nil {
+		return nil, fmt.Errorf("clearing account 1010 not found: %w", err)
+	}
+
+	// 3. Post balanced journal entry
+	entry := JournalEntry{
+		ReferenceType:  "topup",
+		ReferenceID:    ownerID,
+		Action:         "wallet_topup",
+		Description:    fmt.Sprintf("Wallet top-up for %s %s", ownerType, ownerID),
+		Currency:       curr,
+		IdempotencyKey: idempotencyKey,
+		Lines: []LedgerLine{
+			{AccountID: clearingAccID, EntryType: "debit", Amount: amountCents},
+			{AccountID: walletAccID, EntryType: "credit", Amount: amountCents},
+		},
+	}
+
+	return r.PostJournalEntry(ctx, entry)
+}
+

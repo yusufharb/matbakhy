@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -202,4 +203,241 @@ func (r *Repository) UpdateSupplierStatus(ctx context.Context, orgID, status str
 		return fmt.Errorf("supplier not found")
 	}
 	return nil
+}
+
+// CreateCustomerUser registers a standalone retail customer without creating any organization
+func (r *Repository) CreateCustomerUser(ctx context.Context, req RegisterCustomerRequest, passwordHash string) (*User, error) {
+	userID := uuid.New().String()
+	userQuery := `
+		INSERT INTO iam.users (id, email, phone, password_hash, first_name, last_name, email_verified, status, locale)
+		VALUES ($1, $2, $3, $4, $5, $6, TRUE, 'active', 'en')
+		RETURNING id, email, first_name, last_name, email_verified, status, locale, created_at, updated_at
+	`
+	var phone *string
+	if req.Phone != "" {
+		phone = &req.Phone
+	}
+
+	var u User
+	err := r.pool.QueryRow(ctx, userQuery, userID, req.Email, phone, passwordHash, req.FirstName, req.LastName).Scan(
+		&u.ID, &u.Email, &u.FirstName, &u.LastName, &u.EmailVerified, &u.Status, &u.Locale, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register customer user: %w", err)
+	}
+	return &u, nil
+}
+
+// GetContexts queries all contexts (personal customer profile + organization memberships) for a user
+func (r *Repository) GetContexts(ctx context.Context, userID string) (*UserContextsResponse, error) {
+	u, err := r.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	memberships, err := r.GetMembershipsForUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user memberships: %w", err)
+	}
+
+	return &UserContextsResponse{
+		UserID:        u.ID,
+		Email:         u.Email,
+		HasB2CProfile: true, // All registered users have a personal retail shopping profile
+		Memberships:   memberships,
+	}, nil
+}
+
+// SwitchContext validates membership and issues a context-bound token
+func (r *Repository) SwitchContext(ctx context.Context, userID, targetType, targetOrgID string) (*SwitchContextResponse, error) {
+	u, err := r.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	var activeCtx ActiveContext
+	var tokenRole, tokenOrgID, tokenCtxType string
+
+	if targetType == "b2c_customer" || targetType == "customer" {
+		tokenRole = "customer"
+		tokenOrgID = ""
+		tokenCtxType = "b2c_customer"
+		activeCtx = ActiveContext{
+			Type:        "b2c_customer",
+			Role:        "customer",
+			Permissions: []string{"catalog:read", "cart:manage", "order:create_b2c", "wallet:use_b2c"},
+		}
+	} else if targetType == "merchant" || targetType == "supplier" {
+		if targetOrgID == "" {
+			return nil, fmt.Errorf("target_org_id is required for organization context")
+		}
+
+		// Verify membership and organization status
+		query := `
+			SELECT m.status, coalesce(r.name, 'member'), o.type, coalesce(o.legal_name, o.name->>'en'), o.status
+			FROM iam.org_memberships m
+			JOIN iam.organizations o ON o.id = m.org_id
+			LEFT JOIN iam.roles r ON r.id = m.role_id
+			WHERE m.user_id = $1 AND m.org_id = $2
+		`
+		var memStatus, roleName, orgType, orgName, orgStatus string
+		err := r.pool.QueryRow(ctx, query, userID, targetOrgID).Scan(&memStatus, &roleName, &orgType, &orgName, &orgStatus)
+		if err != nil {
+			return nil, fmt.Errorf("user does not have access to this organization: %w", err)
+		}
+
+		if memStatus != "active" {
+			return nil, fmt.Errorf("user membership in this organization is %s", memStatus)
+		}
+
+		if orgStatus == "suspended" {
+			return nil, fmt.Errorf("organization is suspended")
+		}
+
+		tokenRole = roleName
+		tokenOrgID = targetOrgID
+		tokenCtxType = orgType
+
+		activeCtx = ActiveContext{
+			Type:        orgType,
+			OrgID:       targetOrgID,
+			OrgName:     orgName,
+			OrgStatus:   orgStatus,
+			Role:        roleName,
+			Permissions: []string{"catalog:read", "order:manage", "wallet:manage"},
+		}
+	} else {
+		return nil, fmt.Errorf("invalid target_context_type: %s", targetType)
+	}
+
+	token, err := GenerateContextJWT(u.ID, u.Email, tokenOrgID, tokenRole, tokenCtxType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate context token: %w", err)
+	}
+
+	plainRefresh, hashRefresh, err := GenerateRefreshToken()
+	var refreshToken string
+	if err == nil {
+		_ = r.CreateSession(ctx, u.ID, hashRefresh, time.Now().Add(7*24*time.Hour))
+		refreshToken = plainRefresh
+	}
+
+	return &SwitchContextResponse{
+		Token:         token,
+		RefreshToken:  refreshToken,
+		ActiveContext: activeCtx,
+	}, nil
+}
+
+// KYC Document Methods
+func (r *Repository) ListKYCDocuments(ctx context.Context, orgID string) ([]KYCDocument, error) {
+	query := `
+		SELECT id, organization_id, document_type, file_name, file_url, status,
+		       submitted_by::text, reviewed_by::text, review_notes, created_at, updated_at
+		FROM iam.kyc_documents
+		WHERE organization_id = $1
+		ORDER BY created_at DESC
+	`
+	rows, err := r.pool.Query(ctx, query, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var docs []KYCDocument
+	for rows.Next() {
+		var d KYCDocument
+		if err := rows.Scan(
+			&d.ID, &d.OrganizationID, &d.DocumentType, &d.FileName, &d.FileURL, &d.Status,
+			&d.SubmittedBy, &d.ReviewedBy, &d.ReviewNotes, &d.CreatedAt, &d.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		docs = append(docs, d)
+	}
+	return docs, nil
+}
+
+func (r *Repository) SubmitKYCDocument(ctx context.Context, orgID, userID string, req SubmitKYCDocumentRequest) (*KYCDocument, error) {
+	docID := uuid.New().String()
+	query := `
+		INSERT INTO iam.kyc_documents (id, organization_id, document_type, file_name, file_url, status, submitted_by)
+		VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+		RETURNING id, organization_id, document_type, file_name, file_url, status, created_at, updated_at
+	`
+	var d KYCDocument
+	err := r.pool.QueryRow(ctx, query, docID, orgID, req.DocumentType, req.FileName, req.FileURL, userID).Scan(
+		&d.ID, &d.OrganizationID, &d.DocumentType, &d.FileName, &d.FileURL, &d.Status, &d.CreatedAt, &d.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save kyc document: %w", err)
+	}
+	return &d, nil
+}
+
+func (r *Repository) ReviewKYCDocument(ctx context.Context, docID, reviewerID string, req ReviewKYCDocumentRequest) error {
+	query := `
+		UPDATE iam.kyc_documents
+		SET status = $1, reviewed_by = $2, review_notes = $3, updated_at = NOW()
+		WHERE id = $4
+	`
+	ct, err := r.pool.Exec(ctx, query, req.Status, reviewerID, req.ReviewNotes, docID)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return fmt.Errorf("kyc document not found")
+	}
+	return nil
+}
+
+// Team Member & Invitation Methods
+func (r *Repository) ListTeamMembers(ctx context.Context, orgID string) ([]TeamMember, error) {
+	query := `
+		SELECT m.id, m.user_id, m.org_id, coalesce(r.name, 'member') as role_name,
+		       u.first_name, u.last_name, u.email, m.status, m.created_at
+		FROM iam.org_memberships m
+		JOIN iam.users u ON u.id = m.user_id
+		LEFT JOIN iam.roles r ON r.id = m.role_id
+		WHERE m.org_id = $1
+		ORDER BY m.created_at ASC
+	`
+	rows, err := r.pool.Query(ctx, query, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []TeamMember
+	for rows.Next() {
+		var tm TeamMember
+		if err := rows.Scan(
+			&tm.ID, &tm.UserID, &tm.OrgID, &tm.RoleName,
+			&tm.FirstName, &tm.LastName, &tm.Email, &tm.Status, &tm.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		members = append(members, tm)
+	}
+	return members, nil
+}
+
+func (r *Repository) InviteTeamMember(ctx context.Context, orgID, invitedByID string, req InviteTeamMemberRequest) (*TeamInvitation, error) {
+	inviteID := uuid.New().String()
+	token := fmt.Sprintf("inv_%s_%d", uuid.New().String()[:12], time.Now().Unix())
+	expiresAt := time.Now().Add(48 * time.Hour)
+
+	query := `
+		INSERT INTO iam.team_invitations (id, organization_id, email, role_name, token, status, expires_at, invited_by)
+		VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
+		RETURNING id, organization_id, email, role_name, token, status, expires_at, created_at
+	`
+	var inv TeamInvitation
+	err := r.pool.QueryRow(ctx, query, inviteID, orgID, req.Email, req.RoleName, token, expiresAt, invitedByID).Scan(
+		&inv.ID, &inv.OrganizationID, &inv.Email, &inv.RoleName, &inv.Token, &inv.Status, &inv.ExpiresAt, &inv.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create team invitation: %w", err)
+	}
+	return &inv, nil
 }

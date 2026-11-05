@@ -371,3 +371,113 @@ func (h *Handler) RejectPayout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(payout)
 }
+
+// GetMerchantWallet handles GET /api/v1/merchant/wallet
+func (h *Handler) GetMerchantWallet(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	bal, err := h.repo.GetWalletBalance(r.Context(), "merchant", claims.OrgID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(bal)
+}
+
+// GetCustomerWallet handles GET /api/v1/customer/wallet
+func (h *Handler) GetCustomerWallet(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	bal, err := h.repo.GetWalletBalance(r.Context(), "customer", claims.UserID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(bal)
+}
+
+type TopUpRequest struct {
+	AmountCents int64  `json:"amount_cents"`
+	Currency    string `json:"currency,omitempty"`
+}
+
+// TopUpMerchantWallet handles POST /api/v1/merchant/wallet/topup
+func (h *Handler) TopUpMerchantWallet(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		http.Error(w, `{"error": "Idempotency-Key header is required for top-up operations"}`, http.StatusBadRequest)
+		return
+	}
+
+	var req TopUpRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
+		return
+	}
+
+	entry, err := h.repo.TopUpWallet(r.Context(), "merchant", claims.OrgID, req.AmountCents, req.Currency, idempotencyKey)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":       "Wallet top-up successful",
+		"journal_entry": entry,
+	})
+}
+
+// TopUpCustomerWallet handles POST /api/v1/customer/wallet/topup
+func (h *Handler) TopUpCustomerWallet(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		http.Error(w, `{"error": "Idempotency-Key header is required for top-up operations"}`, http.StatusBadRequest)
+		return
+	}
+
+	var req TopUpRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
+		return
+	}
+
+	entry, err := h.repo.TopUpWallet(r.Context(), "customer", claims.UserID, req.AmountCents, req.Currency, idempotencyKey)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":       "Wallet top-up successful",
+		"journal_entry": entry,
+	})
+}
+

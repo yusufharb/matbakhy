@@ -4,7 +4,7 @@
 
 ## 1. Project Overview & Current Scope
 **NEXUS Marketplace Core** is an enterprise-grade, white-label, multi-supplier marketplace engine.
-- **Core Engine Backend**: Go 1.23 modular monolith, PostgreSQL 16, Redis/Valkey, NATS JetStream, MinIO. Handled by Core Developer (Stage E completed: atomic stock reservation, cryptographic double-entry ledger, integer-basis commissions, secure RBAC).
+- **Core Engine Backend**: Go 1.23 modular monolith, PostgreSQL 16, Redis/Valkey, NATS JetStream, MinIO. Features atomic stock reservation, cryptographic double-entry ledger, integer-basis commissions, secure RBAC, dual-channel B2B/B2C fulfillment, and sub-ledger wallet liabilities.
 - **Customer Frontends (Completed & Operational)**:
   1. **B2B Merchant Dashboard**: Corporate procurement, onboarding KYC, team RBAC, receiving warehouse docks, wholesale volume tier pricing, multi-supplier suborders, Account 2010 corporate wallet.
   2. **B2C Customer Ecommerce Storefront**: High-conversion retail shopping, category search, product pages, consumer cart, authenticated checkout, customer address book, Account 2050 consumer wallet.
@@ -16,21 +16,27 @@
 - **Main Branch Isolation**: `main` is strictly protected (never committed, merged, or pushed directly).
 - **Remote**: `origin` (`https://github.com/yusufharb/Marketplace-Core-.git`)
 - **Automated Verification**:
-  - Backend Test Suite: 100% PASS (`go test -p=1 ./...`)
-  - Frontend Formatting: 100% PASS (`oxfmt --check`)
-  - Frontend Build: 100% PASS (`vite build`)
+  - Backend Test Suite: 100% PASS (`go test -v -count=1 -p=1 ./...`)
+  - Frontend Formatting: 100% PASS (`npm run lint` / `oxfmt --check`)
+  - Frontend Build: 100% PASS (`npm run build` / `vite build`)
 
 ---
 
 ## 3. Approved Architecture & Core Decisions
-1. **Shared Identity**: Single `iam.users` record per individual; context-bound JWTs via `POST /auth/switch-context` allow toggling between B2B and B2C.
-2. **Sub-Ledger Wallets**: Chart of Accounts control accounts (2010 for Merchants, 2050 for Customers) mapped to independent `ledger.accounts` rows per entity. Zero commingling of funds.
-3. **Safe Order Ownership**: `commerce.orders` supports `order_type IN ('b2b', 'b2c')`. B2B enforces `merchant_id NOT NULL`; B2C enforces `merchant_id IS NULL AND user_id NOT NULL`. Supplier suborders partitioned identically under the hood.
+1. **Shared Identity**: Single `iam.users` record per individual; context-bound JWTs via `POST /auth/switch-context` allow seamless toggling between B2B and B2C.
+2. **Sub-Ledger Wallets**: Chart of Accounts control accounts:
+   - **Account 2010**: Merchant Wallet Liability (`owner_type = 'merchant'`, `owner_id = organization_id`).
+   - **Account 2050**: Customer Wallet Liability (`owner_type = 'customer'`, `owner_id = user_id`).
+   - **Account 1010**: Gateway Clearing Asset Account (`owner_type = 'platform'`).
+   - **Top-up**: DR 1010 (clearing asset increases), CR 2010/2050 (wallet liability increases).
+   - **Wallet Checkout**: DR 2010/2050 (liability decreases), CR 2020 (supplier escrow increases), CR 4010/4020 (platform revenue increases).
+   - Both operate with strict double-entry guarantees (`sum(debit) == sum(credit)` enforced by database triggers and cryptographic SHA-256 hash chains).
+3. **Safe Order Ownership**: `commerce.orders` supports `order_type IN ('b2b', 'b2c')`. B2B enforces `merchant_id NOT NULL`; B2C enforces `merchant_id IS NULL AND user_id NOT NULL` via `chk_orders_ownership` constraint. Supplier suborders partitioned identically under the hood.
 4. **Physical Logistics Separation**:
    - Supplier Stock Hubs: Internal fulfillment nodes in `inventory.warehouses` (protected/hidden from buyers).
-   - Merchant Receiving Warehouses: Commercial delivery docks in `commerce.merchant_receiving_warehouses` (single destination per B2B order in MVP).
+   - Merchant Receiving Warehouses: Commercial delivery docks in `commerce.merchant_receiving_warehouses` with dock type, forklift availability, and receiving hours.
    - Customer Addresses: Residential/office address book in `commerce.customer_addresses`.
-5. **Unified Catalog & Single Stock Pool**: Products exist once; supplier offers define wholesale tiers and retail prices; stock draws from the exact same `inventory.warehouse_stock` pool.
+5. **Unified Catalog & Single Stock Pool**: Products exist once; supplier offers define wholesale tiers and retail prices (`catalog.supplier_offers.retail_price`, `b2b_enabled`, `b2c_enabled`); stock draws from the exact same `inventory.warehouse_stock` pool.
 6. **B2C Authenticated Checkout**: Authenticated checkout is the default for MVP; guest checkout is deferred.
 7. **Cairo Font & RTL/LTR**: Cairo typography, dynamic `dir="rtl"` / `dir="ltr"`, and CSS logical properties.
 
@@ -40,7 +46,7 @@
 
 | Screen ID | Portal | Route | Status | Mock / Live Backend |
 |---|---|---|:---:|---|
-| **B2B-01** | B2B | `/b2b/login` / `/b2b/register` | **Completed** | Hybrid (Live Auth + Context Mock) |
+| **B2B-01** | B2B | `/b2b/login` / `/b2b/register` | **Completed** | Live Auth + Context Switcher |
 | **B2B-02** | B2B | `/b2b/onboarding` | **Completed** | KYC Stepper (CR/VAT verification) |
 | **B2B-03** | B2B | `/b2b/dashboard` | **Completed** | Spend MTD, Active Orders, Wallet KPIs |
 | **B2B-04** | B2B | `/b2b/procurement/catalog` | **Completed** | Live `/products` + Volume Tier Matrix |
@@ -65,18 +71,22 @@
 
 ---
 
-## 5. Core Developer Dependencies (DEP-01 to DEP-10)
-Refer to the complete technical contract in `docs/core-developer-handover.md` or the planning artifacts:
-- **DEP-01**: `POST /auth/switch-context` & `GET /auth/me/contexts` (P0)
-- **DEP-02**: `POST /auth/register-customer` (P0)
-- **DEP-03**: B2C Order Ownership `order_type IN ('b2b', 'b2c')` (P0)
-- **DEP-04**: Sub-Ledger Accounts for 2010 (Merchant) and 2050 (Customer) (P0)
-- **DEP-05**: Shared Stock Allocation across B2B & B2C Offers (P0)
-- **DEP-06**: Merchant Receiving Warehouses API & Schema (P1)
-- **DEP-07**: Customer Address Book API & Schema (P1)
-- **DEP-08**: Corporate KYC Submission & Admin Review API (P1)
-- **DEP-09**: Team Invitations & RBAC Membership API (P1)
-- **DEP-10**: Wallet Top-Up Endpoint & Idempotent Webhook Handler (P1)
+## 5. Core Developer Dependencies (DEP-01 to DEP-10) — 100% Implemented & Tested
+
+All 10 Core Developer Dependencies are fully implemented in PostgreSQL and Go backend:
+
+| Dependency | Scope | HTTP Endpoints & DB Artefacts | Status & Tests |
+|---|---|---|:---:|
+| **DEP-01** | Context Switching | `GET /auth/me/contexts`, `POST /auth/switch-context` | **Done & Verified** (`TestRegisterCustomerAndContextSwitching`) |
+| **DEP-02** | Customer Registration | `POST /auth/register-customer` | **Done & Verified** (`TestRegisterCustomerAndContextSwitching`) |
+| **DEP-03** | Safe Order Ownership | `order_type IN ('b2b', 'b2c')`, `chk_orders_ownership` constraint | **Done & Verified** (`TestB2CCheckoutRetailPricingAndMOQ1`, `TestCrossChannelOrderIsolation`) |
+| **DEP-04** | Sub-Ledger Account 2050 | `ledger.accounts` owner_type check includes `'customer'`; Account 2050 debit on B2C checkout | **Done & Verified** (`TestB2CWalletCheckoutDebitsAccount2050`) |
+| **DEP-05** | Shared Stock & Dual Channel Offers | `catalog.supplier_offers` (`b2b_enabled`, `b2c_enabled`, `retail_price`); B2C sets `moq = 1` | **Done & Verified** (`TestB2CCheckoutRetailPricingAndMOQ1`) |
+| **DEP-06** | Merchant Receiving Warehouses | `GET /merchant/warehouses`, `POST /merchant/warehouses`, `DELETE /merchant/warehouses/{id}` | **Done & Verified** (`TestMerchantReceivingWarehousesCRUD`) |
+| **DEP-07** | Customer Address Book | `GET /customer/addresses`, `POST /customer/addresses`, `DELETE /customer/addresses/{id}` | **Done & Verified** (`TestCustomerAddressesCRUD`) |
+| **DEP-08** | Corporate KYC Workflow | `POST /merchant/kyc/documents`, `GET /merchant/kyc/documents`, `POST /admin/kyc/documents/{id}/review` | **Done & Verified** (`TestKYCDocumentWorkflow`) |
+| **DEP-09** | Team Invitations & RBAC | `GET /merchant/team`, `POST /merchant/team/invitations` | **Done & Verified** (`TestTeamInvitationAndMembers`) |
+| **DEP-10** | Double-Entry Wallet Top-Up | `POST /customer/wallet/topup`, `POST /merchant/wallet/topup` (DR 1010, CR 2010/2050) | **Done & Verified** (`TestTopUpMerchantWalletAccount2010`, `TestTopUpCustomerWalletAccount2050`) |
 
 ---
 
@@ -84,3 +94,16 @@ Refer to the complete technical contract in `docs/core-developer-handover.md` or
 - **Stage E**: Handover documentation, Docker dev startup, CI workflows (`50b13e9`, `bf2c18d`, `5cabb90`).
 - **Stage F (Complete)**: Full B2B Merchant Dashboard & B2C Customer Website Implementation with Cairo font, bilingual RTL/LTR layout, Context Switcher, and complete 22-screen backlog (`1a7fa51`). 100% green tests & production build.
 - **Stage F.1 (CI & Test Resilience)**: Added `-p=1` to CI backend test runner to prevent concurrent package database contention and ensured self-contained offer MOQ and stock pre-conditions across all order test cases.
+- **Track 1 (Migration 000013 & DEP-01 to DEP-10 Backend Implementation)**:
+  - Applied Database Migration 000013 (`backend/db/migrations/000013_b2b_b2c_enhancements.up.sql`):
+    - Added `order_type` and nullable `merchant_id` with `chk_orders_ownership` constraint on `commerce.orders`.
+    - Added `b2b_enabled`, `b2c_enabled`, and `retail_price` on `catalog.supplier_offers`.
+    - Added `customer` to `ledger.accounts` owner type check constraint.
+    - Created `commerce.merchant_receiving_warehouses` for commercial delivery docks.
+    - Created `commerce.customer_addresses` for retail address books.
+    - Created `iam.kyc_documents` for corporate compliance documents.
+    - Created `iam.team_invitations` with 48-hour secure tokens.
+  - Implemented Go backend domains, repositories, and HTTP handlers across `auth`, `order`, and `wallet` modules.
+  - Wired all 10 dependency routes into `backend/cmd/api/main.go`.
+  - Added full test coverage for customer registration, context switching, KYC workflows, team invites, dual-channel pricing/MOQ enforcement, Account 2050 wallet debits, receiving warehouse CRUD, customer address CRUD, and idempotent wallet top-ups.
+  - 100% green test pass rate across all backend modules and production frontend build.

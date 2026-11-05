@@ -139,6 +139,7 @@ func main() {
 	// Auth & Identity (Public)
 	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
+	mux.HandleFunc("POST /api/v1/auth/register-customer", authHandler.RegisterCustomer)
 	mux.HandleFunc("POST /api/v1/auth/refresh", authHandler.RefreshToken)
 
 	// Catalog (Public Read)
@@ -158,17 +159,38 @@ func main() {
 	// Protected Endpoints
 	// --------------------------------------------------------------------------
 
-	// Authenticated User Session
+	// Authenticated User Session & Contexts
 	mux.HandleFunc("GET /api/v1/auth/me", wrap(authHandler.Me, authOnly))
+	mux.HandleFunc("GET /api/v1/auth/me/contexts", wrap(authHandler.GetMeContexts, authOnly))
+	mux.HandleFunc("POST /api/v1/auth/switch-context", wrap(authHandler.SwitchContext, authOnly))
 
-	// Orders & Checkout (Authenticated users / merchants)
+	// Orders & Checkout (Authenticated users / merchants / customers)
 	mux.HandleFunc("POST /api/v1/checkout", wrap(orderHandler.Checkout, authOnly))
 	mux.HandleFunc("GET /api/v1/orders", wrap(orderHandler.ListOrders, authOnly))
+
+	// Customer Personal Logistics & Wallet (B2C)
+	mux.HandleFunc("GET /api/v1/customer/addresses", wrap(orderHandler.ListCustomerAddresses, authOnly))
+	mux.HandleFunc("POST /api/v1/customer/addresses", wrap(orderHandler.CreateCustomerAddress, authOnly))
+	mux.HandleFunc("DELETE /api/v1/customer/addresses/{id}", wrap(orderHandler.DeleteCustomerAddress, authOnly))
+	mux.HandleFunc("GET /api/v1/customer/wallet", wrap(walletHandler.GetCustomerWallet, authOnly))
+	mux.HandleFunc("POST /api/v1/customer/wallet/topup", wrap(walletHandler.TopUpCustomerWallet, authOnly))
+
+	// Merchant Commercial Logistics & Wallet (B2B)
+	mux.HandleFunc("GET /api/v1/merchant/warehouses", wrap(orderHandler.ListMerchantWarehouses, authOnly))
+	mux.HandleFunc("POST /api/v1/merchant/warehouses", wrap(orderHandler.CreateMerchantWarehouse, authOnly))
+	mux.HandleFunc("DELETE /api/v1/merchant/warehouses/{id}", wrap(orderHandler.DeleteMerchantWarehouse, authOnly))
+	mux.HandleFunc("GET /api/v1/merchant/wallet", wrap(walletHandler.GetMerchantWallet, authOnly))
+	mux.HandleFunc("POST /api/v1/merchant/wallet/topup", wrap(walletHandler.TopUpMerchantWallet, authOnly))
+	mux.HandleFunc("GET /api/v1/merchant/kyc/documents", wrap(authHandler.ListKYCDocuments, authOnly))
+	mux.HandleFunc("POST /api/v1/merchant/kyc/documents", wrap(authHandler.SubmitKYCDocument, authOnly))
+	mux.HandleFunc("GET /api/v1/merchant/team", wrap(authHandler.ListTeamMembers, authOnly))
+	mux.HandleFunc("POST /api/v1/merchant/team/invite", wrap(authHandler.InviteTeamMember, authOnly))
 
 	// Platform Administration (Super Admin / Platform Admin only)
 	mux.HandleFunc("GET /api/v1/admin/suppliers", wrap(authHandler.ListSuppliers, adminOnly))
 	mux.HandleFunc("POST /api/v1/admin/suppliers/{id}/approve", wrap(authHandler.ApproveSupplier, adminOnly))
 	mux.HandleFunc("POST /api/v1/admin/suppliers/{id}/reject", wrap(authHandler.RejectSupplier, adminOnly))
+	mux.HandleFunc("POST /api/v1/admin/kyc/documents/{id}/review", wrap(authHandler.ReviewKYCDocument, adminOnly))
 	mux.HandleFunc("GET /api/v1/admin/audit-logs", wrap(configHandler.ListAuditLogs, adminOnly))
 	mux.HandleFunc("PUT /api/v1/cms/sections/{id}", wrap(configHandler.UpdateCMSSection, adminOnly))
 	mux.HandleFunc("GET /api/v1/ledger/entries", wrap(walletHandler.ListJournalEntries, adminOnly))

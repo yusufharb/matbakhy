@@ -19,10 +19,12 @@ type CheckoutItemInput struct {
 }
 
 type CheckoutRequest struct {
-	MerchantID      string              `json:"merchant_id"`
+	OrderType       string              `json:"order_type,omitempty"` // "b2b" or "b2c"
+	MerchantID      string              `json:"merchant_id,omitempty"`
 	Currency        string              `json:"currency,omitempty"`
 	PaymentMethod   string              `json:"payment_method"`
 	DeliveryAddress json.RawMessage     `json:"delivery_address"`
+	WarehouseID     string              `json:"warehouse_id,omitempty"`
 	Items           []CheckoutItemInput `json:"items"`
 }
 
@@ -49,10 +51,18 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	}
 	defer tx.Rollback(ctx)
 
-	// Fallbacks for demo user & org
-	if req.MerchantID == "" {
-		req.MerchantID = "b0000000-0000-0000-0000-000000000004" // Meridian Labs
+	orderType := req.OrderType
+	if orderType == "" {
+		if req.MerchantID != "" {
+			orderType = "b2b"
+		} else {
+			orderType = "b2b"
+			req.MerchantID = "b0000000-0000-0000-0000-000000000004" // Fallback demo merchant
+		}
+	} else if orderType == "b2b" && req.MerchantID == "" {
+		req.MerchantID = "b0000000-0000-0000-0000-000000000004"
 	}
+
 	if userID == "" {
 		userID = "a0000000-0000-0000-0000-000000000004" // Tariq Buyer
 	}
@@ -92,7 +102,8 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 		query := `
 			SELECT o.id, o.supplier_id, coalesce(org.legal_name, org.name->>'en'),
 			       p.id as product_id, p.category_id, p.name->>'en', p.sku, coalesce(b.name, ''),
-			       o.price, o.moq, coalesce(o.price_tiers, '[]'::jsonb), o.supplier_sku
+			       o.price, o.moq, coalesce(o.price_tiers, '[]'::jsonb), o.supplier_sku,
+			       coalesce(o.retail_price, o.price), coalesce(o.b2b_enabled, TRUE), coalesce(o.b2c_enabled, TRUE)
 			FROM catalog.supplier_offers o
 			JOIN iam.organizations org ON org.id = o.supplier_id
 			JOIN catalog.products p ON p.id = o.product_id
@@ -100,33 +111,47 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 			WHERE o.id = $1 AND o.status = 'active'
 		`
 		var offID, supID, supName, prodID, catID, prodTitle, prodSKU, brandName, supSKU string
-		var basePrice int64
+		var basePrice, retailPrice int64
 		var moq int
 		var tiersJSON []byte
+		var b2bEnabled, b2cEnabled bool
 
 		err := tx.QueryRow(ctx, query, item.OfferID).Scan(
 			&offID, &supID, &supName, &prodID, &catID, &prodTitle, &prodSKU, &brandName,
 			&basePrice, &moq, &tiersJSON, &supSKU,
+			&retailPrice, &b2bEnabled, &b2cEnabled,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("offer %s not found or inactive", item.OfferID)
 		}
 
-		if item.Quantity < moq {
-			return nil, fmt.Errorf("item %s does not meet minimum order quantity (MOQ: %d, requested: %d)", prodTitle, moq, item.Quantity)
-		}
-
-		// Calculate tier pricing
 		unitPrice := basePrice
-		type Tier struct {
-			MinQty int   `json:"minQty"`
-			Price  int64 `json:"price"`
-		}
-		var tiers []Tier
-		_ = json.Unmarshal(tiersJSON, &tiers)
-		for _, t := range tiers {
-			if item.Quantity >= t.MinQty && t.Price > 0 {
-				unitPrice = t.Price
+
+		if orderType == "b2c" {
+			if !b2cEnabled {
+				return nil, fmt.Errorf("item %s is not available for retail purchase", prodTitle)
+			}
+			moq = 1 // Single unit retail purchase
+			unitPrice = retailPrice
+		} else {
+			if !b2bEnabled {
+				return nil, fmt.Errorf("item %s is not available for wholesale purchase", prodTitle)
+			}
+			if item.Quantity < moq {
+				return nil, fmt.Errorf("item %s does not meet minimum order quantity (MOQ: %d, requested: %d)", prodTitle, moq, item.Quantity)
+			}
+
+			// Calculate tier pricing
+			type Tier struct {
+				MinQty int   `json:"minQty"`
+				Price  int64 `json:"price"`
+			}
+			var tiers []Tier
+			_ = json.Unmarshal(tiersJSON, &tiers)
+			for _, t := range tiers {
+				if item.Quantity >= t.MinQty && t.Price > 0 {
+					unitPrice = t.Price
+				}
 			}
 		}
 
@@ -225,12 +250,17 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	orderNumber := fmt.Sprintf("ORD-%s-%06d-%04d", time.Now().Format("20060102"), (time.Now().UnixNano()/1000)%1000000, time.Now().UnixNano()%10000)
 
 
+	var merchantIDParam *string
+	if orderType == "b2b" && req.MerchantID != "" {
+		merchantIDParam = &req.MerchantID
+	}
+
 	orderQuery := `
 		INSERT INTO commerce.orders (
-			id, order_number, merchant_id, user_id, currency, subtotal, shipping_total, grand_total, status, delivery_address, payment_method
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmed', $9, $10)
+			id, order_number, order_type, merchant_id, user_id, currency, subtotal, shipping_total, grand_total, status, delivery_address, payment_method
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', $10, $11)
 	`
-	_, err = tx.Exec(ctx, orderQuery, parentOrderID, orderNumber, req.MerchantID, userID, orderCurrency, parentSubtotal, parentShipping, parentGrandTotal, req.DeliveryAddress, req.PaymentMethod)
+	_, err = tx.Exec(ctx, orderQuery, parentOrderID, orderNumber, orderType, merchantIDParam, userID, orderCurrency, parentSubtotal, parentShipping, parentGrandTotal, req.DeliveryAddress, req.PaymentMethod)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create parent order: %w", err)
 	}
@@ -238,7 +268,9 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	parentOrder := &ParentOrder{
 		ID:              parentOrderID,
 		OrderNumber:     orderNumber,
+		OrderType:       orderType,
 		MerchantID:      req.MerchantID,
+		UserID:          userID,
 		Currency:        orderCurrency,
 		SubtotalCents:   parentSubtotal,
 		ShippingCents:   parentShipping,
@@ -342,45 +374,53 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 		return nil, fmt.Errorf("failed to create journal entry: %w", err)
 	}
 
-	// 1. Determine Debit Account (Account 2010 for wallet, Account 1010 for gateway clearing)
+	// 1. Determine Debit Account (Account 2010 for B2B wallet, Account 2050 for B2C wallet, Account 1010 for gateway clearing)
 	var debitAccID string
 	if req.PaymentMethod == "wallet" {
-		// Look up or create merchant wallet account 2010
-		var merchantWalletID string
+		var walletAccCode, walletOwnerType, walletOwnerID, walletAccName string
+		if orderType == "b2c" {
+			walletAccCode = "2050"
+			walletOwnerType = "customer"
+			walletOwnerID = userID
+			walletAccName = "Customer Wallet Account"
+		} else {
+			walletAccCode = "2010"
+			walletOwnerType = "merchant"
+			walletOwnerID = req.MerchantID
+			walletAccName = "Merchant Wallet Account"
+		}
+
 		err = tx.QueryRow(ctx, `
 			SELECT id FROM ledger.accounts 
-			WHERE owner_id = $1 AND account_code = '2010'
+			WHERE owner_id = $1 AND account_code = $2
 			LIMIT 1
-		`, req.MerchantID).Scan(&merchantWalletID)
+		`, walletOwnerID, walletAccCode).Scan(&debitAccID)
 
 		if err != nil {
-			merchantWalletID = uuid.New().String()
+			debitAccID = uuid.New().String()
 			_, err = tx.Exec(ctx, `
 				INSERT INTO ledger.accounts (id, owner_type, owner_id, currency, account_code, name)
-				VALUES ($1, 'merchant', $2, $3, '2010', 'Merchant Wallet Account')
-			`, merchantWalletID, req.MerchantID, orderCurrency)
+				VALUES ($1, $2, $3, $4, $5, $6)
+			`, debitAccID, walletOwnerType, walletOwnerID, orderCurrency, walletAccCode, walletAccName)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create merchant wallet account 2010: %w", err)
+				return nil, fmt.Errorf("failed to create wallet account %s: %w", walletAccCode, err)
 			}
 		}
 
-		// Verify merchant has sufficient balance in Account 2010
-		// For liability account 2010: balance = SUM(credit - debit)
-		var merchantBal int64
+		// Verify sufficient balance in liability account (2010 / 2050): balance = SUM(credit - debit)
+		var availBal int64
 		err = tx.QueryRow(ctx, `
 			SELECT coalesce(SUM(CASE WHEN entry_type = 'credit' THEN amount ELSE -amount END), 0)
 			FROM ledger.lines
 			WHERE account_id = $1
-		`, merchantWalletID).Scan(&merchantBal)
+		`, debitAccID).Scan(&availBal)
 		if err != nil {
-			return nil, fmt.Errorf("failed to verify merchant wallet balance: %w", err)
+			return nil, fmt.Errorf("failed to verify wallet balance: %w", err)
 		}
 
-		if merchantBal < parentGrandTotal {
-			return nil, fmt.Errorf("insufficient wallet balance (available: %d cents, required: %d cents)", merchantBal, parentGrandTotal)
+		if availBal < parentGrandTotal {
+			return nil, fmt.Errorf("insufficient wallet balance (available: %d cents, required: %d cents)", availBal, parentGrandTotal)
 		}
-
-		debitAccID = merchantWalletID
 	} else {
 		// Find clearing account (Gateway Clearing 1010)
 		err = tx.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1010' LIMIT 1`).Scan(&debitAccID)
@@ -489,21 +529,34 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	return parentOrder, nil
 }
 
-func (r *Repository) ListOrders(ctx context.Context, merchantID string) ([]ParentOrder, error) {
+func (r *Repository) ListOrders(ctx context.Context, orderType, merchantID, userID string) ([]ParentOrder, error) {
 	query := `
-		SELECT o.id, o.order_number, o.merchant_id, o.currency, o.subtotal,
+		SELECT o.id, o.order_number, coalesce(o.order_type, 'b2b'), coalesce(o.merchant_id::text, ''), coalesce(o.user_id::text, ''), o.currency, o.subtotal,
 		       o.shipping_total, o.grand_total, o.status, o.payment_method, o.created_at
 		FROM commerce.orders o
+		WHERE 1=1
 	`
+	var args []interface{}
+	idx := 1
+
+	if orderType != "" {
+		query += fmt.Sprintf(" AND o.order_type = $%d", idx)
+		args = append(args, orderType)
+		idx++
+	}
 	if merchantID != "" {
-		query += " WHERE o.merchant_id = $1"
+		query += fmt.Sprintf(" AND o.merchant_id = $%d", idx)
+		args = append(args, merchantID)
+		idx++
+	}
+	if userID != "" {
+		query += fmt.Sprintf(" AND o.user_id = $%d", idx)
+		args = append(args, userID)
+		idx++
 	}
 	query += " ORDER BY o.created_at DESC LIMIT 50"
 
-	rows, err := r.pool.Query(ctx, query)
-	if merchantID != "" {
-		rows, err = r.pool.Query(ctx, query, merchantID)
-	}
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -512,12 +565,16 @@ func (r *Repository) ListOrders(ctx context.Context, merchantID string) ([]Paren
 	var orders []ParentOrder
 	for rows.Next() {
 		var po ParentOrder
+		var orderTypeStr, merchantIDStr, userIDStr string
 		if err := rows.Scan(
-			&po.ID, &po.OrderNumber, &po.MerchantID, &po.Currency, &po.SubtotalCents,
+			&po.ID, &po.OrderNumber, &orderTypeStr, &merchantIDStr, &userIDStr, &po.Currency, &po.SubtotalCents,
 			&po.ShippingCents, &po.GrandTotalCents, &po.Status, &po.PaymentMethod, &po.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
+		po.OrderType = orderTypeStr
+		po.MerchantID = merchantIDStr
+		po.UserID = userIDStr
 
 		// Fetch suborders
 		subRows, err := r.pool.Query(ctx, `
@@ -546,6 +603,188 @@ func (r *Repository) ListOrders(ctx context.Context, merchantID string) ([]Paren
 		orders = append(orders, po)
 	}
 	return orders, nil
+}
+
+// Merchant Receiving Warehouses (DEP-06)
+func (r *Repository) ListMerchantWarehouses(ctx context.Context, orgID string) ([]MerchantReceivingWarehouse, error) {
+	query := `
+		SELECT id, organization_id, name, code, country_code, city, address_line,
+		       dock_type, has_forklift, coalesce(receiving_hours, ''), contact_name, contact_phone,
+		       is_default, is_active, created_at, updated_at
+		FROM commerce.merchant_receiving_warehouses
+		WHERE organization_id = $1 AND is_active = TRUE
+		ORDER BY is_default DESC, created_at DESC
+	`
+	rows, err := r.pool.Query(ctx, query, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []MerchantReceivingWarehouse
+	for rows.Next() {
+		var w MerchantReceivingWarehouse
+		if err := rows.Scan(
+			&w.ID, &w.OrganizationID, &w.Name, &w.Code, &w.CountryCode, &w.City, &w.AddressLine,
+			&w.DockType, &w.HasForklift, &w.ReceivingHours, &w.ContactName, &w.ContactPhone,
+			&w.IsDefault, &w.IsActive, &w.CreatedAt, &w.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		list = append(list, w)
+	}
+	return list, nil
+}
+
+func (r *Repository) CreateMerchantWarehouse(ctx context.Context, orgID string, req CreateMerchantWarehouseRequest) (*MerchantReceivingWarehouse, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	if req.IsDefault {
+		_, _ = tx.Exec(ctx, `UPDATE commerce.merchant_receiving_warehouses SET is_default = FALSE WHERE organization_id = $1`, orgID)
+	}
+
+	whID := uuid.New().String()
+	dockType := req.DockType
+	if dockType == "" {
+		dockType = "standard_bay"
+	}
+	countryCode := req.CountryCode
+	if countryCode == "" {
+		countryCode = "SA"
+	}
+
+	query := `
+		INSERT INTO commerce.merchant_receiving_warehouses (
+			id, organization_id, name, code, country_code, city, address_line,
+			dock_type, has_forklift, receiving_hours, contact_name, contact_phone, is_default
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		RETURNING id, organization_id, name, code, country_code, city, address_line,
+		          dock_type, has_forklift, coalesce(receiving_hours, ''), contact_name, contact_phone,
+		          is_default, is_active, created_at, updated_at
+	`
+	var w MerchantReceivingWarehouse
+	err = tx.QueryRow(ctx, query, whID, orgID, req.Name, req.Code, countryCode, req.City, req.AddressLine,
+		dockType, req.HasForklift, req.ReceivingHours, req.ContactName, req.ContactPhone, req.IsDefault,
+	).Scan(
+		&w.ID, &w.OrganizationID, &w.Name, &w.Code, &w.CountryCode, &w.City, &w.AddressLine,
+		&w.DockType, &w.HasForklift, &w.ReceivingHours, &w.ContactName, &w.ContactPhone,
+		&w.IsDefault, &w.IsActive, &w.CreatedAt, &w.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create receiving warehouse: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
+func (r *Repository) DeleteMerchantWarehouse(ctx context.Context, orgID, warehouseID string) error {
+	query := `UPDATE commerce.merchant_receiving_warehouses SET is_active = FALSE WHERE id = $1 AND organization_id = $2`
+	ct, err := r.pool.Exec(ctx, query, warehouseID, orgID)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return fmt.Errorf("warehouse not found")
+	}
+	return nil
+}
+
+// Customer Addresses (DEP-07)
+func (r *Repository) ListCustomerAddresses(ctx context.Context, userID string) ([]CustomerAddress, error) {
+	query := `
+		SELECT id, user_id, label, recipient_name, recipient_phone, city,
+		       coalesce(district, ''), street_address, coalesce(building_number, ''),
+		       coalesce(floor_number, ''), coalesce(apartment_number, ''),
+		       coalesce(postal_code, ''), coalesce(delivery_instructions, ''),
+		       is_default, created_at, updated_at
+		FROM commerce.customer_addresses
+		WHERE user_id = $1
+		ORDER BY is_default DESC, created_at DESC
+	`
+	rows, err := r.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []CustomerAddress
+	for rows.Next() {
+		var a CustomerAddress
+		if err := rows.Scan(
+			&a.ID, &a.UserID, &a.Label, &a.RecipientName, &a.RecipientPhone, &a.City,
+			&a.District, &a.StreetAddress, &a.BuildingNumber, &a.FloorNumber, &a.ApartmentNumber,
+			&a.PostalCode, &a.DeliveryInstructions, &a.IsDefault, &a.CreatedAt, &a.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		list = append(list, a)
+	}
+	return list, nil
+}
+
+func (r *Repository) CreateCustomerAddress(ctx context.Context, userID string, req CreateCustomerAddressRequest) (*CustomerAddress, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	if req.IsDefault {
+		_, _ = tx.Exec(ctx, `UPDATE commerce.customer_addresses SET is_default = FALSE WHERE user_id = $1`, userID)
+	}
+
+	addrID := uuid.New().String()
+	label := req.Label
+	if label == "" {
+		label = "Home"
+	}
+
+	query := `
+		INSERT INTO commerce.customer_addresses (
+			id, user_id, label, recipient_name, recipient_phone, city, district,
+			street_address, building_number, floor_number, apartment_number, postal_code, delivery_instructions, is_default
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		RETURNING id, user_id, label, recipient_name, recipient_phone, city,
+		          coalesce(district, ''), street_address, coalesce(building_number, ''),
+		          coalesce(floor_number, ''), coalesce(apartment_number, ''),
+		          coalesce(postal_code, ''), coalesce(delivery_instructions, ''),
+		          is_default, created_at, updated_at
+	`
+	var a CustomerAddress
+	err = tx.QueryRow(ctx, query, addrID, userID, label, req.RecipientName, req.RecipientPhone, req.City, req.District,
+		req.StreetAddress, req.BuildingNumber, req.FloorNumber, req.ApartmentNumber, req.PostalCode, req.DeliveryInstructions, req.IsDefault,
+	).Scan(
+		&a.ID, &a.UserID, &a.Label, &a.RecipientName, &a.RecipientPhone, &a.City,
+		&a.District, &a.StreetAddress, &a.BuildingNumber, &a.FloorNumber, &a.ApartmentNumber,
+		&a.PostalCode, &a.DeliveryInstructions, &a.IsDefault, &a.CreatedAt, &a.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create customer address: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+func (r *Repository) DeleteCustomerAddress(ctx context.Context, userID, addressID string) error {
+	query := `DELETE FROM commerce.customer_addresses WHERE id = $1 AND user_id = $2`
+	ct, err := r.pool.Exec(ctx, query, addressID, userID)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return fmt.Errorf("address not found")
+	}
+	return nil
 }
 
 func (r *Repository) ListSupplierSuborders(ctx context.Context, supplierID string) ([]Suborder, error) {

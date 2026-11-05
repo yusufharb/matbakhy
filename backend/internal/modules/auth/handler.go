@@ -272,3 +272,220 @@ func (h *Handler) RejectSupplier(w http.ResponseWriter, r *http.Request) {
 		"status":  "rejected",
 	})
 }
+
+// RegisterCustomer handles consumer signup without requiring company or CR info
+func (h *Handler) RegisterCustomer(w http.ResponseWriter, r *http.Request) {
+	var req RegisterCustomerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	if req.Email == "" || req.Password == "" || req.FirstName == "" || req.LastName == "" {
+		http.Error(w, `{"error": "email, password, first_name and last_name are required"}`, http.StatusBadRequest)
+		return
+	}
+
+	hash, err := HashPassword(req.Password)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to hash password"}`, http.StatusInternalServerError)
+		return
+	}
+
+	user, err := h.repo.CreateCustomerUser(r.Context(), req, hash)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	token, err := GenerateContextJWT(user.ID, user.Email, "", "customer", "b2c_customer")
+	if err != nil {
+		http.Error(w, `{"error": "Failed to generate token"}`, http.StatusInternalServerError)
+		return
+	}
+
+	plainRefresh, hashRefresh, err := GenerateRefreshToken()
+	var refreshToken string
+	if err == nil {
+		_ = h.repo.CreateSession(r.Context(), user.ID, hashRefresh, time.Now().Add(7*24*time.Hour))
+		refreshToken = plainRefresh
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"token":         token,
+		"refresh_token": refreshToken,
+		"user": map[string]interface{}{
+			"id":         user.ID,
+			"email":      user.Email,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+			"context": map[string]string{
+				"type": "b2c_customer",
+				"role": "customer",
+			},
+		},
+	})
+}
+
+// GetMeContexts returns all available identities for the currently authenticated user
+func (h *Handler) GetMeContexts(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(ClaimsContextKey).(*Claims)
+	if !ok || claims == nil {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	contexts, err := h.repo.GetContexts(r.Context(), claims.UserID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(contexts)
+}
+
+// SwitchContext validates access and issues a new token bound to the requested context
+func (h *Handler) SwitchContext(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(ClaimsContextKey).(*Claims)
+	if !ok || claims == nil {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	var req SwitchContextRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.repo.SwitchContext(r.Context(), claims.UserID, req.TargetContextType, req.TargetOrgID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusForbidden)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// ListKYCDocuments returns uploaded verification documents for the caller's organization
+func (h *Handler) ListKYCDocuments(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(ClaimsContextKey).(*Claims)
+	if !ok || claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "merchant organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	docs, err := h.repo.ListKYCDocuments(r.Context(), claims.OrgID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"documents": docs,
+		"count":     len(docs),
+	})
+}
+
+// SubmitKYCDocument saves a new verification document
+func (h *Handler) SubmitKYCDocument(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(ClaimsContextKey).(*Claims)
+	if !ok || claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "merchant organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	var req SubmitKYCDocumentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	doc, err := h.repo.SubmitKYCDocument(r.Context(), claims.OrgID, claims.UserID, req)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(doc)
+}
+
+// ReviewKYCDocument allows admin to approve or reject a specific document
+func (h *Handler) ReviewKYCDocument(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(ClaimsContextKey).(*Claims)
+	if !ok || claims == nil {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	docID := r.PathValue("id")
+	var req ReviewKYCDocumentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.ReviewKYCDocument(r.Context(), docID, claims.UserID, req); err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "KYC document reviewed successfully",
+		"status":  req.Status,
+	})
+}
+
+// ListTeamMembers returns all employee memberships for the merchant organization
+func (h *Handler) ListTeamMembers(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(ClaimsContextKey).(*Claims)
+	if !ok || claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	members, err := h.repo.ListTeamMembers(r.Context(), claims.OrgID)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"members": members,
+		"count":   len(members),
+	})
+}
+
+// InviteTeamMember creates an invitation for a new employee
+func (h *Handler) InviteTeamMember(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(ClaimsContextKey).(*Claims)
+	if !ok || claims == nil || claims.OrgID == "" {
+		http.Error(w, `{"error": "organization context required"}`, http.StatusForbidden)
+		return
+	}
+
+	var req InviteTeamMemberRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	inv, err := h.repo.InviteTeamMember(r.Context(), claims.OrgID, claims.UserID, req)
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(inv)
+}

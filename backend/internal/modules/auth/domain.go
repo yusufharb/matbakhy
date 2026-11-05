@@ -82,3 +82,92 @@ type RefreshTokenResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type RegisterCustomerRequest struct {
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Phone     string `json:"phone,omitempty"`
+}
+
+type SwitchContextRequest struct {
+	TargetContextType string `json:"target_context_type"` // "merchant" | "b2c_customer" | "supplier"
+	TargetOrgID       string `json:"target_org_id,omitempty"`
+}
+
+type ActiveContext struct {
+	Type        string   `json:"type"` // "merchant" | "b2c_customer" | "supplier" | "platform"
+	OrgID       string   `json:"org_id,omitempty"`
+	OrgName     string   `json:"org_name,omitempty"`
+	OrgStatus   string   `json:"org_status,omitempty"`
+	Role        string   `json:"role"`
+	Permissions []string `json:"permissions"`
+}
+
+type SwitchContextResponse struct {
+	Token         string        `json:"token"`
+	RefreshToken  string        `json:"refresh_token"`
+	ActiveContext ActiveContext `json:"active_context"`
+}
+
+type UserContextsResponse struct {
+	UserID        string       `json:"user_id"`
+	Email         string       `json:"email"`
+	HasB2CProfile bool         `json:"has_b2c_profile"`
+	Memberships   []Membership `json:"memberships"`
+}
+
+type KYCDocument struct {
+	ID             string     `json:"id"`
+	OrganizationID string     `json:"organization_id"`
+	DocumentType   string     `json:"document_type"`
+	FileName       string     `json:"file_name"`
+	FileURL        string     `json:"file_url"`
+	Status         string     `json:"status"`
+	SubmittedBy    *string    `json:"submitted_by,omitempty"`
+	ReviewedBy     *string    `json:"reviewed_by,omitempty"`
+	ReviewNotes    *string    `json:"review_notes,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+type SubmitKYCDocumentRequest struct {
+	DocumentType string `json:"document_type"`
+	FileName     string `json:"file_name"`
+	FileURL      string `json:"file_url"`
+}
+
+type ReviewKYCDocumentRequest struct {
+	Status      string `json:"status"` // "approved" | "rejected"
+	ReviewNotes string `json:"review_notes,omitempty"`
+}
+
+type TeamMember struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	OrgID     string    `json:"org_id"`
+	RoleName  string    `json:"role_name"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type TeamInvitation struct {
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organization_id"`
+	Email          string    `json:"email"`
+	RoleName       string    `json:"role_name"`
+	Token          string    `json:"token"`
+	Status         string    `json:"status"`
+	ExpiresAt      time.Time `json:"expires_at"`
+	InvitedBy      *string   `json:"invited_by,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type InviteTeamMemberRequest struct {
+	Email    string `json:"email"`
+	RoleName string `json:"role_name"`
+}
+
