@@ -287,3 +287,25 @@ func (h *Handler) RequestPayout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write(respPayload)
 }
+
+func (h *Handler) VerifyLedgerChain(w http.ResponseWriter, r *http.Request) {
+	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "Unauthorized: authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+
+	report, err := h.repo.VerifyLedgerChain(r.Context())
+	if err != nil {
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if !report.Valid {
+		w.WriteHeader(http.StatusConflict)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+	json.NewEncoder(w).Encode(report)
+}

@@ -173,6 +173,7 @@ func main() {
 	mux.HandleFunc("PUT /api/v1/cms/sections/{id}", wrap(configHandler.UpdateCMSSection, adminOnly))
 	mux.HandleFunc("GET /api/v1/ledger/entries", wrap(walletHandler.ListJournalEntries, adminOnly))
 	mux.HandleFunc("POST /api/v1/ledger/entries", wrap(walletHandler.PostJournalEntry, adminOnly))
+	mux.HandleFunc("GET /api/v1/ledger/verify-chain", wrap(walletHandler.VerifyLedgerChain, adminOnly))
 
 	// Supplier Portal APIs (Supplier or Admin)
 	mux.HandleFunc("GET /api/v1/supplier/offers", wrap(catalogHandler.ListSupplierOffers, supplierOrAdmin))

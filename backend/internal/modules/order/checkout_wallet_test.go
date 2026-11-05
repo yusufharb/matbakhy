@@ -2,12 +2,14 @@ package order_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/marketplace/core/internal/database"
 	"github.com/marketplace/core/internal/modules/commission"
 	"github.com/marketplace/core/internal/modules/order"
+	"github.com/marketplace/core/internal/modules/wallet"
 )
 
 // TestWalletCheckoutDebitsAccount2010 verifies:
@@ -55,38 +57,26 @@ func TestWalletCheckoutDebitsAccount2010(t *testing.T) {
 		WHERE account_id = $1
 	`, merchantAccount2010ID).Scan(&initialBalance)
 
-	// If initial balance is lower than order amount, credit initial funds for test in a transaction
+	// If initial balance is lower than order amount, credit initial funds for test
 	if initialBalance < 50000 {
-		txTopup, err := db.Pool.Begin(ctx)
-		if err != nil {
-			t.Fatalf("failed to start topup tx: %v", err)
-		}
-		topupJEID := ""
-		err = txTopup.QueryRow(ctx, `
-			INSERT INTO ledger.journal_entries (id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key)
-			VALUES (gen_random_uuid(), 'JE-TEST-TOPUP-' || floor(random()*1000000)::text, 'topup', $1, 'wallet_topup', 'Test Topup', 'USD', 'posted', 'idem-topup-' || gen_random_uuid()::text)
-			RETURNING id
-		`, merchantID).Scan(&topupJEID)
-		if err != nil {
-			txTopup.Rollback(ctx)
-			t.Fatalf("failed to create topup JE: %v", err)
-		}
-
-		// Debit bank 1020, Credit wallet 2010
+		walletRepo := wallet.NewRepository(db.Pool)
 		var bankAccID string
-		_ = txTopup.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1020' LIMIT 1`).Scan(&bankAccID)
-		_, err = txTopup.Exec(ctx, `INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount) VALUES (gen_random_uuid(), $1, $2, 'debit', 100000)`, topupJEID, bankAccID)
+		_ = db.Pool.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1020' LIMIT 1`).Scan(&bankAccID)
+		_, err := walletRepo.PostJournalEntry(ctx, wallet.JournalEntry{
+			ReferenceType:  "topup",
+			ReferenceID:    merchantID,
+			Action:         "wallet_topup",
+			Description:    "Test Topup",
+			Currency:       "USD",
+			Status:         "posted",
+			IdempotencyKey: fmt.Sprintf("idem-topup-%d", time.Now().UnixNano()),
+			Lines: []wallet.LedgerLine{
+				{AccountID: bankAccID, EntryType: "debit", Amount: 100000},
+				{AccountID: merchantAccount2010ID, EntryType: "credit", Amount: 100000},
+			},
+		})
 		if err != nil {
-			txTopup.Rollback(ctx)
-			t.Fatalf("failed to insert topup debit: %v", err)
-		}
-		_, err = txTopup.Exec(ctx, `INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount) VALUES (gen_random_uuid(), $1, $2, 'credit', 100000)`, topupJEID, merchantAccount2010ID)
-		if err != nil {
-			txTopup.Rollback(ctx)
-			t.Fatalf("failed to insert topup credit: %v", err)
-		}
-		if err := txTopup.Commit(ctx); err != nil {
-			t.Fatalf("failed to commit topup tx: %v", err)
+			t.Fatalf("failed to post topup JE: %v", err)
 		}
 
 		_ = db.Pool.QueryRow(ctx, `

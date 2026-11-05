@@ -57,7 +57,7 @@ func TestSuccessfulCheckoutAndSplitting(t *testing.T) {
 	// Atlas Industrial (MOQ 5): 5 units
 	req := order.CheckoutRequest{
 		MerchantID:    "b0000000-0000-0000-0000-000000000004",
-		PaymentMethod: "wallet",
+		PaymentMethod: "credit_card",
 		Items: []order.CheckoutItemInput{
 			{OfferID: "f0000000-0000-0000-0000-000000000001", Quantity: 2},
 			{OfferID: "f0000000-0000-0000-0000-000000000002", Quantity: 5},

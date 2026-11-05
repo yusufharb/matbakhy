@@ -97,7 +97,7 @@ func (r *Repository) ListJournalEntries(ctx context.Context, limit int) ([]Journ
 	}
 	query := `
 		SELECT id, entry_number, reference_type, reference_id, action, description,
-		       currency, status, idempotency_key, posted_at
+		       currency, status, idempotency_key, posted_at, coalesce(prev_hash, ''), coalesce(hash, '')
 		FROM ledger.journal_entries
 		ORDER BY posted_at DESC
 		LIMIT $1
@@ -114,6 +114,7 @@ func (r *Repository) ListJournalEntries(ctx context.Context, limit int) ([]Journ
 		if err := rows.Scan(
 			&je.ID, &je.EntryNumber, &je.ReferenceType, &je.ReferenceID, &je.Action,
 			&je.Description, &je.Currency, &je.Status, &je.IdempotencyKey, &je.PostedAt,
+			&je.PrevHash, &je.Hash,
 		); err != nil {
 			return nil, err
 		}
@@ -156,7 +157,7 @@ func (r *Repository) PostJournalEntry(ctx context.Context, entry JournalEntry) (
 		entry.ID = uuid.New().String()
 	}
 	if entry.EntryNumber == "" {
-		entry.EntryNumber = fmt.Sprintf("JE-%d", time.Now().UnixNano()%1000000)
+		entry.EntryNumber = fmt.Sprintf("JE-%d-%06d", time.Now().Unix(), (time.Now().UnixNano()/1000)%1000000)
 	}
 	if entry.Currency == "" {
 		entry.Currency = "USD"
@@ -165,19 +166,28 @@ func (r *Repository) PostJournalEntry(ctx context.Context, entry JournalEntry) (
 		entry.Status = "posted"
 	}
 
+	latestHash, err := r.GetLatestJournalEntryHash(ctx, tx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest ledger hash: %w", err)
+	}
+	entry.PrevHash = latestHash
+	entry.Hash = ComputeJournalEntryHash(entry.PrevHash, entry.EntryNumber, entry.ReferenceType, entry.ReferenceID, entry.Action, entry.Currency, entry.Status, entry.IdempotencyKey)
+
 	headerQuery := `
 		INSERT INTO ledger.journal_entries (
-			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key, posted_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-		RETURNING id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key, posted_at
+			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key, posted_at, prev_hash, hash
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10, $11)
+		RETURNING id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key, posted_at, prev_hash, hash
 	`
 	err = tx.QueryRow(
 		ctx, headerQuery,
 		entry.ID, entry.EntryNumber, entry.ReferenceType, entry.ReferenceID,
 		entry.Action, entry.Description, entry.Currency, entry.Status, entry.IdempotencyKey,
+		entry.PrevHash, entry.Hash,
 	).Scan(
 		&entry.ID, &entry.EntryNumber, &entry.ReferenceType, &entry.ReferenceID,
 		&entry.Action, &entry.Description, &entry.Currency, &entry.Status, &entry.IdempotencyKey, &entry.PostedAt,
+		&entry.PrevHash, &entry.Hash,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert journal entry header: %w", err)
@@ -312,11 +322,17 @@ func (r *Repository) CreatePayoutRequest(ctx context.Context, supplierID string,
 	jeID := uuid.New().String()
 	jeNumber := fmt.Sprintf("JE-HOLD-%d-%06d", time.Now().Unix(), (time.Now().UnixNano()/1000)%1000000)
 
+	latestHash, err := r.GetLatestJournalEntryHash(ctx, tx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest ledger hash: %w", err)
+	}
+	payoutHash := ComputeJournalEntryHash(latestHash, jeNumber, "payout", payoutID, "payout_hold", payoutCurrency, "posted", "idem-hold-"+payoutID)
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO ledger.journal_entries (
-			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key
-		) VALUES ($1, $2, 'payout', $3, 'payout_hold', $4, $5, 'posted', $6)
-	`, jeID, jeNumber, payoutID, "Hold for payout "+payoutNumber, payoutCurrency, "idem-hold-"+payoutID)
+			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key, prev_hash, hash
+		) VALUES ($1, $2, 'payout', $3, 'payout_hold', $4, $5, 'posted', $6, $7, $8)
+	`, jeID, jeNumber, payoutID, "Hold for payout "+payoutNumber, payoutCurrency, "idem-hold-"+payoutID, latestHash, payoutHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create payout hold journal entry: %w", err)
 	}

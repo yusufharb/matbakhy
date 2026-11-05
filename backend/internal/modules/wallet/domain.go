@@ -33,6 +33,8 @@ type JournalEntry struct {
 	Currency       string       `json:"currency"`
 	Status         string       `json:"status"` // posted, reversed
 	IdempotencyKey string       `json:"idempotency_key"`
+	PrevHash       string       `json:"prev_hash,omitempty"`
+	Hash           string       `json:"hash,omitempty"`
 	Lines          []LedgerLine `json:"lines"`
 	PostedAt       time.Time    `json:"posted_at"`
 }

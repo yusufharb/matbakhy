@@ -2,6 +2,7 @@ package wallet_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -63,35 +64,23 @@ func TestPayoutOverdrawPreventionAndAtomicHold(t *testing.T) {
 	}
 
 	// Case B: Fund Account 2030 with $500.00 (50,000 cents) and request $200.00 (20,000 cents)
-	txFund, err := db.Pool.Begin(ctx)
-	if err != nil {
-		t.Fatalf("failed to begin fund tx: %v", err)
-	}
-	fundJEID := ""
-	err = txFund.QueryRow(ctx, `
-		INSERT INTO ledger.journal_entries (id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key)
-		VALUES (gen_random_uuid(), 'JE-TEST-PAYOUT-FUND-' || floor(random()*1000000)::text, 'settlement', $1, 'escrow_cleared', 'Test Escrow Release', 'USD', 'posted', 'idem-fund-' || gen_random_uuid()::text)
-		RETURNING id
-	`, supplierID).Scan(&fundJEID)
-	if err != nil {
-		txFund.Rollback(ctx)
-		t.Fatalf("failed to insert fund JE: %v", err)
-	}
-
 	var bank1020ID string
-	_ = txFund.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1020' LIMIT 1`).Scan(&bank1020ID)
-	_, err = txFund.Exec(ctx, `INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount) VALUES (gen_random_uuid(), $1, $2, 'debit', 50000)`, fundJEID, bank1020ID)
+	_ = db.Pool.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1020' LIMIT 1`).Scan(&bank1020ID)
+	_, err = repo.PostJournalEntry(ctx, wallet.JournalEntry{
+		ReferenceType:  "settlement",
+		ReferenceID:    supplierID,
+		Action:         "escrow_cleared",
+		Description:    "Test Escrow Release",
+		Currency:       "USD",
+		Status:         "posted",
+		IdempotencyKey: fmt.Sprintf("idem-fund-%d", time.Now().UnixNano()),
+		Lines: []wallet.LedgerLine{
+			{AccountID: bank1020ID, EntryType: "debit", Amount: 50000},
+			{AccountID: sup2030ID, EntryType: "credit", Amount: 50000},
+		},
+	})
 	if err != nil {
-		txFund.Rollback(ctx)
-		t.Fatalf("failed to insert fund debit: %v", err)
-	}
-	_, err = txFund.Exec(ctx, `INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount) VALUES (gen_random_uuid(), $1, $2, 'credit', 50000)`, fundJEID, sup2030ID)
-	if err != nil {
-		txFund.Rollback(ctx)
-		t.Fatalf("failed to insert fund credit: %v", err)
-	}
-	if err := txFund.Commit(ctx); err != nil {
-		t.Fatalf("failed to commit fund tx: %v", err)
+		t.Fatalf("failed to post fund journal entry: %v", err)
 	}
 
 	// Recompute available balance after funding

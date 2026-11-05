@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/marketplace/core/internal/modules/commission"
 	"github.com/marketplace/core/internal/modules/config"
+	"github.com/marketplace/core/internal/modules/wallet"
 )
 
 type CheckoutItemInput struct {
@@ -158,12 +159,18 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 			OfferSnapshot:     offSnap,
 		})
 
-		// Reserve stock in warehouse
-		_, _ = tx.Exec(ctx, `
+		// Reserve stock in warehouse with atomic row guard: (on_hand - reserved) >= quantity
+		tag, err := tx.Exec(ctx, `
 			UPDATE inventory.warehouse_stock
 			SET reserved = reserved + $1, updated_at = NOW()
-			WHERE offer_id = $2
+			WHERE offer_id = $2 AND (on_hand - reserved) >= $1
 		`, item.Quantity, offID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to reserve inventory for item %s: %w", prodTitle, err)
+		}
+		if tag.RowsAffected() == 0 {
+			return nil, fmt.Errorf("insufficient stock available for item %s (requested: %d)", prodTitle, item.Quantity)
+		}
 	}
 
 	// Dynamic currency resolution
@@ -317,11 +324,20 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	journalEntryID := uuid.New().String()
 	jeNumber := fmt.Sprintf("JE-%d-%06d", time.Now().Unix(), (time.Now().UnixNano()/1000)%1000000)
 
+	// Fetch previous hash and compute current cryptographic entry hash
+	_, _ = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(742910)")
+	var prevHash string
+	_ = tx.QueryRow(ctx, `SELECT hash FROM ledger.journal_entries WHERE hash IS NOT NULL ORDER BY sequence_id DESC LIMIT 1`).Scan(&prevHash)
+	if prevHash == "" {
+		prevHash = wallet.GenesisPrevHash
+	}
+	currHash := wallet.ComputeJournalEntryHash(prevHash, jeNumber, "order", parentOrderID, "order_settlement", orderCurrency, "posted", "idem-"+orderNumber)
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO ledger.journal_entries (
-			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key
-		) VALUES ($1, $2, 'order', $3, 'order_settlement', $4, $5, 'posted', $6)
-	`, journalEntryID, jeNumber, parentOrderID, "Settlement for order "+orderNumber, orderCurrency, "idem-"+orderNumber)
+			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key, prev_hash, hash
+		) VALUES ($1, $2, 'order', $3, 'order_settlement', $4, $5, 'posted', $6, $7, $8)
+	`, journalEntryID, jeNumber, parentOrderID, "Settlement for order "+orderNumber, orderCurrency, "idem-"+orderNumber, prevHash, currHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create journal entry: %w", err)
 	}
