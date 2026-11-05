@@ -1,0 +1,8 @@
+-- Migration 000001 Rollback: Drop IAM Schema
+DROP TABLE IF EXISTS iam.role_permissions CASCADE;
+DROP TABLE IF EXISTS iam.permissions CASCADE;
+DROP TABLE IF EXISTS iam.roles CASCADE;
+DROP TABLE IF EXISTS iam.org_memberships CASCADE;
+DROP TABLE IF EXISTS iam.organizations CASCADE;
+DROP TABLE IF EXISTS iam.users CASCADE;
+DROP SCHEMA IF EXISTS iam CASCADE;

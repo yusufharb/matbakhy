@@ -149,7 +149,7 @@ $frontendEnvLines = @(
     "VITE_APP_TITLE=""$Name Marketplace"""
 )
 $frontendEnvContent = $frontendEnvLines -join "`r`n"
-[System.IO.File]::WriteAllText((Join-Path $resolvedOutput "Marketplace Admin Dashboard\.env"), $frontendEnvContent, [System.Text.Encoding]::UTF8)
+[System.IO.File]::WriteAllText((Join-Path $resolvedOutput "frontend\.env"), $frontendEnvContent, [System.Text.Encoding]::UTF8)
 
 Write-Host "Step 3/5: Configuring business preset feature flags..." -ForegroundColor Green
 
@@ -203,7 +203,7 @@ $forkReadmeLines = @(
     "",
     "### 3. Start Frontend Dashboard and Storefront",
     "```bash",
-    "cd ""Marketplace Admin Dashboard""",
+    "cd frontend",
     "npm install",
     "npm run dev",
     "```",
@@ -244,7 +244,7 @@ Write-Host "   SUCCESS: $Name is ready at: $resolvedOutput" -ForegroundColor Gre
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host "`nNext steps to launch:" -ForegroundColor Yellow
 Write-Host "  1. cd `"$resolvedOutput`""
-Write-Host "  2. cd `"Marketplace Admin Dashboard`" && npm install && npm run dev"
+Write-Host "  2. cd `"frontend`" && npm install && npm run dev"
 Write-Host "  3. Create remote repository on GitHub: https://github.com/new"
 Write-Host "  4. git remote add origin https://github.com/<your-org>/$Slug.git"
 Write-Host "  5. git push -u origin main"

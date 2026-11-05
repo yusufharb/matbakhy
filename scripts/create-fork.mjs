@@ -180,7 +180,7 @@ async function run() {
       `VITE_DEFAULT_LOCALE=${locale}`,
       `VITE_APP_TITLE="${name} Marketplace"`
     ].join('\n');
-    fs.writeFileSync(path.join(resolvedOutput, 'Marketplace Admin Dashboard', '.env'), frontendEnv, 'utf8');
+    fs.writeFileSync(path.join(resolvedOutput, 'frontend', '.env'), frontendEnv, 'utf8');
 
     console.log('Step 3/5: Configuring business preset feature flags in database seeds...');
 
@@ -233,7 +233,7 @@ go run ./cmd/api
 
 ### 3. Start Frontend Dashboard & Storefront (React 19 + TypeScript + Cairo)
 \`\`\`bash
-cd "Marketplace Admin Dashboard"
+cd frontend
 npm install
 npm run dev
 # Open http://localhost:5173

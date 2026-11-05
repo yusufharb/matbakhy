@@ -118,7 +118,9 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
       <section className="card table-card">
         <div className="card-title">
           <div>
-            <h3>{isRtl ? "مسؤولو وموظفو المنصة" : "Platform Administrators"}</h3>
+            <h3>
+              {isRtl ? "مسؤولو وموظفو المنصة" : "Platform Administrators"}
+            </h3>
             <p>
               {isRtl
                 ? "المستخدمون المصرح لهم بإدارة عمليات السوق وصلاحيات التشغيل"
@@ -196,7 +198,9 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
           <div className="supplier-dialog" style={{ width: 480 }}>
             <div className="supplier-dialog-head">
               <div>
-                <span>{isRtl ? "إدارة الوصول والصلاحيات" : "ACCESS & ROLES"}</span>
+                <span>
+                  {isRtl ? "إدارة الوصول والصلاحيات" : "ACCESS & ROLES"}
+                </span>
                 <h2>
                   {isRtl
                     ? "دعوة مسؤول منصة جديد"
@@ -243,7 +247,9 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
                         padding: "0 10px",
                         marginTop: 4,
                       }}
-                      placeholder={isRtl ? "مثال: زيد العمري" : "e.g. Zaid Al-Omari"}
+                      placeholder={
+                        isRtl ? "مثال: زيد العمري" : "e.g. Zaid Al-Omari"
+                      }
                     />
                   </label>
                   <label>
@@ -607,9 +613,15 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
                   marginTop: 4,
                 }}
               >
-                <option value="USD">USD ($) — {isRtl ? "دولار أمريكي" : "US Dollar"}</option>
-                <option value="SAR">SAR (ر.س) — {isRtl ? "ريال سعودي" : "Saudi Riyal"}</option>
-                <option value="EGP">EGP (ج.م) — {isRtl ? "جنيه مصري" : "Egyptian Pound"}</option>
+                <option value="USD">
+                  USD ($) — {isRtl ? "دولار أمريكي" : "US Dollar"}
+                </option>
+                <option value="SAR">
+                  SAR (ر.س) — {isRtl ? "ريال سعودي" : "Saudi Riyal"}
+                </option>
+                <option value="EGP">
+                  EGP (ج.م) — {isRtl ? "جنيه مصري" : "Egyptian Pound"}
+                </option>
                 <option value="EUR">EUR (€) — {isRtl ? "يورو" : "Euro"}</option>
               </select>
             </label>

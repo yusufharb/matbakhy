@@ -91,7 +91,7 @@ cd marketplace-core
 # Copy environment templates
 cp .env.example .env
 cp backend/.env.example backend/.env
-cp "Marketplace Admin Dashboard/.env.example" "Marketplace Admin Dashboard/.env"
+cp frontend/.env.example frontend/.env
 ```
 
 ### 2. Start PostgreSQL & Run Migrations
@@ -136,7 +136,7 @@ go run ./cmd/api
 
 ### 4. Launch Frontend (Vite + React)
 ```bash
-cd "Marketplace Admin Dashboard"
+cd frontend
 npm install
 npm run dev
 # Vite dev server running at http://localhost:5173
@@ -191,15 +191,21 @@ chmod +x scripts/create-fork.sh
 The backend exposes RESTful endpoints with consistent JSON envelopes under `/api/v1/`:
 
 ```
+POST   /api/v1/auth/login           # Authenticate user & issue 15-min JWT + rotating refresh token
+POST   /api/v1/auth/refresh         # Rotate refresh token & issue fresh access token
 GET    /api/v1/products             # List global catalog with offer counts and min prices
 GET    /api/v1/products/:id         # Get product detail with specs and category
 GET    /api/v1/products/:id/offers  # Get all active supplier offers & tiers for a product
-POST   /api/v1/cart/checkout        # Multi-vendor checkout with suborder splitting & wallet debit
-GET    /api/v1/orders               # List parent orders and nested suborders
-PATCH  /api/v1/orders/suborders/:id # Update fulfillment status (packing, shipped, delivered)
+POST   /api/v1/checkout             # Multi-vendor checkout (Idempotency-Key, stock lock, 2010 debit)
+GET    /api/v1/orders               # List parent orders and nested suborders (merchant-isolated)
+PATCH  /api/v1/supplier/suborders/:id/status # Update fulfillment status (packing, shipped, delivered)
+GET    /api/v1/supplier/wallet      # Get supplier escrow and available balance
+POST   /api/v1/supplier/payouts     # Request payout with atomic 2040 hold (Idempotency-Key)
+GET    /api/v1/ledger/accounts      # View Chart of Accounts balances (Admin/Finance only)
 GET    /api/v1/ledger/entries       # View cryptographic double-entry journal records
+GET    /api/v1/ledger/verify-chain  # Cryptographic SHA-256 hash chain verification
 GET    /api/v1/admin/suppliers      # Supplier onboarding & KYC verification queue
-POST   /api/v1/admin/suppliers/:id  # Approve / Reject supplier KYC status
+POST   /api/v1/admin/suppliers/:id/approve # Approve supplier KYC status
 GET    /api/v1/commission/rules     # View active commission rules and override hierarchy
 GET    /api/v1/config/features      # Dynamic feature flags query
 ```

@@ -143,7 +143,10 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
           )
         }
       } catch (err) {
-        console.warn("Backend API unavailable, using built-in demo fixtures:", err)
+        console.warn(
+          "Backend API unavailable, using built-in demo fixtures:",
+          err,
+        )
       }
     }
     loadBackendData()
@@ -242,7 +245,10 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
     try {
       const res = await api.checkout({
         payment_method: paymentChoice,
-        items: cart.map((i) => ({ offer_id: i.offer.id, quantity: i.quantity })),
+        items: cart.map((i) => ({
+          offer_id: i.offer.id,
+          quantity: i.quantity,
+        })),
       })
       const po = res.parent_order
       const newOrder: ParentOrder = {
@@ -264,7 +270,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
       }
 
       if (paymentChoice === "wallet") {
-        setWalletBalance((prev) => Math.max(0, prev - (po.grand_total_cents / 100)))
+        setWalletBalance((prev) =>
+          Math.max(0, prev - po.grand_total_cents / 100),
+        )
       }
 
       setOrders([newOrder, ...orders])

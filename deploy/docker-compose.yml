@@ -10,9 +10,37 @@ services:
       POSTGRES_DB: marketplace_core
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: dev_password
+      ENV: development
+      LOAD_DEMO_SEED: "true"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../backend/db/migrations:/docker-entrypoint-initdb.d:ro
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+      - ../backend/db/migrations:/migrations:ro
+      - ../backend/db/seeds:/seeds:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marketplace_core"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  # 2. Go Backend REST API (ACTIVE)
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: marketplace-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      ENV: development
+      DATABASE_URL: postgres://postgres:dev_password@postgres:5432/marketplace_core?sslmode=disable
+      JWT_SECRET: nexus-enterprise-marketplace-secret-change-in-prod-2026-min-32-chars
+      MARKETPLACE_CURRENCY: USD
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # --------------------------------------------------------------------------
   # The following infrastructure services are [PLANNED - Phase 6].
@@ -21,7 +49,7 @@ services:
   # Uncomment when implementing Phase 6 integrations.
   # --------------------------------------------------------------------------
 
-  # # 2. [PLANNED - Phase 6] Valkey (Redis 7 Open-Source Fork)
+  # # 3. [PLANNED - Phase 6] Valkey (Redis 7 Open-Source Fork)
   # valkey:
   #   image: valkey/valkey:7-alpine
   #   container_name: marketplace-valkey
@@ -29,7 +57,7 @@ services:
   #   ports:
   #     - "6379:6379"
 
-  # # 3. [PLANNED - Phase 6] NATS JetStream (Event Streaming Bus)
+  # # 4. [PLANNED - Phase 6] NATS JetStream (Event Streaming Bus)
   # nats:
   #   image: nats:2-alpine
   #   container_name: marketplace-nats
@@ -41,7 +69,7 @@ services:
   #   volumes:
   #     - nats_data:/data
 
-  # # 4. [PLANNED - Phase 6] Meilisearch (Arabic-Native Search Engine)
+  # # 5. [PLANNED - Phase 6] Meilisearch (Arabic-Native Search Engine)
   # meilisearch:
   #   image: getmeili/meilisearch:v1
   #   container_name: marketplace-meilisearch
@@ -54,7 +82,7 @@ services:
   #   volumes:
   #     - meili_data:/meili_data
 
-  # # 5. [PLANNED - Phase 6] MinIO (S3-Compatible Storage for Local Dev)
+  # # 6. [PLANNED - Phase 6] MinIO (S3-Compatible Storage for Local Dev)
   # minio:
   #   image: minio/minio:latest
   #   container_name: marketplace-minio

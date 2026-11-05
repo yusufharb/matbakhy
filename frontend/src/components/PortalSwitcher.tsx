@@ -123,9 +123,7 @@ export function PortalSwitcher({
             cursor: "pointer",
             transition: "all 0.18s ease",
             boxShadow:
-              portal === "admin"
-                ? "0 2px 6px rgba(5, 150, 105, 0.35)"
-                : "none",
+              portal === "admin" ? "0 2px 6px rgba(5, 150, 105, 0.35)" : "none",
           }}
         >
           <ShieldCheck size={16} />

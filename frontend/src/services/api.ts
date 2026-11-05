@@ -1,16 +1,28 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1"
+
+export interface BilingualText {
+  en: string
+  ar: string
+}
+
+export interface PriceTier {
+  minQty: number
+  maxQty: number | string
+  price: number
+}
 
 export interface APIProduct {
   id: string
   sku: string
   gtin?: string
-  name: { en: string; ar: string }
-  slug: { en: string; ar: string }
-  description: { en: string; ar: string }
+  name: BilingualText
+  slug: BilingualText
+  description: BilingualText
   brand_id?: string
   brand_name?: string
   category_id: string
-  category_name: { en: string; ar: string }
+  category_name: BilingualText
   attributes: Record<string, string>
   status: string
   offer_count: number
@@ -26,13 +38,13 @@ export interface APIOffer {
   supplier_rating: number
   verified: boolean
   product_id: string
-  product_name?: { en: string; ar: string }
+  product_name?: BilingualText
   product_sku?: string
   supplier_sku: string
   currency: string
   price_cents: number
   moq: number
-  price_tiers: { minQty: number; maxQty: number | string; price: number }[]
+  price_tiers: PriceTier[]
   lead_time_days: number
   stock: number
   location: string
@@ -77,7 +89,7 @@ export interface APIOrder {
 export interface APISupplierOrg {
   id: string
   type: string
-  name: { en: string; ar: string }
+  name: BilingualText
   legal_name?: string
   commercial_reg_no?: string
   country_code: string
@@ -111,7 +123,7 @@ export interface APILedgerEntry {
     account_id: string
     account_code: string
     account_name: string
-    entry_type: 'debit' | 'credit'
+    entry_type: "debit" | "credit"
     amount: number
   }[]
 }
@@ -124,7 +136,7 @@ export interface APIStockItem {
   city: string
   offer_id: string
   supplier_sku: string
-  product_name: { en: string; ar: string }
+  product_name: BilingualText
   product_sku: string
   on_hand: number
   reserved: number
@@ -174,23 +186,34 @@ export interface AuthSession {
 
 const isDev = Boolean(import.meta.env.DEV)
 
+interface PersonaCredential {
+  email: string
+  password: string
+}
+
 // Demo Persona Credentials for Development Portal Switching (stripped from production builds)
-const PERSONA_CREDENTIALS: Record<string, { email: string; password: string }> = isDev
+const PERSONA_CREDENTIALS: Record<string, PersonaCredential> = isDev
   ? {
-      admin: { email: 'amal@nexus.market', password: 'NexusPassword2026!' },
-      supplier: { email: 'supplier@nourafoods.com', password: 'NexusPassword2026!' },
-      merchant: { email: 'buyer@meridian.com', password: 'NexusPassword2026!' },
+      admin: { email: "amal@nexus.market", password: "NexusPassword2026!" },
+      supplier: {
+        email: "supplier@nourafoods.com",
+        password: "NexusPassword2026!",
+      },
+      merchant: {
+        email: "buyer@meridian.com",
+        password: "NexusPassword2026!",
+      },
     }
   : {}
 
 class AuthTokenManager {
-  private activePortal: 'admin' | 'supplier' | 'merchant' = 'admin'
+  private activePortal: "admin" | "supplier" | "merchant" = "admin"
   private tokenCache: Record<string, string> = {}
 
   constructor() {
     // Restore tokens from storage if present
     try {
-      const stored = localStorage.getItem('nexus_persona_tokens')
+      const stored = localStorage.getItem("nexus_persona_tokens")
       if (stored) {
         this.tokenCache = JSON.parse(stored)
       }
@@ -199,11 +222,11 @@ class AuthTokenManager {
     }
   }
 
-  setPortal(portal: 'admin' | 'supplier' | 'merchant') {
+  setPortal(portal: "admin" | "supplier" | "merchant") {
     this.activePortal = portal
   }
 
-  getPortal(): 'admin' | 'supplier' | 'merchant' {
+  getPortal(): "admin" | "supplier" | "merchant" {
     return this.activePortal
   }
 
@@ -214,7 +237,10 @@ class AuthTokenManager {
       delete this.tokenCache[portal]
     }
     try {
-      localStorage.setItem('nexus_persona_tokens', JSON.stringify(this.tokenCache))
+      localStorage.setItem(
+        "nexus_persona_tokens",
+        JSON.stringify(this.tokenCache),
+      )
     } catch {
       // storage unavailable
     }
@@ -224,9 +250,13 @@ class AuthTokenManager {
     return this.tokenCache[portal] || null
   }
 
-  async acquireTokenForPortal(portal: 'admin' | 'supplier' | 'merchant'): Promise<string> {
+  async acquireTokenForPortal(
+    portal: "admin" | "supplier" | "merchant",
+  ): Promise<string> {
     if (!isDev) {
-      throw new Error('Auto-login persona credentials are restricted to development builds. Please log in explicitly.')
+      throw new Error(
+        "Auto-login persona credentials are restricted to development builds. Please log in explicitly.",
+      )
     }
 
     const existing = this.getToken(portal)
@@ -236,8 +266,8 @@ class AuthTokenManager {
     if (!creds) throw new Error(`Unknown persona portal: ${portal}`)
 
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(creds),
     })
 
@@ -260,13 +290,15 @@ export const authManager = new AuthTokenManager()
 async function fetchWithAuth(
   endpoint: string,
   options: RequestInit = {},
-  retry = true
+  retry = true,
 ): Promise<Response> {
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`
+  const url = endpoint.startsWith("http")
+    ? endpoint
+    : `${API_BASE_URL}${endpoint}`
   const headers = new Headers(options.headers || {})
 
-  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
-    headers.set('Content-Type', 'application/json')
+  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json")
   }
 
   // Ensure token is attached
@@ -275,12 +307,12 @@ async function fetchWithAuth(
     try {
       token = await authManager.acquireTokenForPortal(authManager.getPortal())
     } catch (e) {
-      console.warn('Could not auto-acquire token:', e)
+      console.warn("Could not auto-acquire token:", e)
     }
   }
 
   if (token) {
-    headers.set('Authorization', `Bearer ${token}`)
+    headers.set("Authorization", `Bearer ${token}`)
   }
 
   const response = await fetch(url, { ...options, headers })
@@ -293,34 +325,48 @@ async function fetchWithAuth(
       await authManager.acquireTokenForPortal(authManager.getPortal())
       return fetchWithAuth(endpoint, options, false)
     } catch {
-      throw new Error('Unauthorized (401): Session expired or invalid credentials')
+      throw new Error(
+        "Unauthorized (401): Session expired or invalid credentials",
+      )
     }
   }
 
   // Handle Forbidden (403)
   if (response.status === 403) {
-    const errBody = await response.json().catch(() => ({ error: 'Forbidden' }))
-    throw new Error(errBody.error || 'Forbidden (403): Insufficient permissions')
+    const errBody = await response.json().catch(() => ({ error: "Forbidden" }))
+    throw new Error(
+      errBody.error || "Forbidden (403): Insufficient permissions",
+    )
   }
 
   return response
 }
 
+export interface CheckoutItemInput {
+  offer_id: string
+  quantity: number
+}
+
+export interface CheckoutResult {
+  message: string
+  parent_order: APIOrder
+}
+
 export const api = {
   // Session & Persona Management
-  setPortal(portal: 'admin' | 'supplier' | 'merchant') {
+  setPortal(portal: "admin" | "supplier" | "merchant") {
     authManager.setPortal(portal)
   },
 
   async login(email: string, password: string): Promise<AuthSession> {
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Login failed' }))
-      throw new Error(err.error || 'Login failed')
+      const err = await res.json().catch(() => ({ error: "Login failed" }))
+      throw new Error(err.error || "Login failed")
     }
     const data: AuthSession = await res.json()
     authManager.setToken(authManager.getPortal(), data.token)
@@ -336,34 +382,36 @@ export const api = {
     org_type: string
   }): Promise<AuthSession> {
     const res = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Registration failed' }))
-      throw new Error(err.error || 'Registration failed')
+      const err = await res
+        .json()
+        .catch(() => ({ error: "Registration failed" }))
+      throw new Error(err.error || "Registration failed")
     }
     return res.json()
   },
 
   async getMe(): Promise<any> {
-    const res = await fetchWithAuth('/auth/me')
-    if (!res.ok) throw new Error('Failed to fetch profile')
+    const res = await fetchWithAuth("/auth/me")
+    if (!res.ok) throw new Error("Failed to fetch profile")
     return res.json()
   },
 
   // Products & Offers (Public)
   async getProducts(): Promise<APIProduct[]> {
     const res = await fetch(`${API_BASE_URL}/products`)
-    if (!res.ok) throw new Error('Failed to fetch products')
+    if (!res.ok) throw new Error("Failed to fetch products")
     const data = await res.json()
     return data.products || []
   },
 
   async getProductOffers(productId: string): Promise<APIOffer[]> {
     const res = await fetch(`${API_BASE_URL}/products/${productId}/offers`)
-    if (!res.ok) throw new Error('Failed to fetch offers')
+    if (!res.ok) throw new Error("Failed to fetch offers")
     const data = await res.json()
     return data.offers || []
   },
@@ -372,73 +420,83 @@ export const api = {
   async checkout(payload: {
     merchant_id?: string
     payment_method: string
-    items: { offer_id: string; quantity: number }[]
-  }): Promise<{ message: string; parent_order: APIOrder }> {
-    const res = await fetchWithAuth('/checkout', {
-      method: 'POST',
+    items: CheckoutItemInput[]
+  }): Promise<CheckoutResult> {
+    const res = await fetchWithAuth("/checkout", {
+      method: "POST",
       body: JSON.stringify(payload),
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Checkout failed' }))
-      throw new Error(err.error || 'Checkout failed')
+      const err = await res.json().catch(() => ({ error: "Checkout failed" }))
+      throw new Error(err.error || "Checkout failed")
     }
     return res.json()
   },
 
   async getOrders(merchantId?: string): Promise<APIOrder[]> {
-    const query = merchantId ? `?merchant_id=${encodeURIComponent(merchantId)}` : ''
+    const query = merchantId
+      ? `?merchant_id=${encodeURIComponent(merchantId)}`
+      : ""
     const res = await fetchWithAuth(`/orders${query}`)
-    if (!res.ok) throw new Error('Failed to fetch orders')
+    if (!res.ok) throw new Error("Failed to fetch orders")
     const data = await res.json()
     return data.orders || []
   },
 
   // Supplier Portal APIs (Protected, Role-Scoped)
   async getSupplierOffers(): Promise<APIOffer[]> {
-    const res = await fetchWithAuth('/supplier/offers')
-    if (!res.ok) throw new Error('Failed to fetch supplier offers')
+    const res = await fetchWithAuth("/supplier/offers")
+    if (!res.ok) throw new Error("Failed to fetch supplier offers")
     const data = await res.json()
     return data.offers || []
   },
 
   async saveOffer(offer: Partial<APIOffer>): Promise<APIOffer> {
-    const res = await fetchWithAuth('/supplier/offers', {
-      method: 'POST',
+    const res = await fetchWithAuth("/supplier/offers", {
+      method: "POST",
       body: JSON.stringify(offer),
     })
-    if (!res.ok) throw new Error('Failed to save offer')
+    if (!res.ok) throw new Error("Failed to save offer")
     return res.json()
   },
 
   async getSupplierStock(): Promise<APIStockItem[]> {
-    const res = await fetchWithAuth('/inventory/stock')
-    if (!res.ok) throw new Error('Failed to fetch stock')
+    const res = await fetchWithAuth("/inventory/stock")
+    if (!res.ok) throw new Error("Failed to fetch stock")
     const data = await res.json()
     return data.stock || []
   },
 
-  async adjustStock(payload: { warehouse_id: string; offer_id: string; adjustment: number; reason: string }): Promise<any> {
-    const res = await fetchWithAuth('/inventory/adjust', {
-      method: 'POST',
+  async adjustStock(payload: {
+    warehouse_id: string
+    offer_id: string
+    adjustment: number
+    reason: string
+  }): Promise<any> {
+    const res = await fetchWithAuth("/inventory/adjust", {
+      method: "POST",
       body: JSON.stringify(payload),
     })
-    if (!res.ok) throw new Error('Failed to adjust stock')
+    if (!res.ok) throw new Error("Failed to adjust stock")
     return res.json()
   },
 
   async getSupplierSuborders(): Promise<APISuborder[]> {
-    const res = await fetchWithAuth('/supplier/suborders')
-    if (!res.ok) throw new Error('Failed to fetch suborders')
+    const res = await fetchWithAuth("/supplier/suborders")
+    if (!res.ok) throw new Error("Failed to fetch suborders")
     const data = await res.json()
     return data.suborders || []
   },
 
   async updateSuborderStatus(suborderId: string, status: string): Promise<any> {
-    const res = await fetchWithAuth(`/supplier/suborders/${suborderId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    })
-    if (!res.ok) throw new Error('Failed to update status')
+    const res = await fetchWithAuth(
+      `/supplier/suborders/${suborderId}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      },
+    )
+    if (!res.ok) throw new Error("Failed to update status")
     return res.json()
   },
 
@@ -448,64 +506,77 @@ export const api = {
     lifetime_gross_cents: number
     currency: string
   }> {
-    const res = await fetchWithAuth('/supplier/wallet')
-    if (!res.ok) throw new Error('Failed to fetch wallet')
+    const res = await fetchWithAuth("/supplier/wallet")
+    if (!res.ok) throw new Error("Failed to fetch wallet")
     return res.json()
   },
 
-  async requestPayout(payload: { amount_cents: number; bank_name: string; iban: string; supplier_id?: string }): Promise<any> {
-    const res = await fetchWithAuth('/supplier/payouts', {
-      method: 'POST',
+  async requestPayout(payload: {
+    amount_cents: number
+    bank_name: string
+    iban: string
+    supplier_id?: string
+  }): Promise<any> {
+    const res = await fetchWithAuth("/supplier/payouts", {
+      method: "POST",
       body: JSON.stringify(payload),
     })
-    if (!res.ok) throw new Error('Failed to request payout')
+    if (!res.ok) throw new Error("Failed to request payout")
     return res.json()
   },
 
   // Admin APIs (Protected, Super Admin / Platform Admin only)
   async getAdminSuppliers(status?: string): Promise<APISupplierOrg[]> {
-    const query = status ? `?status=${encodeURIComponent(status)}` : ''
+    const query = status ? `?status=${encodeURIComponent(status)}` : ""
     const res = await fetchWithAuth(`/admin/suppliers${query}`)
-    if (!res.ok) throw new Error('Failed to fetch suppliers')
+    if (!res.ok) throw new Error("Failed to fetch suppliers")
     const data = await res.json()
     return data.suppliers || []
   },
 
   async approveSupplier(id: string): Promise<any> {
-    const res = await fetchWithAuth(`/admin/suppliers/${id}/approve`, { method: 'POST' })
-    if (!res.ok) throw new Error('Failed to approve supplier')
+    const res = await fetchWithAuth(`/admin/suppliers/${id}/approve`, {
+      method: "POST",
+    })
+    if (!res.ok) throw new Error("Failed to approve supplier")
     return res.json()
   },
 
   async rejectSupplier(id: string): Promise<any> {
-    const res = await fetchWithAuth(`/admin/suppliers/${id}/reject`, { method: 'POST' })
-    if (!res.ok) throw new Error('Failed to reject supplier')
+    const res = await fetchWithAuth(`/admin/suppliers/${id}/reject`, {
+      method: "POST",
+    })
+    if (!res.ok) throw new Error("Failed to reject supplier")
     return res.json()
   },
 
-  async getLedgerEntries(): Promise<{ journal_entries: APILedgerEntry[]; integrity_verified: boolean; invariant: string }> {
-    const res = await fetchWithAuth('/ledger/entries')
-    if (!res.ok) throw new Error('Failed to fetch ledger entries')
+  async getLedgerEntries(): Promise<{
+    journal_entries: APILedgerEntry[]
+    integrity_verified: boolean
+    invariant: string
+  }> {
+    const res = await fetchWithAuth("/ledger/entries")
+    if (!res.ok) throw new Error("Failed to fetch ledger entries")
     return res.json()
   },
 
   async getLedgerAccounts(): Promise<APILedgerAccount[]> {
-    const res = await fetchWithAuth('/ledger/accounts')
-    if (!res.ok) throw new Error('Failed to fetch ledger accounts')
+    const res = await fetchWithAuth("/ledger/accounts")
+    if (!res.ok) throw new Error("Failed to fetch ledger accounts")
     const data = await res.json()
     return data.accounts || []
   },
 
   async getCMSSections(): Promise<APICMSSection[]> {
     const res = await fetch(`${API_BASE_URL}/cms/sections`)
-    if (!res.ok) throw new Error('Failed to fetch CMS sections')
+    if (!res.ok) throw new Error("Failed to fetch CMS sections")
     const data = await res.json()
     return data.sections || []
   },
 
   async getAuditLogs(): Promise<APIAuditLog[]> {
-    const res = await fetchWithAuth('/admin/audit-logs')
-    if (!res.ok) throw new Error('Failed to fetch audit logs')
+    const res = await fetchWithAuth("/admin/audit-logs")
+    if (!res.ok) throw new Error("Failed to fetch audit logs")
     const data = await res.json()
     return data.audit_logs || []
   },

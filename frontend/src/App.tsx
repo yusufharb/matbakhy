@@ -196,7 +196,12 @@ const suppliers = [
   },
 ]
 
-function Logo({ collapsed, locale }: { collapsed: boolean; locale: Locale }) {
+interface LogoProps {
+  collapsed: boolean
+  locale: Locale
+}
+
+function Logo({ collapsed, locale }: LogoProps) {
   const isRtl = locale === "ar"
   const t = translations[locale].brand
   return (
@@ -412,9 +417,7 @@ function Overview({
               <div className="segmented">
                 <button>{isRtl ? "7 أيام" : "7D"}</button>
                 <button>{isRtl ? "30 يوماً" : "30D"}</button>
-                <button className="active">
-                  {isRtl ? "12 شهراً" : "12M"}
-                </button>
+                <button className="active">{isRtl ? "12 شهراً" : "12M"}</button>
               </div>
             }
           />
@@ -456,9 +459,7 @@ function Overview({
             <div className="chart-tooltip">
               <span>{isRtl ? "أبريل 2025" : "APR 2025"}</span>
               <b>$1.08M</b>
-              <small>
-                {isRtl ? "+22.1% عن مارس" : "+22.1% from Mar"}
-              </small>
+              <small>{isRtl ? "+22.1% عن مارس" : "+22.1% from Mar"}</small>
             </div>
             <div className="month-row">
               {(isRtl
@@ -502,9 +503,7 @@ function Overview({
             title={isRtl ? "التدفقات المالية والسيولة" : "Financial flow"}
             hint={isRtl ? "دورة التسوية الحالية" : "Current settlement cycle"}
             action={
-              <Badge tone="blue">
-                {isRtl ? "دورة T+2" : "T+2 cycle"}
-              </Badge>
+              <Badge tone="blue">{isRtl ? "دورة T+2" : "T+2 cycle"}</Badge>
             }
           />
           <div className="flow-total">
@@ -526,18 +525,14 @@ function Overview({
               <i className="green" />
               <span>
                 <b>{isRtl ? "أموال الضمان للموردين" : "Supplier escrow"}</b>
-                <small>
-                  {isRtl ? "82.0% من الإجمالي" : "82.0% of gross"}
-                </small>
+                <small>{isRtl ? "82.0% من الإجمالي" : "82.0% of gross"}</small>
               </span>
               <strong>$2,329,308</strong>
             </div>
             <div>
               <i className="blue" />
               <span>
-                <b>
-                  {isRtl ? "عمولة المنصة المحققة" : "Platform commission"}
-                </b>
+                <b>{isRtl ? "عمولة المنصة المحققة" : "Platform commission"}</b>
                 <small>
                   {isRtl ? "13.0% متوسط النسبة" : "13.0% blended take"}
                 </small>
@@ -556,9 +551,7 @@ function Overview({
             </div>
           </div>
           <button className="text-button" onClick={() => navigate("finance")}>
-            {isRtl
-              ? "عرض تفاصيل القيود والتسوية"
-              : "Open settlement details"}{" "}
+            {isRtl ? "عرض تفاصيل القيود والتسوية" : "Open settlement details"}{" "}
             <ArrowRight size={14} className="rtl-flip" />
           </button>
         </Card>
@@ -610,9 +603,7 @@ function Overview({
                     : "Product approvals waiting"}
                 </b>
                 <small>
-                  {isRtl
-                    ? "8 منتجات عالية القيمة"
-                    : "8 high-value listings"}
+                  {isRtl ? "8 منتجات عالية القيمة" : "8 high-value listings"}
                 </small>
               </span>
               <strong>35</strong>
@@ -623,9 +614,7 @@ function Overview({
                 <AlertTriangle size={18} />
               </span>
               <span>
-                <b>
-                  {isRtl ? "نزاعات تجارية مفتوحة" : "Active disputes"}
-                </b>
+                <b>{isRtl ? "نزاعات تجارية مفتوحة" : "Active disputes"}</b>
                 <small>
                   {isRtl
                     ? "18,420$ قيمة تحت المراجعة"
@@ -712,17 +701,13 @@ function Overview({
           <CardTitle
             title={isRtl ? "كفاءة وصحة الأنظمة" : "Platform health"}
             hint={
-              isRtl
-                ? "مؤشرات التوفر ومستوى الخدمة SLA"
-                : "Systems & SLA status"
+              isRtl ? "مؤشرات التوفر ومستوى الخدمة SLA" : "Systems & SLA status"
             }
           />
           <div className="health-score">
             <div>
               <strong>98.7%</strong>
-              <span>
-                {isRtl ? "مؤشر الكفاءة العام" : "HEALTH SCORE"}
-              </span>
+              <span>{isRtl ? "مؤشر الكفاءة العام" : "HEALTH SCORE"}</span>
             </div>
             <Badge tone="green">
               {isRtl ? "جميع الأنظمة تعمل بكفاءة" : "All systems operational"}
@@ -776,10 +761,16 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
             reg: o.commercial_reg_no || "CR-102948",
             country:
               o.country_code === "SA"
-                ? isRtl ? "المملكة العربية السعودية" : "Saudi Arabia"
+                ? isRtl
+                  ? "المملكة العربية السعودية"
+                  : "Saudi Arabia"
                 : o.country_code === "DE"
-                  ? isRtl ? "ألمانيا" : "Germany"
-                  : isRtl ? "الإمارات العربية المتحدة" : "United Arab Emirates",
+                  ? isRtl
+                    ? "ألمانيا"
+                    : "Germany"
+                  : isRtl
+                    ? "الإمارات العربية المتحدة"
+                    : "United Arab Emirates",
             flag: o.country_code || "SA",
             date: new Date(o.created_at).toLocaleDateString(),
             status:
@@ -1027,7 +1018,11 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
               <div className="review-section">
                 <div className="section-heading">
                   <div>
-                    <h4>{isRtl ? "وثائق السجل والترخيص" : "Registration documents"}</h4>
+                    <h4>
+                      {isRtl
+                        ? "وثائق السجل والترخيص"
+                        : "Registration documents"}
+                    </h4>
                     <p>
                       {isRtl
                         ? "وثيقتان رسميتان · تم التحقق رقمياً"
@@ -1042,7 +1037,9 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
                   <button className="active">
                     {isRtl ? "شهادة السجل التجاري" : "Commercial registration"}
                   </button>
-                  <button>{isRtl ? "الشهادة الضريبية" : "Tax certificate"}</button>
+                  <button>
+                    {isRtl ? "الشهادة الضريبية" : "Tax certificate"}
+                  </button>
                 </div>
                 <div className="pdf-preview">
                   <div className="pdf-toolbar">
@@ -1078,16 +1075,18 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
               <div className="review-section">
                 <div className="section-heading">
                   <div>
-                    <h4>{isRtl ? "التحقق من الحساب البنكي" : "Bank account verification"}</h4>
+                    <h4>
+                      {isRtl
+                        ? "التحقق من الحساب البنكي"
+                        : "Bank account verification"}
+                    </h4>
                     <p>
                       {isRtl
                         ? "مطابقة اسم المستفيد ورقم الآيبان IBAN"
                         : "Beneficiary ownership and IBAN validation"}
                     </p>
                   </div>
-                  <Badge tone="green">
-                    {isRtl ? "مطابق 100%" : "Matched"}
-                  </Badge>
+                  <Badge tone="green">{isRtl ? "مطابق 100%" : "Matched"}</Badge>
                 </div>
                 <div className="detail-grid">
                   <span>
@@ -1096,7 +1095,11 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
                   </span>
                   <span>
                     {isRtl ? "البنك المعتمد:" : "Bank:"}
-                    <b>{isRtl ? "البنك السعودي الأول (SABB)" : "Saudi Awwal Bank"}</b>
+                    <b>
+                      {isRtl
+                        ? "البنك السعودي الأول (SABB)"
+                        : "Saudi Awwal Bank"}
+                    </b>
                   </span>
                   <span className="wide">
                     {isRtl ? "رقم الآيبان (IBAN):" : "IBAN:"}
@@ -1162,30 +1165,48 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
   const [category, setCategory] = useState(isRtl ? "إلكترونيات" : "Electronics")
   const [attributes, setAttributes] = useState(
     isRtl
-      ? [
-          "العلامة التجارية",
-          "رقم الموديل",
-          "فترة الضمان",
-          "بلد المنشأ",
-        ]
-      : [
-          "Brand",
-          "Model number",
-          "Warranty period",
-          "Country of origin",
-        ],
+      ? ["العلامة التجارية", "رقم الموديل", "فترة الضمان", "بلد المنشأ"]
+      : ["Brand", "Model number", "Warranty period", "Country of origin"],
   )
   const [approved, setApproved] = useState(false)
 
   const categories = [
     { name: isRtl ? "إلكترونيات" : "Electronics", count: "42", top: true },
-    { name: isRtl ? "كمبيوتر وأجهزة لوحية" : "Computers & tablets", count: "14", top: false },
-    { name: isRtl ? "أجهزة وهواتف ذكية" : "Mobile devices", count: "11", top: false },
-    { name: isRtl ? "صوتيات ومرئيات" : "Audio & video", count: "17", top: false },
-    { name: isRtl ? "مستلزمات المنزل" : "Home & living", count: "36", top: true },
-    { name: isRtl ? "مستلزمات الأعمال والشركات" : "Business supplies", count: "28", top: true },
-    { name: isRtl ? "أغذية ومشروبات" : "Food & beverage", count: "19", top: true },
-    { name: isRtl ? "صحة وعناية شخصية" : "Health & beauty", count: "24", top: true },
+    {
+      name: isRtl ? "كمبيوتر وأجهزة لوحية" : "Computers & tablets",
+      count: "14",
+      top: false,
+    },
+    {
+      name: isRtl ? "أجهزة وهواتف ذكية" : "Mobile devices",
+      count: "11",
+      top: false,
+    },
+    {
+      name: isRtl ? "صوتيات ومرئيات" : "Audio & video",
+      count: "17",
+      top: false,
+    },
+    {
+      name: isRtl ? "مستلزمات المنزل" : "Home & living",
+      count: "36",
+      top: true,
+    },
+    {
+      name: isRtl ? "مستلزمات الأعمال والشركات" : "Business supplies",
+      count: "28",
+      top: true,
+    },
+    {
+      name: isRtl ? "أغذية ومشروبات" : "Food & beverage",
+      count: "19",
+      top: true,
+    },
+    {
+      name: isRtl ? "صحة وعناية شخصية" : "Health & beauty",
+      count: "24",
+      top: true,
+    },
   ]
 
   return (
@@ -1202,9 +1223,7 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
         />
         <label className="table-search compact">
           <Search size={14} />
-          <input
-            placeholder={isRtl ? "ابحث عن فئة…" : "Find category…"}
-          />
+          <input placeholder={isRtl ? "ابحث عن فئة…" : "Find category…"} />
         </label>
         <div className="category-tree">
           {categories.map(({ name, count, top }) => (
@@ -1236,9 +1255,7 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
         <Card className="schema-card">
           <CardTitle
             title={
-              isRtl
-                ? `مخطط خصائص ${category}`
-                : `${category} attribute schema`
+              isRtl ? `مخطط خصائص ${category}` : `${category} attribute schema`
             }
             hint={
               isRtl
@@ -1267,9 +1284,7 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
               <span>
                 <GripVertical size={14} />
                 <b>{a}</b>
-                {i === 2 && (
-                  <Badge tone="blue">{isRtl ? "جديد" : "New"}</Badge>
-                )}
+                {i === 2 && <Badge tone="blue">{isRtl ? "جديد" : "New"}</Badge>}
               </span>
               <span>
                 {i === 2
@@ -1344,9 +1359,7 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
               <div>
                 <CheckCircle2 size={28} />
               </div>
-              <h3>
-                {isRtl ? "تم اعتماد المنتج بنجاح" : "Product approved"}
-              </h3>
+              <h3>{isRtl ? "تم اعتماد المنتج بنجاح" : "Product approved"}</h3>
               <p>
                 {isRtl
                   ? "«سماعات نوفا إكس 1 العازلة للضوضاء» أصبحت الآن متاحة رسمياً في الكتالوج الموحد."
@@ -1402,9 +1415,7 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
                   {isRtl ? "بيانات المورد المقدمة" : "SUPPLIER SUBMISSION"}
                 </span>
                 <span>
-                  {isRtl
-                    ? "معيار الكتالوج الموحد"
-                    : "GLOBAL CATALOG STANDARD"}
+                  {isRtl ? "معيار الكتالوج الموحد" : "GLOBAL CATALOG STANDARD"}
                 </span>
               </div>
               <div className="diff-grid">
@@ -1418,9 +1429,7 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
                 </div>
                 <div className="diff-cell good">
                   <span>
-                    {isRtl
-                      ? "العنوان المعتمد والموصى به"
-                      : "Recommended title"}
+                    {isRtl ? "العنوان المعتمد والموصى به" : "Recommended title"}
                   </span>
                   <p>
                     {isRtl
@@ -1466,8 +1475,7 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
               </div>
               <div className="moderation-actions">
                 <button className="secondary-btn">
-                  <Eye size={15} />{" "}
-                  {isRtl ? "معاينة العرض" : "Preview listing"}
+                  <Eye size={15} /> {isRtl ? "معاينة العرض" : "Preview listing"}
                 </button>
                 <span />
                 <button className="secondary-btn">
@@ -1587,7 +1595,9 @@ function FinanceScreen({ locale = "en" }: { locale?: Locale }) {
           <span>{isRtl ? "أموال الضمان المعلقة" : "ESCROW LIABILITY"}</span>
           <strong>$2,329,308.00</strong>
           <small>
-            {isRtl ? "تغطي 1,284 طلباً قيد الشحن والتسليم" : "Across 1,284 open orders"}
+            {isRtl
+              ? "تغطي 1,284 طلباً قيد الشحن والتسليم"
+              : "Across 1,284 open orders"}
           </small>
         </div>
         <div>
@@ -1598,7 +1608,9 @@ function FinanceScreen({ locale = "en" }: { locale?: Locale }) {
           </small>
         </div>
         <div>
-          <span>{isRtl ? "طلبات صرف بانتظار الاعتماد" : "PAYOUTS PENDING"}</span>
+          <span>
+            {isRtl ? "طلبات صرف بانتظار الاعتماد" : "PAYOUTS PENDING"}
+          </span>
           <strong>$418,920.00</strong>
           <small className="negative">
             {isRtl ? "7 طلبات تحتاج مراجعة" : "7 flagged for review"}
@@ -2049,9 +2061,7 @@ function CmsScreen({ locale = "en" }: { locale?: Locale }) {
         <Card className="localization-card">
           <CardTitle
             title={
-              isRtl
-                ? "شريط الترويج الإعلاني الرئيسي"
-                : "Hero marketing banner"
+              isRtl ? "شريط الترويج الإعلاني الرئيسي" : "Hero marketing banner"
             }
             hint={
               isRtl
@@ -2114,9 +2124,7 @@ function CmsScreen({ locale = "en" }: { locale?: Locale }) {
           <div className="translation-status">
             <Languages size={16} />
             <span>
-              <b>
-                {isRtl ? "تطابق المحتوى: 96%" : "Content parity: 96%"}
-              </b>
+              <b>{isRtl ? "تطابق المحتوى: 96%" : "Content parity: 96%"}</b>
               <small>
                 {isRtl
                   ? "تم تحديث العنوان العربي منذ آخر مراجعة"
@@ -2124,8 +2132,7 @@ function CmsScreen({ locale = "en" }: { locale?: Locale }) {
               </small>
             </span>
             <button className="text-button">
-              {isRtl ? "تأكيد المراجعة" : "Mark reviewed"}{" "}
-              <Check size={13} />
+              {isRtl ? "تأكيد المراجعة" : "Mark reviewed"} <Check size={13} />
             </button>
           </div>
         </Card>
@@ -2342,9 +2349,7 @@ function SupplierOverview({
           label={isRtl ? "الرصيد المتاح للسحب" : "Available for payout"}
           value="$18,642.50"
           detail={
-            isRtl
-              ? "جاهز للتحويل الفوري إلى حسابك"
-              : "Ready to withdraw now"
+            isRtl ? "جاهز للتحويل الفوري إلى حسابك" : "Ready to withdraw now"
           }
           icon={WalletCards}
           featured
@@ -2364,11 +2369,7 @@ function SupplierOverview({
           <CardTitle
             title={isRtl ? "قائمة المهام اليومية" : "Daily action queue"}
             hint={isRtl ? "الخميس، 19 يونيو" : "Thursday, 19 June"}
-            action={
-              <Badge tone="amber">
-                {isRtl ? "8 مفتوحة" : "8 open"}
-              </Badge>
-            }
+            action={<Badge tone="amber">{isRtl ? "8 مفتوحة" : "8 open"}</Badge>}
           />
           <div className="daily-actions">
             <button>
@@ -2377,9 +2378,7 @@ function SupplierOverview({
               </span>
               <span>
                 <b>
-                  {isRtl
-                    ? "5 طلبات للتجهيز اليوم"
-                    : "5 orders to pack today"}
+                  {isRtl ? "5 طلبات للتجهيز اليوم" : "5 orders to pack today"}
                 </b>
                 <small>
                   {isRtl
@@ -2395,9 +2394,7 @@ function SupplierOverview({
                 <AlertTriangle size={18} />
               </span>
               <span>
-                <b>
-                  {isRtl ? "تنبيهان لنقص المخزون" : "2 stock alerts"}
-                </b>
+                <b>{isRtl ? "تنبيهان لنقص المخزون" : "2 stock alerts"}</b>
                 <small>
                   {isRtl
                     ? "كاميرا Vista Pro أقل من حد الأمان"
@@ -2412,11 +2409,7 @@ function SupplierOverview({
                 <RefreshCcw size={18} />
               </span>
               <span>
-                <b>
-                  {isRtl
-                    ? "طلب استرجاع بانتظار الرد"
-                    : "1 refund request"}
-                </b>
+                <b>{isRtl ? "طلب استرجاع بانتظار الرد" : "1 refund request"}</b>
                 <small>
                   {isRtl
                     ? "مطلوب الرد خلال 18 ساعة"
@@ -2430,11 +2423,7 @@ function SupplierOverview({
         </Card>
         <Card className="supplier-revenue">
           <CardTitle
-            title={
-              isRtl
-                ? "عوائد المبيعات وصافي الأرباح"
-                : "Sales revenue"
-            }
+            title={isRtl ? "عوائد المبيعات وصافي الأرباح" : "Sales revenue"}
             hint={
               isRtl
                 ? "إجمالي المبيعات وخصومات عمولة المنصة الشفافة"
@@ -3996,7 +3985,11 @@ export default function App() {
           <div className="mobile-scrim" onClick={() => setMobileOpen(false)} />
         )}
         <main className="workspace">
-          <Header page={page} onMenu={() => setMobileOpen(true)} locale={locale} />
+          <Header
+            page={page}
+            onMenu={() => setMobileOpen(true)}
+            locale={locale}
+          />
           <div className="content">
             {page === "overview" && (
               <Overview navigate={navigate} locale={locale} />

@@ -26,7 +26,7 @@ This starts:
 
 ### Step 3: Start Frontend (All 3 Portals)
 ```bash
-cd "Marketplace Admin Dashboard"
+cd frontend
 npm install
 npm run dev
 ```
@@ -41,7 +41,7 @@ Open your browser at `http://localhost:5173`. You can immediately toggle between
 ## 2. How to Customize a Fork
 
 ### 2.1 Brand Identity & Name
-Open `backend/db/seeds/seed_data.sql` and `Marketplace Admin Dashboard/src/components/AdminExtras.tsx`:
+Open `backend/db/seeds/system_seed.sql` and `frontend/src/components/AdminExtras.tsx`:
 - Change `NEXUS MARKETPLACE` to your new platform name (e.g., `BASKETPORT`).
 - Update your primary logo and favicon in `public/favicon.svg`.
 

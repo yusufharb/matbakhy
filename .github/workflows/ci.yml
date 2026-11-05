@@ -2,14 +2,30 @@ name: Marketplace Core CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "feature/**" ]
   pull_request:
     branches: [ "main", "master" ]
 
 jobs:
   backend-check:
-    name: Backend Build & Tests (Go 1.22+)
+    name: Backend Build, Migrations & Race Tests (Go 1.22+)
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: marketplace_core
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,14 +36,41 @@ jobs:
           go-version: '1.22'
           check-latest: true
 
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify Migrations (000001 - 000012) & Seeds
+        env:
+          PGPASSWORD: postgres_ci_password
+        run: |
+          for f in backend/db/migrations/*.up.sql; do
+            echo "Applying migration $f..."
+            psql -h localhost -U postgres -d marketplace_core -f "$f"
+          done
+          echo "Applying system seed..."
+          psql -h localhost -U postgres -d marketplace_core -f backend/db/seeds/system_seed.sql
+          echo "Applying demo seed..."
+          psql -h localhost -U postgres -d marketplace_core -f backend/db/seeds/demo_seed.sql
+
       - name: Verify Backend Modules & Build
         run: |
           cd backend
           go mod verify
           go build -v -o bin/api ./cmd/api
 
+      - name: Run Backend Tests with Race Detector
+        env:
+          DATABASE_URL: postgres://postgres:postgres_ci_password@localhost:5432/marketplace_core?sslmode=disable
+          JWT_SECRET: ci-pipeline-secure-test-jwt-secret-at-least-32-characters-2026
+          MARKETPLACE_CURRENCY: USD
+        run: |
+          cd backend
+          go test -v -race -count=1 ./...
+
   frontend-check:
-    name: Frontend Build (Vite + React + TS)
+    name: Frontend Build & Lint (Vite + React 19)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -38,16 +81,21 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: 'Marketplace Admin Dashboard/package.json'
+          cache-dependency-path: 'frontend/package.json'
 
       - name: Install dependencies
         run: |
-          cd "Marketplace Admin Dashboard"
+          cd frontend
           npm ci || npm install
+
+      - name: Run Lint / Formatting Check
+        run: |
+          cd frontend
+          npm run lint
 
       - name: Production Build
         run: |
-          cd "Marketplace Admin Dashboard"
+          cd frontend
           npm run build
 
   docker-compose-check:

@@ -4,14 +4,19 @@ export type AdminPage = "overview" | "kyc" | "catalog" | "finance" | "cms" | "te
 
 export type Locale = "en" | "ar"
 
+export interface BilingualText {
+  en: string
+  ar: string
+}
+
 export interface StorefrontProduct {
   id: string
   sku: string
-  name: { en: string; ar: string }
-  category: { en: string; ar: string }
+  name: BilingualText
+  category: BilingualText
   image: string
   brand: string
-  description: { en: string; ar: string }
+  description: BilingualText
   rating: number
   reviewCount: number
   offers: StorefrontOffer[]
@@ -30,7 +35,7 @@ export interface StorefrontOffer {
   location: string
   deliveryDays: number
   returnPolicy: string
-  tiers?: { minQty: number; maxQty: number | string; price: number }[]
+  tiers?: { minQty: number maxQty: number | string price: number }[]
 }
 
 export interface CartItem {

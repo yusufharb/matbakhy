@@ -47,7 +47,7 @@ graph TD
   - `ledger`: `accounts`, `journal_entries`, `lines`, `payout_requests`, + deferred trigger `trg_enforce_ledger_balance`
   - `inventory`: `warehouses`, `warehouse_stock`, `stock_reservations`, `stock_adjustments`
   - `platform`: `commission_rules`, `configurations`, `outbox_events`, `audit_logs`, `cms_sections`, `notifications`
-- **Frontend:** React 19 + Vite (`Marketplace Admin Dashboard/`):
+- **Frontend:** React 19 + Vite (`frontend/`):
   - Service layer (`src/services/api.ts`) connecting to `http://localhost:8080/api/v1/`.
   - 1-Click Sticky Portal Switcher + Arabic RTL / English LTR toggle.
   - Instant production build: `dist/assets/` in 1.21s.

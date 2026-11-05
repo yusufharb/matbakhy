@@ -1,0 +1,16 @@
+-- Migration 000010 Rollback: Delete Standard System Roles and Permissions
+DELETE FROM iam.role_permissions WHERE role_id IN (
+    SELECT id FROM iam.roles WHERE id IN (
+        '90000000-0000-0000-0000-000000000001',
+        '90000000-0000-0000-0000-000000000002',
+        '90000000-0000-0000-0000-000000000003'
+    )
+);
+
+DELETE FROM iam.roles WHERE id IN (
+    '90000000-0000-0000-0000-000000000001',
+    '90000000-0000-0000-0000-000000000002',
+    '90000000-0000-0000-0000-000000000003'
+);
+
+ALTER TABLE iam.roles DROP CONSTRAINT IF EXISTS uq_roles_scope_name;

@@ -208,47 +208,56 @@ export const translations: Record<Locale, TranslationDictionary> = {
       overview: {
         eyebrow: "لوحة الإدارة المركزية",
         title: "مركز قيادة السوق المتعدد",
-        description: "إدارة العمليات المركزية، ومتابعة إجمالي المبيعات، ومراقبة الالتزام، وتسوية المعاملات المباشرة",
+        description:
+          "إدارة العمليات المركزية، ومتابعة إجمالي المبيعات، ومراقبة الالتزام، وتسوية المعاملات المباشرة",
       },
       kyc: {
         eyebrow: "الامتثال والتحقق",
         title: "اعتماد الموردين ومراجعة KYC",
-        description: "التحقق من السجلات التجارية والشهادات الضريبية والحسابات البنكية للموردين الجدد",
+        description:
+          "التحقق من السجلات التجارية والشهادات الضريبية والحسابات البنكية للموردين الجدد",
       },
       catalog: {
         eyebrow: "إدارة الكتالوج الموحد",
         title: "كتالوج المنتجات المركزي",
-        description: "مراجعة المنتجات المشتركة، وإدارة الفئات، وقبول عروض التسعير من الموردين",
+        description:
+          "مراجعة المنتجات المشتركة، وإدارة الفئات، وقبول عروض التسعير من الموردين",
       },
       finance: {
         eyebrow: "النظام المالي المزدوج",
         title: "الدفتر المالي والعمولات والتسويات",
-        description: "سجل القيود المحاسبية غير القابل للتعديل، حساب العمولات، وتسوية محافظ الموردين",
+        description:
+          "سجل القيود المحاسبية غير القابل للتعديل، حساب العمولات، وتسوية محافظ الموردين",
       },
       cms: {
         eyebrow: "تخصيص الواجهة",
         title: "إدارة محتوى واجهة المتجر CMS",
-        description: "تخصيص الأقسام، البانرات الدعائية، والترتيب الديناميكي لمنتجات الواجهة",
+        description:
+          "تخصيص الأقسام، البانرات الدعائية، والترتيب الديناميكي لمنتجات الواجهة",
       },
       supplier: {
         eyebrow: "بوابة الموردين",
         title: "لوحة تحكم المورد والشريك",
-        description: "إدارة عروض المنتجات، ومتابعة المخزون، وتجهيز وشحن الطلبات، ومحفظة الأرباح",
+        description:
+          "إدارة عروض المنتجات، ومتابعة المخزون، وتجهيز وشحن الطلبات، ومحفظة الأرباح",
       },
       team: {
         eyebrow: "الأمان والصلاحيات",
         title: "إدارة فريق العمل والصلاحيات RBAC",
-        description: "تعيين الأدوار، والتحكم بالصلاحيات الدقيقة، ومراقبة الجلسات النشطة لمدراء المنصة",
+        description:
+          "تعيين الأدوار، والتحكم بالصلاحيات الدقيقة، ومراقبة الجلسات النشطة لمدراء المنصة",
       },
       audit: {
         eyebrow: "سجل الرقابة والامتثال",
         title: "سجل التدقيق والعمليات الشامل",
-        description: "سجل زمني لجميع عمليات النظام، وتغيير الإعدادات، وحركات الدفتر المحاسبي",
+        description:
+          "سجل زمني لجميع عمليات النظام، وتغيير الإعدادات، وحركات الدفتر المحاسبي",
       },
       settings: {
         eyebrow: "تكوين المنصة",
         title: "إعدادات منصة السوق الأساسية",
-        description: "العمولات العامة، سياسات الدفع والشحن، وإعدادات بوابات الربط والـ API",
+        description:
+          "العمولات العامة، سياسات الدفع والشحن، وإعدادات بوابات الربط والـ API",
       },
     },
     overview: {
@@ -309,7 +318,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tabLedger: "دفتر القيود المزدوجة (Ledger)",
       tabCommission: "محرك قواعد العمولات",
       tabPayouts: "طلبات الصرف والتسوية",
-      proofBalanced: "الدفتر المالي متوازن تماماً: إجمالي المدين = إجمالي الدائن (النظام المحاسبي مطابق 100%)",
+      proofBalanced:
+        "الدفتر المالي متوازن تماماً: إجمالي المدين = إجمالي الدائن (النظام المحاسبي مطابق 100%)",
       colEntryId: "رقم القيد",
       colTimestamp: "التوقيت",
       colDebit: "الحساب المدين (Debit)",
@@ -388,47 +398,56 @@ export const translations: Record<Locale, TranslationDictionary> = {
       overview: {
         eyebrow: "SUPER ADMIN DASHBOARD",
         title: "Marketplace Command Center",
-        description: "Multi-tenant orchestration, real-time GMV, supplier compliance & high-frequency transaction engine",
+        description:
+          "Multi-tenant orchestration, real-time GMV, supplier compliance & high-frequency transaction engine",
       },
       kyc: {
         eyebrow: "COMPLIANCE & VERIFICATION",
         title: "Supplier KYC & Onboarding Review",
-        description: "Rigorous verification of corporate registries, tax documents, bank accounts, and supplier risk scoring",
+        description:
+          "Rigorous verification of corporate registries, tax documents, bank accounts, and supplier risk scoring",
       },
       catalog: {
         eyebrow: "CATALOG MANAGEMENT",
         title: "Global Shared Product Catalog",
-        description: "Single global product taxonomy with multi-supplier competitive offers, tiered pricing, and attribute enforcement",
+        description:
+          "Single global product taxonomy with multi-supplier competitive offers, tiered pricing, and attribute enforcement",
       },
       finance: {
         eyebrow: "DOUBLE-ENTRY ACCOUNTING",
         title: "Financial Ledger & Payout Settlement",
-        description: "Audited immutable ledger, automated tier-based platform commissions, and supplier escrow disbursement",
+        description:
+          "Audited immutable ledger, automated tier-based platform commissions, and supplier escrow disbursement",
       },
       cms: {
         eyebrow: "STOREFRONT PRESENTATION",
         title: "Storefront Layout & CMS Engine",
-        description: "Modular storefront section reordering, dynamic banners, featured categories, and multi-lingual content control",
+        description:
+          "Modular storefront section reordering, dynamic banners, featured categories, and multi-lingual content control",
       },
       supplier: {
         eyebrow: "SUPPLIER PORTAL",
         title: "Seller Operations & Order Fulfillment",
-        description: "Direct supplier view: product offer management, tier pricing, multi-warehouse stock, and kanban fulfillment",
+        description:
+          "Direct supplier view: product offer management, tier pricing, multi-warehouse stock, and kanban fulfillment",
       },
       team: {
         eyebrow: "ACCESS CONTROL",
         title: "Team Members & Granular RBAC",
-        description: "Manage admin users, role assignments, fine-grained permission scopes, and 2FA authentication states",
+        description:
+          "Manage admin users, role assignments, fine-grained permission scopes, and 2FA authentication states",
       },
       audit: {
         eyebrow: "COMPLIANCE & TRACEABILITY",
         title: "System Audit & Compliance Log",
-        description: "Immutable trail of administrative decisions, configuration modifications, and ledger authorizations",
+        description:
+          "Immutable trail of administrative decisions, configuration modifications, and ledger authorizations",
       },
       settings: {
         eyebrow: "CONFIGURATION",
         title: "Platform Core Configuration",
-        description: "Global marketplace rules, fee schedules, payment gateway credentials, and webhook subscriptions",
+        description:
+          "Global marketplace rules, fee schedules, payment gateway credentials, and webhook subscriptions",
       },
     },
     overview: {
@@ -442,7 +461,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       topSuppliersTitle: "Top Performing Suppliers",
       topSuppliersHint: "Ranked by fulfillment rate and verified GMV volume",
       recentActivityTitle: "Real-time Platform Activity",
-      recentActivityHint: "Live feed of orders, KYC submissions, and ledger splits",
+      recentActivityHint:
+        "Live feed of orders, KYC submissions, and ledger splits",
       colSupplier: "Supplier",
       colGmv: "GMV Volume",
       colOrders: "Orders",
@@ -489,7 +509,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tabLedger: "Double-Entry Ledger",
       tabCommission: "Commission Engine",
       tabPayouts: "Payout Requests",
-      proofBalanced: "Ledger status: Perfectly balanced (Σ Debits = Σ Credits). Zero financial leakage detected.",
+      proofBalanced:
+        "Ledger status: Perfectly balanced (Σ Debits = Σ Credits). Zero financial leakage detected.",
       colEntryId: "Entry ID",
       colTimestamp: "Timestamp",
       colDebit: "Debit Account",

@@ -1,0 +1,23 @@
+# ==============================================================================
+# NEXUS Marketplace Core — Repository Code Owners
+# ==============================================================================
+
+# Global fallback owners
+* @yusufharb
+
+# Backend Architecture & Security
+/backend/ @yusufharb
+/backend/internal/modules/auth/ @yusufharb
+/backend/internal/modules/wallet/ @yusufharb
+/backend/internal/modules/order/ @yusufharb
+
+# Database Schemas & Migrations (Requires Staff Engineer sign-off)
+/backend/db/migrations/ @yusufharb
+/backend/db/seeds/ @yusufharb
+
+# Frontend Portals (Storefront, Supplier, Admin)
+/frontend/ @yusufharb
+
+# Infrastructure & CI/CD Pipelines
+/.github/workflows/ @yusufharb
+/deploy/ @yusufharb

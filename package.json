@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "fork": "node scripts/create-fork.mjs",
-    "dev:frontend": "npm --prefix \"Marketplace Admin Dashboard\" run dev",
-    "build:frontend": "npm --prefix \"Marketplace Admin Dashboard\" run build",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "lint:frontend": "npm --prefix frontend run lint",
     "start:infra": "docker compose -f deploy/docker-compose.yml up -d",
     "stop:infra": "docker compose -f deploy/docker-compose.yml down"
   },
