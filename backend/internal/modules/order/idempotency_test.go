@@ -40,7 +40,10 @@ func TestCheckoutIdempotencyEnforcement(t *testing.T) {
 
 	handler := auth.AuthMiddleware(auth.RequireAuth(http.HandlerFunc(orderHandler.Checkout)))
 
-	_, _ = db.Pool.Exec(ctx, `UPDATE catalog.supplier_offers SET moq = 1 WHERE id = 'f0000000-0000-0000-0000-000000000001'`)
+	_, _ = db.Pool.Exec(ctx, `
+		UPDATE catalog.supplier_offers SET moq = 1 WHERE id = 'f0000000-0000-0000-0000-000000000001';
+		UPDATE inventory.warehouse_stock SET on_hand = 100, reserved = 0 WHERE offer_id = 'f0000000-0000-0000-0000-000000000001';
+	`)
 
 	orderPayload1 := order.CheckoutRequest{
 		MerchantID:    "b0000000-0000-0000-0000-000000000004",

@@ -23,6 +23,9 @@ func TestCheckoutMOQValidation(t *testing.T) {
 	commRepo := commission.NewRepository(db.Pool)
 	orderRepo := order.NewRepository(db.Pool, commRepo)
 
+	// Ensure offer 2 has MOQ 5
+	_, _ = db.Pool.Exec(ctx, `UPDATE catalog.supplier_offers SET moq = 5 WHERE id = 'f0000000-0000-0000-0000-000000000002'`)
+
 	// Offer f0000000-0000-0000-0000-000000000002 has MOQ 5
 	// Ordering 1 should fail
 	req := order.CheckoutRequest{
@@ -58,6 +61,9 @@ func TestSuccessfulCheckoutAndSplitting(t *testing.T) {
 	_, _ = db.Pool.Exec(ctx, `
 		UPDATE catalog.supplier_offers SET moq = 1 WHERE id = 'f0000000-0000-0000-0000-000000000001';
 		UPDATE catalog.supplier_offers SET moq = 5 WHERE id = 'f0000000-0000-0000-0000-000000000002';
+		UPDATE inventory.warehouse_stock
+		SET on_hand = 100, reserved = 0
+		WHERE offer_id IN ('f0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002');
 	`)
 
 	req := order.CheckoutRequest{

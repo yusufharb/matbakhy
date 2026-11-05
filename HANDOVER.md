@@ -82,4 +82,5 @@ Refer to the complete technical contract in `docs/core-developer-handover.md` or
 
 ## 6. Changelog & Commit History
 - **Stage E**: Handover documentation, Docker dev startup, CI workflows (`50b13e9`, `bf2c18d`, `5cabb90`).
-- **Stage F (Complete)**: Full B2B Merchant Dashboard & B2C Customer Website Implementation with Cairo font, bilingual RTL/LTR layout, Context Switcher, and complete 22-screen backlog (`1e4dfae`). 100% green tests & production build.
+- **Stage F (Complete)**: Full B2B Merchant Dashboard & B2C Customer Website Implementation with Cairo font, bilingual RTL/LTR layout, Context Switcher, and complete 22-screen backlog (`1a7fa51`). 100% green tests & production build.
+- **Stage F.1 (CI & Test Resilience)**: Added `-p=1` to CI backend test runner to prevent concurrent package database contention and ensured self-contained offer MOQ and stock pre-conditions across all order test cases.

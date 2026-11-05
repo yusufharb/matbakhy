@@ -67,7 +67,7 @@ jobs:
           MARKETPLACE_CURRENCY: USD
         run: |
           cd backend
-          go test -v -race -count=1 ./...
+          go test -v -race -count=1 -p=1 ./...
 
   frontend-check:
     name: Frontend Build & Lint (Vite + React 19)
