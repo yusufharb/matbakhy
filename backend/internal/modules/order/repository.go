@@ -510,3 +510,24 @@ func (r *Repository) UpdateSuborderStatus(ctx context.Context, suborderID, newSt
 	}
 	return nil
 }
+
+func (r *Repository) GetSuborderByID(ctx context.Context, suborderID string) (*Suborder, error) {
+	query := `
+		SELECT so.id, so.suborder_number, so.order_id, so.supplier_id, coalesce(org.legal_name, org.name->>'en', 'Supplier'),
+		       so.subtotal, so.shipping_total, so.commission_rate, so.commission_amount, so.supplier_payable, so.status
+		FROM commerce.suborders so
+		JOIN iam.organizations org ON org.id = so.supplier_id
+		WHERE so.id = $1
+	`
+	var so Suborder
+	err := r.pool.QueryRow(ctx, query, suborderID).Scan(
+		&so.ID, &so.SuborderNumber, &so.ParentOrderID, &so.SupplierID, &so.SupplierName,
+		&so.SubtotalCents, &so.ShippingCents, &so.CommissionRate, &so.CommissionCents,
+		&so.SupplierPayable, &so.Status,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &so, nil
+}
+

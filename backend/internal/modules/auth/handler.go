@@ -26,8 +26,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For demo accounts, check bcrypt hash or allow demo password
-	if !CheckPasswordHash(req.Password, user.PasswordHash) && req.Password != "password" && req.Password != "admin123" {
+	// Enforce strict bcrypt authentication (no backdoors)
+	if !CheckPasswordHash(req.Password, user.PasswordHash) {
 		http.Error(w, `{"error": "Invalid email or password"}`, http.StatusUnauthorized)
 		return
 	}

@@ -3831,6 +3831,10 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  useEffect(() => {
+    api.setPortal(portal)
+  }, [portal])
+
   const handleLocaleChange = (l: Locale) => {
     setLocale(l)
     document.documentElement.dir = l === "ar" ? "rtl" : "ltr"
@@ -3839,6 +3843,7 @@ export default function App() {
 
   const handlePortalChange = (p: PortalMode) => {
     setPortal(p)
+    api.setPortal(p)
     if (p === "supplier") {
       setPage("supplier")
     } else if (p === "admin" && page === "supplier") {

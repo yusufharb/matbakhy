@@ -128,11 +128,27 @@ func (r *Repository) ListStock(ctx context.Context, supplierOrgID string) ([]Sto
 }
 
 func (r *Repository) AdjustStock(ctx context.Context, req StockAdjustmentRequest, userID string) (*StockItem, error) {
+	return r.AdjustStockWithOrgCheck(ctx, req, userID, "")
+}
+
+func (r *Repository) AdjustStockWithOrgCheck(ctx context.Context, req StockAdjustmentRequest, userID, supplierOrgID string) (*StockItem, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
+
+	// Enforce supplier ownership if supplierOrgID is provided
+	if supplierOrgID != "" {
+		var offerSupplierID string
+		err := tx.QueryRow(ctx, `SELECT supplier_id FROM catalog.supplier_offers WHERE id = $1`, req.OfferID).Scan(&offerSupplierID)
+		if err != nil {
+			return nil, fmt.Errorf("offer %s not found: %w", req.OfferID, err)
+		}
+		if offerSupplierID != supplierOrgID {
+			return nil, fmt.Errorf("forbidden: cannot adjust stock for another supplier's offer")
+		}
+	}
 
 	// Fetch current stock with lock
 	var currentOnHand, currentReserved int

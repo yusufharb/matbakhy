@@ -67,16 +67,32 @@ func (h *Handler) ListProductOffers(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListSupplierOffers(w http.ResponseWriter, r *http.Request) {
 	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "Unauthorized: authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+
 	supplierID := ""
-	if claims != nil && claims.OrgID != "" {
-		supplierID = claims.OrgID
-	}
-	if supplierID == "" {
+	if claims.Role == "platform_admin" || claims.Role == "super_admin" {
 		supplierID = r.URL.Query().Get("supplier_id")
-	}
-	if supplierID == "" {
-		// Default to Noura Foods demo supplier
-		supplierID = "b0000000-0000-0000-0000-000000000002"
+		if supplierID == "" {
+			http.Error(w, `{"error": "supplier_id query parameter is required for administrator"}`, http.StatusBadRequest)
+			return
+		}
+	} else if claims.Role == "supplier" || claims.Role == "supplier_admin" || claims.Role == "supplier_staff" {
+		if claims.OrgID == "" {
+			http.Error(w, `{"error": "Forbidden: supplier organization required"}`, http.StatusForbidden)
+			return
+		}
+		requested := r.URL.Query().Get("supplier_id")
+		if requested != "" && requested != claims.OrgID {
+			http.Error(w, `{"error": "Forbidden: cannot access another supplier's offers"}`, http.StatusForbidden)
+			return
+		}
+		supplierID = claims.OrgID
+	} else {
+		http.Error(w, `{"error": "Forbidden: insufficient role privileges"}`, http.StatusForbidden)
+		return
 	}
 
 	offers, err := h.repo.ListSupplierOffers(r.Context(), supplierID)
@@ -95,17 +111,34 @@ func (h *Handler) ListSupplierOffers(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) SaveOffer(w http.ResponseWriter, r *http.Request) {
 	claims := auth.GetClaims(r.Context())
+	if claims == nil || claims.UserID == "" {
+		http.Error(w, `{"error": "Unauthorized: authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+
 	var offer SupplierOffer
 	if err := json.NewDecoder(r.Body).Decode(&offer); err != nil {
 		http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
 
-	if claims != nil && claims.OrgID != "" {
+	if claims.Role != "platform_admin" && claims.Role != "super_admin" {
+		if claims.Role != "supplier" && claims.Role != "supplier_admin" && claims.Role != "supplier_staff" {
+			http.Error(w, `{"error": "Forbidden: only suppliers can create or modify offers"}`, http.StatusForbidden)
+			return
+		}
+		if claims.OrgID == "" {
+			http.Error(w, `{"error": "Forbidden: supplier organization required"}`, http.StatusForbidden)
+			return
+		}
+		if offer.SupplierID != "" && offer.SupplierID != claims.OrgID {
+			http.Error(w, `{"error": "Forbidden: cannot create offers for another supplier"}`, http.StatusForbidden)
+			return
+		}
 		offer.SupplierID = claims.OrgID
-	}
-	if offer.SupplierID == "" {
-		offer.SupplierID = "b0000000-0000-0000-0000-000000000002" // default demo supplier
+	} else if offer.SupplierID == "" {
+		http.Error(w, `{"error": "supplier_id is required"}`, http.StatusBadRequest)
+		return
 	}
 
 	saved, err := h.repo.CreateOrUpdateOffer(r.Context(), offer)

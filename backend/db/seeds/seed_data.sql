@@ -1,14 +1,14 @@
 -- Seed Data: Marketplace Core Baseline Demo Data
 -- Matches UI fixtures: Noura Foods, Atlas Industrial, Amal Mansour, Nova X1 Headphones
 
--- 1. Create Super Admin User & Demo Users
+-- 1. Create Super Admin User & Demo Users (Password: NexusPassword2026!)
 INSERT INTO iam.users (id, email, password_hash, first_name, last_name, email_verified, status, locale)
 VALUES 
-    ('a0000000-0000-0000-0000-000000000001', 'amal@nexus.market', '$2a$12$e8YkR/q0Yh8f5o4I3H4Qz.GZ6JvO8.8e5lF7y6p4M9Z8mN3b0g6.y', 'Amal', 'Mansour', TRUE, 'active', 'en'),
-    ('a0000000-0000-0000-0000-000000000002', 'rami@nexus.market', '$2a$12$e8YkR/q0Yh8f5o4I3H4Qz.GZ6JvO8.8e5lF7y6p4M9Z8mN3b0g6.y', 'Rami', 'Khoury', TRUE, 'active', 'en'),
-    ('a0000000-0000-0000-0000-000000000003', 'supplier@nourafoods.com', '$2a$12$e8YkR/q0Yh8f5o4I3H4Qz.GZ6JvO8.8e5lF7y6p4M9Z8mN3b0g6.y', 'Noura', 'Admin', TRUE, 'active', 'en'),
-    ('a0000000-0000-0000-0000-000000000004', 'buyer@meridian.com', '$2a$12$e8YkR/q0Yh8f5o4I3H4Qz.GZ6JvO8.8e5lF7y6p4M9Z8mN3b0g6.y', 'Tariq', 'Buyer', TRUE, 'active', 'en')
-ON CONFLICT (id) DO NOTHING;
+    ('a0000000-0000-0000-0000-000000000001', 'amal@nexus.market', '$2a$12$75BiaKtaaOJOsdiSkyENcOdnn6D1v0ba726fErpC2mi0JDwFQUxfq', 'Amal', 'Mansour', TRUE, 'active', 'en'),
+    ('a0000000-0000-0000-0000-000000000002', 'rami@nexus.market', '$2a$12$75BiaKtaaOJOsdiSkyENcOdnn6D1v0ba726fErpC2mi0JDwFQUxfq', 'Rami', 'Khoury', TRUE, 'active', 'en'),
+    ('a0000000-0000-0000-0000-000000000003', 'supplier@nourafoods.com', '$2a$12$75BiaKtaaOJOsdiSkyENcOdnn6D1v0ba726fErpC2mi0JDwFQUxfq', 'Noura', 'Admin', TRUE, 'active', 'en'),
+    ('a0000000-0000-0000-0000-000000000004', 'buyer@meridian.com', '$2a$12$75BiaKtaaOJOsdiSkyENcOdnn6D1v0ba726fErpC2mi0JDwFQUxfq', 'Tariq', 'Buyer', TRUE, 'active', 'en')
+ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 -- 2. Organizations
 INSERT INTO iam.organizations (id, type, name, legal_name, commercial_reg_no, country_code, status)
@@ -18,6 +18,15 @@ VALUES
     ('b0000000-0000-0000-0000-000000000003', 'supplier', '{"en": "Atlas Industrial GmbH", "ar": "أطلس الصناعية"}', 'Atlas Industrial Supplies GmbH', 'HRB 918245', 'DE', 'approved'),
     ('b0000000-0000-0000-0000-000000000004', 'merchant', '{"en": "Meridian Labs", "ar": "مختبرات ميريديان"}', 'Meridian Applied Sciences Ltd.', 'SA-2040192841', 'SA', 'approved')
 ON CONFLICT (id) DO NOTHING;
+
+-- 2.1 Memberships (User <-> Org with Role)
+INSERT INTO iam.org_memberships (user_id, org_id, role_id, status)
+VALUES 
+    ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', 'active'),
+    ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', 'active'),
+    ('a0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000002', 'active'),
+    ('a0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000004', '90000000-0000-0000-0000-000000000003', 'active')
+ON CONFLICT (user_id, org_id) DO UPDATE SET role_id = EXCLUDED.role_id;
 
 -- 3. Categories
 INSERT INTO catalog.categories (id, name, slug, path, depth)
