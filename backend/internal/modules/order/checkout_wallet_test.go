@@ -89,6 +89,8 @@ func TestWalletCheckoutDebitsAccount2010(t *testing.T) {
 	commRepo := commission.NewRepository(db.Pool)
 	orderRepo := order.NewRepository(db.Pool, commRepo)
 
+	_, _ = db.Pool.Exec(ctx, `UPDATE catalog.supplier_offers SET moq = 1 WHERE id = 'f0000000-0000-0000-0000-000000000001'`)
+
 	req := order.CheckoutRequest{
 		MerchantID:    merchantID,
 		PaymentMethod: "wallet",
@@ -172,6 +174,8 @@ func TestCheckoutDynamicCurrency(t *testing.T) {
 
 	commRepo := commission.NewRepository(db.Pool)
 	orderRepo := order.NewRepository(db.Pool, commRepo)
+
+	_, _ = db.Pool.Exec(ctx, `UPDATE catalog.supplier_offers SET moq = 1 WHERE id = 'f0000000-0000-0000-0000-000000000001'`)
 
 	req := order.CheckoutRequest{
 		MerchantID:    merchantID,

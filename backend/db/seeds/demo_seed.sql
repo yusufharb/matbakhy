@@ -65,8 +65,8 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO catalog.supplier_offers (id, product_id, supplier_id, supplier_sku, currency, price, moq, price_tiers, lead_time_days, status)
 VALUES 
     ('f0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002',
-     'NF-NV-X1', 'USD', 12000, 10,
-     '[{"minQty": 10, "maxQty": 49, "price": 12000}, {"minQty": 50, "maxQty": 99, "price": 11000}, {"minQty": 100, "maxQty": "+", "price": 9800}]'::jsonb,
+     'NF-NV-X1', 'USD', 12000, 1,
+     '[{"minQty": 1, "maxQty": 49, "price": 12000}, {"minQty": 50, "maxQty": 99, "price": 11000}, {"minQty": 100, "maxQty": "+", "price": 9800}]'::jsonb,
      3, 'active'),
 
     ('f0000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003',

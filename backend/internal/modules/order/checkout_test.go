@@ -55,6 +55,11 @@ func TestSuccessfulCheckoutAndSplitting(t *testing.T) {
 	// Valid order with 2 vendors:
 	// Noura Foods (MOQ 1): 2 units
 	// Atlas Industrial (MOQ 5): 5 units
+	_, _ = db.Pool.Exec(ctx, `
+		UPDATE catalog.supplier_offers SET moq = 1 WHERE id = 'f0000000-0000-0000-0000-000000000001';
+		UPDATE catalog.supplier_offers SET moq = 5 WHERE id = 'f0000000-0000-0000-0000-000000000002';
+	`)
+
 	req := order.CheckoutRequest{
 		MerchantID:    "b0000000-0000-0000-0000-000000000004",
 		PaymentMethod: "credit_card",

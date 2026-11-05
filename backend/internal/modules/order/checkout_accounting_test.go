@@ -35,11 +35,13 @@ func TestMultiSupplierCardCheckoutAccountingBalances(t *testing.T) {
 	merchantID := "b0000000-0000-0000-0000-000000000004"
 	userID := "a0000000-0000-0000-0000-000000000004"
 
-	// Reset test stock so concurrency or previous tests don't cause false positives
+	// Reset test stock and MOQ so concurrency or previous tests don't cause false positives
 	_, _ = db.Pool.Exec(ctx, `
+		UPDATE catalog.supplier_offers SET moq = 1 WHERE id = 'f0000000-0000-0000-0000-000000000001';
+		UPDATE catalog.supplier_offers SET moq = 5 WHERE id = 'f0000000-0000-0000-0000-000000000002';
 		UPDATE inventory.warehouse_stock
 		SET on_hand = 100, reserved = 0
-		WHERE offer_id IN ('f0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002')
+		WHERE offer_id IN ('f0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002');
 	`)
 
 	// Helper to get account balance
@@ -239,11 +241,13 @@ func TestMultiSupplierWalletCheckoutAccountingBalances(t *testing.T) {
 	merchantID := "b0000000-0000-0000-0000-000000000004"
 	userID := "a0000000-0000-0000-0000-000000000004"
 
-	// Reset test stock
+	// Reset test stock and MOQ
 	_, _ = db.Pool.Exec(ctx, `
+		UPDATE catalog.supplier_offers SET moq = 1 WHERE id = 'f0000000-0000-0000-0000-000000000001';
+		UPDATE catalog.supplier_offers SET moq = 5 WHERE id = 'f0000000-0000-0000-0000-000000000002';
 		UPDATE inventory.warehouse_stock
 		SET on_hand = 100, reserved = 0
-		WHERE offer_id IN ('f0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002')
+		WHERE offer_id IN ('f0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002');
 	`)
 
 	// Helper to get account balance
