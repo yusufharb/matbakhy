@@ -138,6 +138,7 @@ func TestCrossMerchantOrderIsolation(t *testing.T) {
 	req = httptest.NewRequest("POST", "/api/v1/checkout", strings.NewReader(payload))
 	req.Header.Set("Authorization", "Bearer "+merchantAToken)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Idempotency-Key", "idem-test-cross-merchant")
 	rec = httptest.NewRecorder()
 	checkoutMux.ServeHTTP(rec, req)
 

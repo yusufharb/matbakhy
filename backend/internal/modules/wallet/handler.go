@@ -2,17 +2,27 @@ package wallet
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/marketplace/core/internal/modules/auth"
+	"github.com/marketplace/core/internal/modules/platform"
 )
 
 type Handler struct {
-	repo *Repository
+	repo             *Repository
+	idempotencyStore *platform.IdempotencyStore
 }
 
-func NewHandler(repo *Repository) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(repo *Repository, idempotencyStore ...*platform.IdempotencyStore) *Handler {
+	var store *platform.IdempotencyStore
+	if len(idempotencyStore) > 0 {
+		store = idempotencyStore[0]
+	}
+	return &Handler{
+		repo:             repo,
+		idempotencyStore: store,
+	}
 }
 
 func (h *Handler) ListAccounts(w http.ResponseWriter, r *http.Request) {
@@ -92,10 +102,46 @@ func (h *Handler) PostJournalEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to read request body"}`, http.StatusBadRequest)
+		return
+	}
+
 	var entry JournalEntry
-	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
+	if err := json.Unmarshal(bodyBytes, &entry); err != nil {
 		http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
 		return
+	}
+
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		idempotencyKey = entry.IdempotencyKey
+	}
+	if idempotencyKey == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "Idempotency-Key header is required for manual journal entries", "code": 400}`))
+		return
+	}
+	entry.IdempotencyKey = idempotencyKey
+
+	requestHash := platform.HashPayload(bodyBytes)
+	if h.idempotencyStore != nil {
+		rec, err := h.idempotencyStore.Get(r.Context(), idempotencyKey, requestHash)
+		if err == platform.ErrIdempotencyConflict {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(`{"error": "Idempotency-Key already used with a different request payload", "code": 409}`))
+			return
+		}
+		if err == nil && rec != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Idempotent-Replay", "true")
+			w.WriteHeader(rec.StatusCode)
+			w.Write(rec.ResponseBody)
+			return
+		}
 	}
 
 	saved, err := h.repo.PostJournalEntry(r.Context(), entry)
@@ -104,9 +150,14 @@ func (h *Handler) PostJournalEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	respPayload, _ := json.Marshal(saved)
+	if h.idempotencyStore != nil {
+		_ = h.idempotencyStore.Save(r.Context(), idempotencyKey, "ledger_entry", claims.UserID, requestHash, http.StatusCreated, respPayload)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(saved)
+	w.Write(respPayload)
 }
 
 func (h *Handler) GetSupplierWallet(w http.ResponseWriter, r *http.Request) {
@@ -156,15 +207,48 @@ func (h *Handler) RequestPayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "Idempotency-Key header is required for payout requests", "code": 400}`))
+		return
+	}
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to read request body"}`, http.StatusBadRequest)
+		return
+	}
+	requestHash := platform.HashPayload(bodyBytes)
+
+	if h.idempotencyStore != nil {
+		rec, err := h.idempotencyStore.Get(r.Context(), idempotencyKey, requestHash)
+		if err == platform.ErrIdempotencyConflict {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(`{"error": "Idempotency-Key already used with a different request payload", "code": 409}`))
+			return
+		}
+		if err == nil && rec != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Idempotent-Replay", "true")
+			w.WriteHeader(rec.StatusCode)
+			w.Write(rec.ResponseBody)
+			return
+		}
+	}
+
 	type PayoutReq struct {
 		SupplierID  string `json:"supplier_id"`
 		AmountCents int64  `json:"amount_cents"`
+		Currency    string `json:"currency,omitempty"`
 		BankName    string `json:"bank_name"`
 		IBAN        string `json:"iban"`
 	}
 
 	var req PayoutReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
@@ -188,13 +272,18 @@ func (h *Handler) RequestPayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payout, err := h.repo.CreatePayoutRequest(r.Context(), req.SupplierID, req.AmountCents, req.BankName, req.IBAN)
+	payout, err := h.repo.CreatePayoutRequest(r.Context(), req.SupplierID, req.AmountCents, req.Currency, req.BankName, req.IBAN)
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
 		return
 	}
 
+	respPayload, _ := json.Marshal(payout)
+	if h.idempotencyStore != nil {
+		_ = h.idempotencyStore.Save(r.Context(), idempotencyKey, "payout", claims.UserID, requestHash, http.StatusCreated, respPayload)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(payout)
+	w.Write(respPayload)
 }

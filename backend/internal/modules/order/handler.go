@@ -2,17 +2,27 @@ package order
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/marketplace/core/internal/modules/auth"
+	"github.com/marketplace/core/internal/modules/platform"
 )
 
 type Handler struct {
-	repo *Repository
+	repo             *Repository
+	idempotencyStore *platform.IdempotencyStore
 }
 
-func NewHandler(repo *Repository) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(repo *Repository, idempotencyStore ...*platform.IdempotencyStore) *Handler {
+	var store *platform.IdempotencyStore
+	if len(idempotencyStore) > 0 {
+		store = idempotencyStore[0]
+	}
+	return &Handler{
+		repo:             repo,
+		idempotencyStore: store,
+	}
 }
 
 func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
@@ -22,8 +32,41 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "Idempotency-Key header is required for checkout", "code": 400}`))
+		return
+	}
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to read request body"}`, http.StatusBadRequest)
+		return
+	}
+	requestHash := platform.HashPayload(bodyBytes)
+
+	// Check idempotency cache
+	if h.idempotencyStore != nil {
+		rec, err := h.idempotencyStore.Get(r.Context(), idempotencyKey, requestHash)
+		if err == platform.ErrIdempotencyConflict {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(`{"error": "Idempotency-Key already used with a different request payload", "code": 409}`))
+			return
+		}
+		if err == nil && rec != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Idempotent-Replay", "true")
+			w.WriteHeader(rec.StatusCode)
+			w.Write(rec.ResponseBody)
+			return
+		}
+	}
+
 	var req CheckoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
@@ -49,12 +92,18 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	respPayload, _ := json.Marshal(map[string]interface{}{
 		"message":      "Order placed successfully with balanced double-entry ledger settlement",
 		"parent_order": order,
 	})
+
+	if h.idempotencyStore != nil {
+		_ = h.idempotencyStore.Save(r.Context(), idempotencyKey, "checkout", claims.UserID, requestHash, http.StatusCreated, respPayload)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(respPayload)
 }
 
 func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {

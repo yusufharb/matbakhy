@@ -15,6 +15,7 @@ import (
 	"github.com/marketplace/core/internal/modules/config"
 	"github.com/marketplace/core/internal/modules/inventory"
 	"github.com/marketplace/core/internal/modules/order"
+	"github.com/marketplace/core/internal/modules/platform"
 	"github.com/marketplace/core/internal/modules/wallet"
 )
 
@@ -65,14 +66,15 @@ func main() {
 	orderRepo := order.NewRepository(db.Pool, commissionRepo)
 	walletRepo := wallet.NewRepository(db.Pool)
 	configRepo := config.NewRepository(db.Pool)
+	idemStore := platform.NewIdempotencyStore(db.Pool)
 
 	// 5. Initialize HTTP Handlers
 	authHandler := auth.NewHandler(authRepo)
 	catalogHandler := catalog.NewHandler(catalogRepo)
 	commissionHandler := commission.NewHandler(commissionRepo)
 	inventoryHandler := inventory.NewHandler(inventoryRepo)
-	orderHandler := order.NewHandler(orderRepo)
-	walletHandler := wallet.NewHandler(walletRepo)
+	orderHandler := order.NewHandler(orderRepo, idemStore)
+	walletHandler := wallet.NewHandler(walletRepo, idemStore)
 	configHandler := config.NewHandler(configRepo)
 
 	// Middlewares

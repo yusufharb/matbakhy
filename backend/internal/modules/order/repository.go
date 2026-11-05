@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/marketplace/core/internal/modules/commission"
+	"github.com/marketplace/core/internal/modules/config"
 )
 
 type CheckoutItemInput struct {
@@ -18,6 +19,7 @@ type CheckoutItemInput struct {
 
 type CheckoutRequest struct {
 	MerchantID      string              `json:"merchant_id"`
+	Currency        string              `json:"currency,omitempty"`
 	PaymentMethod   string              `json:"payment_method"`
 	DeliveryAddress json.RawMessage     `json:"delivery_address"`
 	Items           []CheckoutItemInput `json:"items"`
@@ -76,10 +78,11 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 		BrandName       string
 		Quantity        int
 		UnitPrice       int64
-		TotalPrice      int64
-		CommissionRate  float64
-		ProductSnapshot []byte
-		OfferSnapshot   []byte
+		TotalPrice        int64
+		CommissionRateBps int64
+		CommissionRate    float64
+		ProductSnapshot   []byte
+		OfferSnapshot     []byte
 	}
 
 	var resolvedItems []ResolvedItem
@@ -126,8 +129,9 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 			}
 		}
 
-		// Calculate dynamic commission
+		// Calculate dynamic commission using integer basis points
 		commRes := commission.ResolveEffectiveCommission(rules, supID, catID)
+		commBps := commRes.EffectiveRateBps
 		commRate := commRes.EffectiveRatePercent / 100.0
 
 		prodSnap, _ := json.Marshal(map[string]interface{}{
@@ -145,12 +149,13 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 			ProductTitle:    prodTitle,
 			ProductSKU:      prodSKU,
 			BrandName:       brandName,
-			Quantity:        item.Quantity,
-			UnitPrice:       unitPrice,
-			TotalPrice:      unitPrice * int64(item.Quantity),
-			CommissionRate:  commRate,
-			ProductSnapshot: prodSnap,
-			OfferSnapshot:   offSnap,
+			Quantity:          item.Quantity,
+			UnitPrice:         unitPrice,
+			TotalPrice:        unitPrice * int64(item.Quantity),
+			CommissionRateBps: commBps,
+			CommissionRate:    commRate,
+			ProductSnapshot:   prodSnap,
+			OfferSnapshot:     offSnap,
 		})
 
 		// Reserve stock in warehouse
@@ -161,27 +166,33 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 		`, item.Quantity, offID)
 	}
 
+	// Dynamic currency resolution
+	orderCurrency := config.ResolveCurrency(req.Currency)
+
 	// Partition items into supplier suborders
 	type SupplierGroup struct {
-		SupplierID     string
-		SupplierName   string
-		Items          []ResolvedItem
-		Subtotal       int64
-		Shipping       int64
-		CommissionRate float64
-		CommissionAmt  int64
-		SupplierNet    int64
+		SupplierID        string
+		SupplierName      string
+		Items             []ResolvedItem
+		Subtotal          int64
+		Shipping          int64
+		CommissionRateBps int64
+		CommissionRate    float64
+		CommissionAmt     int64
+		SupplierNet       int64
 	}
 
 	groups := make(map[string]*SupplierGroup)
 	for _, it := range resolvedItems {
 		grp, exists := groups[it.SupplierID]
 		if !exists {
+			commRes := commission.ResolveEffectiveCommission(rules, it.SupplierID, it.CategoryID)
 			grp = &SupplierGroup{
-				SupplierID:     it.SupplierID,
-				SupplierName:   it.SupplierName,
-				Shipping:       1500, // $15.00 flat shipping per supplier
-				CommissionRate: it.CommissionRate,
+				SupplierID:        it.SupplierID,
+				SupplierName:      it.SupplierName,
+				Shipping:          1500, // flat shipping per supplier
+				CommissionRateBps: commRes.EffectiveRateBps,
+				CommissionRate:    it.CommissionRate,
 			}
 			groups[it.SupplierID] = grp
 		}
@@ -194,7 +205,8 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	var parentGrandTotal int64
 
 	for _, g := range groups {
-		g.CommissionAmt = int64(float64(g.Subtotal) * g.CommissionRate)
+		// Integer arithmetic commission calculation with zero floating point drift
+		g.CommissionAmt = commission.CalculateCommission(g.Subtotal, g.CommissionRateBps)
 		g.SupplierNet = g.Subtotal - g.CommissionAmt
 		parentSubtotal += g.Subtotal
 		parentShipping += g.Shipping
@@ -203,14 +215,15 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 
 	// Insert Parent Order
 	parentOrderID := uuid.New().String()
-	orderNumber := fmt.Sprintf("ORD-%s-%04d", time.Now().Format("20060102"), time.Now().Unix()%10000)
+	orderNumber := fmt.Sprintf("ORD-%s-%06d-%04d", time.Now().Format("20060102"), (time.Now().UnixNano()/1000)%1000000, time.Now().UnixNano()%10000)
+
 
 	orderQuery := `
 		INSERT INTO commerce.orders (
 			id, order_number, merchant_id, user_id, currency, subtotal, shipping_total, grand_total, status, delivery_address, payment_method
-		) VALUES ($1, $2, $3, $4, 'USD', $5, $6, $7, 'confirmed', $8, $9)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmed', $9, $10)
 	`
-	_, err = tx.Exec(ctx, orderQuery, parentOrderID, orderNumber, req.MerchantID, userID, parentSubtotal, parentShipping, parentGrandTotal, req.DeliveryAddress, req.PaymentMethod)
+	_, err = tx.Exec(ctx, orderQuery, parentOrderID, orderNumber, req.MerchantID, userID, orderCurrency, parentSubtotal, parentShipping, parentGrandTotal, req.DeliveryAddress, req.PaymentMethod)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create parent order: %w", err)
 	}
@@ -219,7 +232,7 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 		ID:              parentOrderID,
 		OrderNumber:     orderNumber,
 		MerchantID:      req.MerchantID,
-		Currency:        "USD",
+		Currency:        orderCurrency,
 		SubtotalCents:   parentSubtotal,
 		ShippingCents:   parentShipping,
 		GrandTotalCents: parentGrandTotal,
@@ -290,41 +303,81 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	_, err = tx.Exec(ctx, `
 		INSERT INTO commerce.payments (
 			id, order_id, amount, currency, method, status, idempotency_key
-		) VALUES ($1, $2, $3, 'USD', $4, 'captured', $5)
-	`, paymentID, parentOrderID, parentGrandTotal, req.PaymentMethod, "pay-"+orderNumber)
+		) VALUES ($1, $2, $3, $4, $5, 'captured', $6)
+	`, paymentID, parentOrderID, parentGrandTotal, orderCurrency, req.PaymentMethod, "pay-"+orderNumber)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create payment record: %w", err)
 	}
 
 	// Double-Entry Ledger Posting within the same transaction:
 	// Balanced Entry:
-	// DEBIT: Gateway Clearing (Account 1010) or Merchant Wallet (Account 2010) for parentGrandTotal
+	// DEBIT: Merchant Wallet (Account 2010) if wallet checkout, or Gateway Clearing (Account 1010)
 	// CREDIT: Each Supplier Escrow (Account 2020) for their SupplierNet
 	// CREDIT: Platform Commission Revenue (Account 4010) for total commission + shipping
 	journalEntryID := uuid.New().String()
-	jeNumber := fmt.Sprintf("JE-%d", time.Now().Unix()%1000000)
+	jeNumber := fmt.Sprintf("JE-%d-%06d", time.Now().Unix(), (time.Now().UnixNano()/1000)%1000000)
 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO ledger.journal_entries (
 			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key
-		) VALUES ($1, $2, 'order', $3, 'order_settlement', $4, 'USD', 'posted', $5)
-	`, journalEntryID, jeNumber, parentOrderID, "Settlement for order "+orderNumber, "idem-"+orderNumber)
+		) VALUES ($1, $2, 'order', $3, 'order_settlement', $4, $5, 'posted', $6)
+	`, journalEntryID, jeNumber, parentOrderID, "Settlement for order "+orderNumber, orderCurrency, "idem-"+orderNumber)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create journal entry: %w", err)
 	}
 
-	// Find clearing account (Gateway Clearing 1010)
-	var clearingAccID string
-	err = tx.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1010' LIMIT 1`).Scan(&clearingAccID)
-	if err != nil {
-		return nil, fmt.Errorf("clearing account 1010 missing: %w", err)
+	// 1. Determine Debit Account (Account 2010 for wallet, Account 1010 for gateway clearing)
+	var debitAccID string
+	if req.PaymentMethod == "wallet" {
+		// Look up or create merchant wallet account 2010
+		var merchantWalletID string
+		err = tx.QueryRow(ctx, `
+			SELECT id FROM ledger.accounts 
+			WHERE owner_id = $1 AND account_code = '2010'
+			LIMIT 1
+		`, req.MerchantID).Scan(&merchantWalletID)
+
+		if err != nil {
+			merchantWalletID = uuid.New().String()
+			_, err = tx.Exec(ctx, `
+				INSERT INTO ledger.accounts (id, owner_type, owner_id, currency, account_code, name)
+				VALUES ($1, 'merchant', $2, $3, '2010', 'Merchant Wallet Account')
+			`, merchantWalletID, req.MerchantID, orderCurrency)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create merchant wallet account 2010: %w", err)
+			}
+		}
+
+		// Verify merchant has sufficient balance in Account 2010
+		// For liability account 2010: balance = SUM(credit - debit)
+		var merchantBal int64
+		err = tx.QueryRow(ctx, `
+			SELECT coalesce(SUM(CASE WHEN entry_type = 'credit' THEN amount ELSE -amount END), 0)
+			FROM ledger.lines
+			WHERE account_id = $1
+		`, merchantWalletID).Scan(&merchantBal)
+		if err != nil {
+			return nil, fmt.Errorf("failed to verify merchant wallet balance: %w", err)
+		}
+
+		if merchantBal < parentGrandTotal {
+			return nil, fmt.Errorf("insufficient wallet balance (available: %d cents, required: %d cents)", merchantBal, parentGrandTotal)
+		}
+
+		debitAccID = merchantWalletID
+	} else {
+		// Find clearing account (Gateway Clearing 1010)
+		err = tx.QueryRow(ctx, `SELECT id FROM ledger.accounts WHERE account_code = '1010' LIMIT 1`).Scan(&debitAccID)
+		if err != nil {
+			return nil, fmt.Errorf("clearing account 1010 missing: %w", err)
+		}
 	}
 
-	// 1. Debit Clearing Account for entire Grand Total
+	// Debit the selected account for the entire Grand Total
 	_, err = tx.Exec(ctx, `
 		INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
 		VALUES (gen_random_uuid(), $1, $2, 'debit', $3)
-	`, journalEntryID, clearingAccID, parentGrandTotal)
+	`, journalEntryID, debitAccID, parentGrandTotal)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert debit line: %w", err)
 	}
@@ -352,8 +405,8 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 			supEscrowAccID = uuid.New().String()
 			_, err = tx.Exec(ctx, `
 				INSERT INTO ledger.accounts (id, owner_type, owner_id, currency, account_code, name)
-				VALUES ($1, 'supplier', $2, 'USD', '2020', $3)
-			`, supEscrowAccID, g.SupplierID, g.SupplierName+" Escrow Account")
+				VALUES ($1, 'supplier', $2, $3, '2020', $4)
+			`, supEscrowAccID, g.SupplierID, orderCurrency, g.SupplierName+" Escrow Account")
 			if err != nil {
 				return nil, fmt.Errorf("failed to create supplier escrow account: %w", err)
 			}

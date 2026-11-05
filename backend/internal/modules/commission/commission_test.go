@@ -40,3 +40,39 @@ func TestCommissionPrecedenceResolution(t *testing.T) {
 		t.Errorf("expected global scope, got %s", res3.AppliedScope)
 	}
 }
+
+func TestIntegerBasisPointsCommission(t *testing.T) {
+	// 1. Verify integer basis points precision calculation
+	// 1000 bps = 10.00%
+	comm1 := commission.CalculateCommission(10000, 1000)
+	if comm1 != 1000 {
+		t.Fatalf("expected 1000 cents commission, got %d", comm1)
+	}
+
+	// 550 bps = 5.50% on 1500 cents ($15.00)
+	// (1500 * 550 + 5000) / 10000 = (825000 + 5000) / 10000 = 830000 / 10000 = 83 cents
+	comm2 := commission.CalculateCommission(1500, 550)
+	if comm2 != 83 {
+		t.Fatalf("expected 83 cents commission, got %d", comm2)
+	}
+
+	// Boundary condition: zero and negative inputs
+	if commission.CalculateCommission(0, 500) != 0 {
+		t.Fatalf("expected 0 for zero subtotal")
+	}
+	if commission.CalculateCommission(1000, 0) != 0 {
+		t.Fatalf("expected 0 for zero rate")
+	}
+
+	// 2. Verify rule resolution provides EffectiveRateBps
+	rules := []commission.CommissionRule{
+		{ID: "r-1", Name: "Global Marketplace Default", ScopeType: "global", RateBps: 1000, Priority: 0},
+		{ID: "r-2", Name: "Atlas Custom Agreement", ScopeType: "supplier", ScopeID: "sup-atlas", RateBps: 550, Priority: 20},
+	}
+
+	res := commission.ResolveEffectiveCommission(rules, "sup-atlas", "cat-any")
+	if res.EffectiveRateBps != 550 {
+		t.Fatalf("expected EffectiveRateBps 550, got %d", res.EffectiveRateBps)
+	}
+}
+

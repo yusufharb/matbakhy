@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/marketplace/core/internal/modules/config"
 )
 
 type AccountBalance struct {
@@ -247,20 +248,114 @@ func (r *Repository) GetSupplierWallet(ctx context.Context, supplierID string) (
 	return summary, nil
 }
 
-func (r *Repository) CreatePayoutRequest(ctx context.Context, supplierID string, amountCents int64, bankName, iban string) (*PayoutRequest, error) {
-	payoutNumber := fmt.Sprintf("PO-%04d", time.Now().Unix()%10000)
+func (r *Repository) CreatePayoutRequest(ctx context.Context, supplierID string, amountCents int64, currency, bankName, iban string) (*PayoutRequest, error) {
+	if amountCents <= 0 {
+		return nil, fmt.Errorf("payout amount must be greater than zero")
+	}
+
+	payoutCurrency := config.ResolveCurrency(currency)
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Query Supplier Available Payable Account 2030
+	var sup2030ID string
+	err = tx.QueryRow(ctx, `
+		SELECT id FROM ledger.accounts
+		WHERE owner_id = $1 AND account_code = '2030'
+		LIMIT 1
+	`, supplierID).Scan(&sup2030ID)
+	if err != nil {
+		return nil, fmt.Errorf("supplier available payable account 2030 not found: %w", err)
+	}
+
+	// 2. Query available balance: for liability 2030, balance = SUM(credit - debit)
+	var availableBalance int64
+	err = tx.QueryRow(ctx, `
+		SELECT coalesce(SUM(CASE WHEN entry_type = 'credit' THEN amount ELSE -amount END), 0)
+		FROM ledger.lines
+		WHERE account_id = $1
+	`, sup2030ID).Scan(&availableBalance)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query supplier available balance: %w", err)
+	}
+
+	// Overdraw prevention guard
+	if availableBalance < amountCents {
+		return nil, fmt.Errorf("insufficient available balance for payout: available %d cents, requested %d cents", availableBalance, amountCents)
+	}
+
+	// 3. Ensure Supplier Payout Hold Account 2040 exists
+	var sup2040ID string
+	err = tx.QueryRow(ctx, `
+		SELECT id FROM ledger.accounts
+		WHERE owner_id = $1 AND account_code = '2040'
+		LIMIT 1
+	`, supplierID).Scan(&sup2040ID)
+	if err != nil {
+		sup2040ID = uuid.New().String()
+		_, err = tx.Exec(ctx, `
+			INSERT INTO ledger.accounts (id, owner_type, owner_id, currency, account_code, name)
+			VALUES ($1, 'supplier', $2, $3, '2040', 'Supplier Pending Payout Hold')
+		`, sup2040ID, supplierID, payoutCurrency)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create supplier payout hold account 2040: %w", err)
+		}
+	}
+
+	// 4. Create balanced journal entry: DEBIT 2030 (reduces available), CREDIT 2040 (places funds on hold)
+	payoutID := uuid.New().String()
+	payoutNumber := fmt.Sprintf("PO-%s-%04d", time.Now().Format("20060102"), time.Now().UnixNano()%10000)
+	jeID := uuid.New().String()
+	jeNumber := fmt.Sprintf("JE-HOLD-%d-%06d", time.Now().Unix(), (time.Now().UnixNano()/1000)%1000000)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.journal_entries (
+			id, entry_number, reference_type, reference_id, action, description, currency, status, idempotency_key
+		) VALUES ($1, $2, 'payout', $3, 'payout_hold', $4, $5, 'posted', $6)
+	`, jeID, jeNumber, payoutID, "Hold for payout "+payoutNumber, payoutCurrency, "idem-hold-"+payoutID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create payout hold journal entry: %w", err)
+	}
+
+	// DEBIT Account 2030
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
+		VALUES (gen_random_uuid(), $1, $2, 'debit', $3)
+	`, jeID, sup2030ID, amountCents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to debit account 2030 for payout hold: %w", err)
+	}
+
+	// CREDIT Account 2040
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ledger.lines (id, journal_entry_id, account_id, entry_type, amount)
+		VALUES (gen_random_uuid(), $1, $2, 'credit', $3)
+	`, jeID, sup2040ID, amountCents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to credit account 2040 for payout hold: %w", err)
+	}
+
+	// 5. Insert payout request record
 	query := `
 		INSERT INTO ledger.payout_requests (
 			id, payout_number, supplier_id, amount, currency, bank_name, iban, status, risk_flag
-		) VALUES (gen_random_uuid(), $1, $2, $3, 'USD', $4, $5, 'pending', 'Clear')
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'Clear')
 		RETURNING id, payout_number, supplier_id, amount, currency, bank_name, iban, status, risk_flag, created_at
 	`
 	var pr PayoutRequest
-	err := r.pool.QueryRow(ctx, query, payoutNumber, supplierID, amountCents, bankName, iban).Scan(
+	err = tx.QueryRow(ctx, query, payoutID, payoutNumber, supplierID, amountCents, payoutCurrency, bankName, iban).Scan(
 		&pr.ID, &pr.PayoutNumber, &pr.SupplierID, &pr.AmountCents, &pr.Currency, &pr.BankName, &pr.IBAN, &pr.Status, &pr.RiskFlag, &pr.CreatedAt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to insert payout request: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit payout transaction: %w", err)
 	}
 	return &pr, nil
 }
