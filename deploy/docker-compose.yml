@@ -1,5 +1,5 @@
 services:
-  # 1. Primary PostgreSQL 16 Database
+  # 1. Primary PostgreSQL 16 Database (ACTIVE)
   postgres:
     image: postgres:16-alpine
     container_name: marketplace-postgres
@@ -8,62 +8,69 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_DB: marketplace_core
-      POSTGRES_USER: marketplace
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: dev_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../backend/db/migrations:/docker-entrypoint-initdb.d:ro
 
-  # 2. Valkey (Redis 7 Open-Source Fork)
-  valkey:
-    image: valkey/valkey:7-alpine
-    container_name: marketplace-valkey
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
+  # --------------------------------------------------------------------------
+  # The following infrastructure services are [PLANNED - Phase 6].
+  # They are preserved here for future asynchronous event-driven architecture,
+  # distributed caching, search indexing, and S3-compatible media uploads.
+  # Uncomment when implementing Phase 6 integrations.
+  # --------------------------------------------------------------------------
 
-  # 3. NATS JetStream (Event Streaming Bus)
-  nats:
-    image: nats:2-alpine
-    container_name: marketplace-nats
-    restart: unless-stopped
-    command: ["--jetstream", "--store_dir=/data"]
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-    volumes:
-      - nats_data:/data
+  # # 2. [PLANNED - Phase 6] Valkey (Redis 7 Open-Source Fork)
+  # valkey:
+  #   image: valkey/valkey:7-alpine
+  #   container_name: marketplace-valkey
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
 
-  # 4. Meilisearch (Arabic-Native Search Engine)
-  meilisearch:
-    image: getmeili/meilisearch:v1
-    container_name: marketplace-meilisearch
-    restart: unless-stopped
-    ports:
-      - "7700:7700"
-    environment:
-      MEILI_MASTER_KEY: dev_master_key
-      MEILI_NO_ANALYTICS: "true"
-    volumes:
-      - meili_data:/meili_data
+  # # 3. [PLANNED - Phase 6] NATS JetStream (Event Streaming Bus)
+  # nats:
+  #   image: nats:2-alpine
+  #   container_name: marketplace-nats
+  #   restart: unless-stopped
+  #   command: ["--jetstream", "--store_dir=/data"]
+  #   ports:
+  #     - "4222:4222"
+  #     - "8222:8222"
+  #   volumes:
+  #     - nats_data:/data
 
-  # 5. MinIO (S3-Compatible Storage for Local Dev)
-  minio:
-    image: minio/minio:latest
-    container_name: marketplace-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    volumes:
-      - minio_data:/data
+  # # 4. [PLANNED - Phase 6] Meilisearch (Arabic-Native Search Engine)
+  # meilisearch:
+  #   image: getmeili/meilisearch:v1
+  #   container_name: marketplace-meilisearch
+  #   restart: unless-stopped
+  #   ports:
+  #     - "7700:7700"
+  #   environment:
+  #     MEILI_MASTER_KEY: dev_master_key
+  #     MEILI_NO_ANALYTICS: "true"
+  #   volumes:
+  #     - meili_data:/meili_data
+
+  # # 5. [PLANNED - Phase 6] MinIO (S3-Compatible Storage for Local Dev)
+  # minio:
+  #   image: minio/minio:latest
+  #   container_name: marketplace-minio
+  #   restart: unless-stopped
+  #   command: server /data --console-address ":9001"
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   environment:
+  #     MINIO_ROOT_USER: minioadmin
+  #     MINIO_ROOT_PASSWORD: minioadmin
+  #   volumes:
+  #     - minio_data:/data
 
 volumes:
   postgres_data:
-  nats_data:
-  meili_data:
-  minio_data:
+  # nats_data:     # [PLANNED - Phase 6]
+  # meili_data:    # [PLANNED - Phase 6]
+  # minio_data:    # [PLANNED - Phase 6]

@@ -46,10 +46,10 @@ flowchart TD
     end
 
     subgraph DataLayer ["Authoritative Persistence & Infrastructure"]
-        Postgres[("🐘 PostgreSQL 16<br/>9 Schemas, Constraints, Triggers")]
-        Redis[("⚡ Valkey / Redis 7<br/>Cart Leases & Sessions")]
-        NATS[("📨 NATS JetStream<br/>Async Domain Events")]
-        MinIO[("🪣 MinIO / S3<br/>KYC Docs & Product Images")]
+        Postgres[("🐘 PostgreSQL 16 (ACTIVE)<br/>9 Schemas, Row Locks, Memoized Triggers,<br/>Cryptographic Hash Chains")]
+        Redis[("⚡ Valkey / Redis 7 [PLANNED - Phase 6]<br/>Cart Leases & Distributed Cache")]
+        NATS[("📨 NATS JetStream [PLANNED - Phase 6]<br/>Async Domain Events & Outbox Worker")]
+        MinIO[("🪣 MinIO / S3 [PLANNED - Phase 6]<br/>KYC Docs & Product Images")]
     end
 
     AdminPortal -->|REST / JSON| Router
@@ -68,9 +68,9 @@ flowchart TD
     LedgerMod --> Postgres
     FulfillMod --> Postgres
 
-    OrderMod --> Redis
-    FulfillMod --> NATS
-    AuthMod --> MinIO
+    OrderMod -.->|Future| Redis
+    FulfillMod -.->|Future| NATS
+    AuthMod -.->|Future| MinIO
 ```
 
 ---
@@ -100,7 +100,7 @@ If using local PostgreSQL:
 # Create database
 createdb -U postgres marketplace_core
 
-# Apply migrations and demo seed data (9 migrations)
+# Apply migrations and seed data (12 migrations)
 psql -U postgres -d marketplace_core -f backend/db/migrations/000001_iam_schema.up.sql
 psql -U postgres -d marketplace_core -f backend/db/migrations/000002_catalog_schema.up.sql
 psql -U postgres -d marketplace_core -f backend/db/migrations/000003_commerce_schema.up.sql
@@ -110,7 +110,15 @@ psql -U postgres -d marketplace_core -f backend/db/migrations/000006_inventory_s
 psql -U postgres -d marketplace_core -f backend/db/migrations/000007_fulfillment_schema.up.sql
 psql -U postgres -d marketplace_core -f backend/db/migrations/000008_auth_cart_cms_schema.up.sql
 psql -U postgres -d marketplace_core -f backend/db/migrations/000009_ledger_trigger.up.sql
-psql -U postgres -d marketplace_core -f backend/db/seeds/seed_data.sql
+psql -U postgres -d marketplace_core -f backend/db/migrations/000010_iam_system_roles.up.sql
+psql -U postgres -d marketplace_core -f backend/db/migrations/000011_financial_enhancements.up.sql
+psql -U postgres -d marketplace_core -f backend/db/migrations/000012_ledger_integrity.up.sql
+
+# Load baseline system roles & configurations (required for all environments)
+psql -U postgres -d marketplace_core -f backend/db/seeds/system_seed.sql
+
+# Load demo suppliers, products, and merchants (development only)
+psql -U postgres -d marketplace_core -f backend/db/seeds/demo_seed.sql
 ```
 
 *Or spin up via Docker Compose in one command:*
