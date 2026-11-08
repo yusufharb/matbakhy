@@ -16,6 +16,7 @@ import (
 	"github.com/marketplace/core/internal/modules/config"
 	"github.com/marketplace/core/internal/modules/inventory"
 	"github.com/marketplace/core/internal/modules/invoice"
+	"github.com/marketplace/core/internal/modules/kitchen"
 	"github.com/marketplace/core/internal/modules/order"
 	"github.com/marketplace/core/internal/modules/payment"
 	"github.com/marketplace/core/internal/modules/platform"
@@ -106,6 +107,8 @@ func main() {
 	configHandler := config.NewHandler(configRepo)
 	payHandler := payment.NewHandler(payRepo, gateway)
 	storageHandler := storage.NewHandler(storageSvc)
+	kitchenRepo := kitchen.NewRepository(db.Pool)
+	kitchenHandler := kitchen.NewHandler(kitchenRepo)
 
 	// Middlewares
 	authOnly := auth.RequireAuth
@@ -151,12 +154,14 @@ func main() {
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"system":    "NEXUS Marketplace Core API",
+			"system":    "Matbakhy - Egyptian Home Food Marketplace API (مطبخي)",
 			"status":    "online",
-			"database":  "PostgreSQL 16 (Connected)",
+			"currency":  "EGP",
+			"database":  "PostgreSQL 16 (marketplace_matbakhy)",
 			"health":    "/health",
 			"api_base":  "/api/v1/",
 			"endpoints": []string{
+				"/api/v1/kitchens",
 				"/api/v1/products",
 				"/api/v1/orders",
 				"/api/v1/ledger/entries",
@@ -174,8 +179,9 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":    "healthy",
-			"system":    "NEXUS Marketplace Core API",
+			"system":    "Matbakhy Core API (مطبخي)",
 			"version":   "1.0.0",
+			"currency":  "EGP",
 			"database":  "PostgreSQL 16 (Connected)",
 			"timestamp": time.Now().UTC(),
 		})
@@ -186,6 +192,10 @@ func main() {
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
 	mux.HandleFunc("POST /api/v1/auth/register-customer", authHandler.RegisterCustomer)
 	mux.HandleFunc("POST /api/v1/auth/refresh", authHandler.RefreshToken)
+
+	// Matbakhy Kitchens (Public Read)
+	mux.HandleFunc("GET /api/v1/kitchens", kitchenHandler.ListKitchens)
+	mux.HandleFunc("GET /api/v1/kitchens/{id}", kitchenHandler.GetKitchen)
 
 	// Catalog (Public Read)
 	mux.HandleFunc("GET /api/v1/products", catalogHandler.ListProducts)
@@ -255,13 +265,17 @@ func main() {
 	mux.HandleFunc("POST /api/v1/admin/payouts/{id}/approve", wrap(walletHandler.ApprovePayout, adminOnly))
 	mux.HandleFunc("POST /api/v1/admin/payouts/{id}/reject", wrap(walletHandler.RejectPayout, adminOnly))
 
-	// Supplier Portal APIs (Supplier or Admin)
+	// Supplier / Cook Portal APIs (Supplier or Admin)
 	mux.HandleFunc("GET /api/v1/supplier/offers", wrap(catalogHandler.ListSupplierOffers, supplierOrAdmin))
 	mux.HandleFunc("POST /api/v1/supplier/offers", wrap(catalogHandler.SaveOffer, supplierOrAdmin))
 	mux.HandleFunc("GET /api/v1/supplier/suborders", wrap(orderHandler.ListSupplierSuborders, supplierOrAdmin))
 	mux.HandleFunc("PATCH /api/v1/supplier/suborders/{id}/status", wrap(orderHandler.UpdateSuborderStatus, supplierOrAdmin))
 	mux.HandleFunc("GET /api/v1/supplier/wallet", wrap(walletHandler.GetSupplierWallet, supplierOrAdmin))
 	mux.HandleFunc("POST /api/v1/supplier/payouts", wrap(walletHandler.RequestPayout, supplierOrAdmin))
+
+	// Matbakhy Cook Kitchen Portal APIs (Cook / Supplier or Admin)
+	mux.HandleFunc("POST /api/v1/cook/kitchen/status", wrap(kitchenHandler.SetKitchenStatus, supplierOrAdmin))
+	mux.HandleFunc("PATCH /api/v1/cook/suborders/{id}/prep-status", wrap(kitchenHandler.UpdateSuborderPrepStatus, supplierOrAdmin))
 
 	// Inventory & Warehouses
 	mux.HandleFunc("GET /api/v1/inventory/warehouses", wrap(inventoryHandler.ListWarehouses, authOnly))

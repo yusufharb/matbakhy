@@ -38,6 +38,14 @@ type Suborder struct {
 	SupplierPayable int64       `json:"supplier_payable"` // Net credited to supplier
 	Status          string      `json:"status"`           // new, packing, ready, shipped, delivered
 	TrackingNumber  string      `json:"tracking_number,omitempty"`
+	OrderMode       string      `json:"order_mode,omitempty"`
+	ScheduledDate   string      `json:"scheduled_date,omitempty"`
+	SlotStartTime   string      `json:"slot_start_time,omitempty"`
+	SlotEndTime     string      `json:"slot_end_time,omitempty"`
+	PrepStatus      string      `json:"prep_status,omitempty"`
+	FulfillmentType string      `json:"fulfillment_type,omitempty"`
+	DeliveryFeeCents int64      `json:"delivery_fee_cents,omitempty"`
+	CookNotes       string      `json:"cook_notes,omitempty"`
 	Items           []OrderItem `json:"items"`
 }
 

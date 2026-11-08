@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "tokens": {
+    "colors": {
+      "brand": {
+        "primary": "#e05638",
+        "primaryHover": "#c44023",
+        "primaryActive": "#a32f17",
+        "primaryLight": "#fdf2f0",
+        "primaryBorder": "#f7cfc6",
+        "secondary": "#4d7c0f",
+        "secondaryHover": "#3f6212",
+        "secondaryLight": "#f7fee7",
+        "secondaryBorder": "#d9f99d",
+        "accent": "#d97706",
+        "accentLight": "#fffbeb"
+      },
+      "surfaces": {
+        "canvas": "#fcfaf8",
+        "card": "#ffffff",
+        "cardMuted": "#f8f5f0",
+        "sidebar": "#1f1712",
+        "border": "#ede3db",
+        "borderStrong": "#d8c7bb"
+      },
+      "text": {
+        "headline": "#221711",
+        "body": "#473830",
+        "muted": "#7c6c64",
+        "inverse": "#ffffff"
+      },
+      "semantic": {
+        "success": "#15803d",
+        "successLight": "#f0fdf4",
+        "warning": "#b45309",
+        "warningLight": "#fffbeb",
+        "danger": "#b91c1c",
+        "dangerLight": "#fef2f2"
+      }
+    },
+    "typography": {
+      "fontFamilyPrimary": "'Cairo', system-ui, -apple-system, sans-serif",
+      "fontFamilyMono": "'JetBrains Mono', monospace"
+    },
+    "geometry": {
+      "radiusBase": "10px",
+      "radiusCard": "16px",
+      "radiusButton": "10px"
+    }
+  }
+}

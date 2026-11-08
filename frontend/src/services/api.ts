@@ -28,108 +28,111 @@ export interface PriceTier {
 
 export interface APIProduct {
   id: string
-
   sku: string
-
   gtin?: string
-
   name: BilingualText
-
   slug: BilingualText
-
   description: BilingualText
-
   brand_id?: string
-
   brand_name?: string
-
   category_id: string
-
   category_name: BilingualText
-
   attributes: Record<string, string>
-
   status: string
-
   offer_count: number
-
   min_price_cents: number
-
   max_price_cents: number
-
   total_stock: number
+  dietary_tags?: string[]
+  ingredients?: string
+  reheating_instructions?: string
 }
 
 export interface APIOffer {
   id: string
-
   supplier_id: string
-
   supplier_name: string
-
   supplier_rating: number
-
   verified: boolean
-
   product_id: string
-
   product_name?: BilingualText
-
   product_sku?: string
-
   supplier_sku: string
-
   currency: string
-
   price_cents: number
-
   moq: number
-
   price_tiers: PriceTier[]
-
   lead_time_days: number
-
   stock: number
-
   location: string
-
   status: string
+  prep_lead_hours?: number
+  is_instant?: boolean
+  is_scheduled?: boolean
+  daily_portion_limit?: number
+  portions?: {
+    id: string
+    name: BilingualText
+    serves: string
+    price_cents: number
+  }[]
 }
 
 export interface APISuborder {
   id: string
-
   suborder_number: string
-
   parent_order_id: string
-
   supplier_id: string
-
   supplier_name: string
-
   subtotal_cents: number
-
   shipping_cents: number
-
   commission_rate: number
-
   commission_cents: number
-
   supplier_payable: number
-
   status: string
-
+  order_mode?: string
+  scheduled_date?: string
+  slot_start_time?: string
+  slot_end_time?: string
+  prep_status?: string
+  fulfillment_type?: string
+  delivery_fee_cents?: number
+  cook_notes?: string
   items?: {
     id: string
-
     offer_id: string
-
     quantity: number
-
     unit_price_cents: number
-
     total_price_cents: number
   }[]
+}
+
+export interface APIKitchen {
+  id: string
+  organization_id: string
+  kitchen_name: BilingualText
+  chef_name: string
+  bio: string
+  governorate: string
+  district: string
+  address_line: string
+  latitude?: number
+  longitude?: number
+  delivery_radius_km: number
+  is_open: boolean
+  hygiene_rating: number
+  hygiene_badge: string
+  dishes_count: number
+  created_at: string
+}
+
+export interface APIOperatingHour {
+  id: string
+  kitchen_id: string
+  day_of_week: number
+  open_time: string
+  close_time: string
+  is_closed: boolean
 }
 
 export interface APIOrder {
@@ -590,8 +593,13 @@ export const api = {
 
   // Products & Offers (Public)
 
-  async getProducts(): Promise<APIProduct[]> {
-    const res = await fetch(`${API_BASE_URL}/products`)
+  async getProducts(params?: { category_id?: string; search?: string; kitchen_id?: string }): Promise<APIProduct[]> {
+    const q = new URLSearchParams()
+    if (params?.category_id) q.set("category_id", params.category_id)
+    if (params?.search) q.set("search", params.search)
+    if (params?.kitchen_id) q.set("kitchen_id", params.kitchen_id)
+    const queryString = q.toString() ? `?${q.toString()}` : ""
+    const res = await fetch(`${API_BASE_URL}/products${queryString}`)
 
     if (!res.ok) throw new Error("Failed to fetch products")
 
@@ -610,24 +618,65 @@ export const api = {
     return data.offers || []
   },
 
+  // Matbakhy Home Kitchens (Public Read)
+
+  async getKitchens(district?: string): Promise<APIKitchen[]> {
+    const query = district ? `?district=${encodeURIComponent(district)}` : ""
+    const res = await fetch(`${API_BASE_URL}/kitchens${query}`)
+    if (!res.ok) throw new Error("Failed to fetch kitchens")
+    const data = await res.json()
+    return data.kitchens || []
+  },
+
+  async getKitchen(id: string): Promise<{ kitchen: APIKitchen; operating_hours: APIOperatingHour[] }> {
+    const res = await fetch(`${API_BASE_URL}/kitchens/${id}`)
+    if (!res.ok) throw new Error("Failed to fetch kitchen details")
+    return res.json()
+  },
+
+  // Cook / Kitchen Management (Cook / Supplier Protected)
+
+  async setKitchenStatus(isOpen: boolean): Promise<any> {
+    const res = await fetchWithAuth("/cook/kitchen/status", {
+      method: "POST",
+      body: JSON.stringify({ is_open: isOpen }),
+    })
+    if (!res.ok) throw new Error("Failed to update kitchen status")
+    return res.json()
+  },
+
+  async updateSuborderPrepStatus(suborderId: string, prepStatus: string, notes?: string): Promise<any> {
+    const res = await fetchWithAuth(`/cook/suborders/${suborderId}/prep-status`, {
+      method: "PATCH",
+      body: JSON.stringify({ prep_status: prepStatus, cook_notes: notes }),
+    })
+    if (!res.ok) throw new Error("Failed to update prep status")
+    return res.json()
+  },
+
   // Checkout & Orders (Protected)
 
   async checkout(payload: {
+    order_type?: string
     merchant_id?: string
-
+    user_id?: string
     payment_method: string
-
+    delivery_address?: string
+    order_mode?: string
+    scheduled_date?: string
+    slot_start_time?: string
+    slot_end_time?: string
+    fulfillment_type?: string
+    customer_notes?: string
     items: CheckoutItemInput[]
   }): Promise<CheckoutResult> {
     const res = await fetchWithAuth("/checkout", {
       method: "POST",
-
       body: JSON.stringify(payload),
     })
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Checkout failed" }))
-
       throw new Error(err.error || "Checkout failed")
     }
 

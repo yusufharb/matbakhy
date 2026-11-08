@@ -25,6 +25,32 @@ export interface StorefrontProduct {
   reviewCount: number
   offers: StorefrontOffer[]
   specs: Record<string, string>
+  dietaryTags?: string[]
+}
+
+export interface DishPortion {
+  id: string
+  name: BilingualText
+  price_cents: number
+  is_default?: boolean
+}
+
+export interface KitchenProfile {
+  id: string
+  organizationId: string
+  chefName: string
+  bio: string
+  governorate: string
+  district: string
+  addressLine: string
+  latitude?: number
+  longitude?: number
+  deliveryRadiusKm: number
+  isOpen: boolean
+  hygieneRating: number
+  hygieneBadge: string
+  kitchenName: BilingualText
+  dishesCount?: number
 }
 
 export interface StorefrontOffer {
@@ -39,16 +65,25 @@ export interface StorefrontOffer {
   location: string
   deliveryDays: number
   returnPolicy: string
-  tiers?: { minQty: number maxQty: number | string price: number }[]
+  tiers?: { minQty: number; maxQty: number | string; price: number }[]
   b2bEnabled?: boolean
   b2cEnabled?: boolean
   retailPrice?: number
+  prepLeadHours?: number
+  isInstant?: boolean
+  isScheduled?: boolean
+  dailyPortionLimit?: number
+  portions?: DishPortion[]
 }
 
 export interface CartItem {
   offer: StorefrontOffer
   product: StorefrontProduct
   quantity: number
+  selectedPortion?: DishPortion
+  orderMode?: "instant" | "scheduled"
+  scheduledDate?: string
+  slotTime?: string
 }
 
 export interface ParentOrder {
@@ -70,6 +105,14 @@ export interface ParentOrder {
     amount: number
     status: "Processing" | "Ready for pickup" | "Shipped" | "Delivered" | "Confirmed"
     trackingNumber?: string
+    orderMode?: "instant" | "scheduled"
+    scheduledDate?: string
+    slotStartTime?: string
+    slotEndTime?: string
+    prepStatus?: "new" | "accepted" | "cooking" | "ready_for_pickup" | "dispatched" | "rejected"
+    fulfillmentType?: "platform_delivery" | "cook_delivery" | "customer_pickup"
+    deliveryFeeCents?: number
+    cookNotes?: string
   }[]
 }
 

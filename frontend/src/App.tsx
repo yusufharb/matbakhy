@@ -56,6 +56,7 @@ import { PortalSwitcher } from "./components/PortalSwitcher"
 import { MerchantStorefront } from "./components/MerchantStorefront"
 import { B2BPortal } from "./components/b2b/B2BPortal"
 import { B2CPortal } from "./components/b2c/B2CPortal"
+import { CookPortal } from "./components/cook/CookPortal"
 import {
   TeamRolesScreen,
   AuditLogScreen,
@@ -3890,6 +3891,24 @@ export default function App() {
           setLocale={handleLocaleChange}
         />
         <B2CPortal
+          locale={locale}
+          setLocale={handleLocaleChange}
+          onSwitchPortal={(p) => handlePortalChange(p)}
+        />
+      </div>
+    )
+  }
+
+  if (portal === "supplier") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0c0a09" }}>
+        <PortalSwitcher
+          portal={portal}
+          setPortal={handlePortalChange}
+          locale={locale}
+          setLocale={handleLocaleChange}
+        />
+        <CookPortal
           locale={locale}
           setLocale={handleLocaleChange}
           onSwitchPortal={(p) => handlePortalChange(p)}

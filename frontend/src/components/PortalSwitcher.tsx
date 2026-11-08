@@ -56,26 +56,26 @@ export function PortalSwitcher({
               width: 28,
               height: 28,
               borderRadius: 8,
-              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+              background: "linear-gradient(135deg, #e05638 0%, #b91c1c 100%)",
               display: "grid",
               placeItems: "center",
               color: "#ffffff",
               fontWeight: 900,
-              fontSize: 14,
-              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
+              fontSize: 15,
+              boxShadow: "0 2px 8px rgba(224, 86, 56, 0.4)",
             }}
           >
-            N
+            م
           </div>
           <span
             style={{
-              fontWeight: 800,
-              fontSize: 14,
+              fontWeight: 900,
+              fontSize: 15,
               letterSpacing: isRtl ? "0" : "0.04em",
               color: "#ffffff",
             }}
           >
-            {isRtl ? "نظام نكسوس الموحد" : "NEXUS CORE"}
+            {isRtl ? "مطبخي — أكل بيتي مصري" : "MATBAKHY EGYPT"}
           </span>
           <span
             style={{
@@ -83,9 +83,9 @@ export function PortalSwitcher({
               fontWeight: 700,
               padding: "2px 8px",
               borderRadius: 12,
-              background: "rgba(16, 185, 129, 0.15)",
-              color: "#34d399",
-              border: "1px solid rgba(16, 185, 129, 0.3)",
+              background: "rgba(34, 197, 94, 0.15)",
+              color: "#4ade80",
+              border: "1px solid rgba(34, 197, 94, 0.3)",
               display: "flex",
               alignItems: "center",
               gap: 5,
@@ -96,16 +96,16 @@ export function PortalSwitcher({
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
-                background: "#10b981",
-                boxShadow: "0 0 8px #10b981",
+                background: "#22c55e",
+                boxShadow: "0 0 8px #22c55e",
               }}
             />
-            {isRtl ? "مباشر 8080" : "LIVE 8080"}
+            {isRtl ? "مباشر EGP" : "LIVE EGP"}
           </span>
         </div>
       </div>
 
-      {/* Switcher Pills (4 Portals: B2C, B2B, Supplier, Admin) */}
+      {/* Switcher Pills (4 Portals: B2C, Cook Kitchen, B2B, Admin) */}
       <div
         style={{
           display: "flex",
@@ -124,7 +124,7 @@ export function PortalSwitcher({
             border: 0,
             background:
               currentMode === "b2c"
-                ? "linear-gradient(135deg, #10b981, #059669)"
+                ? "linear-gradient(135deg, #e05638, #c2410c)"
                 : "transparent",
             color: currentMode === "b2c" ? "#ffffff" : "#94a3b8",
             padding: "6px 14px",
@@ -138,15 +138,44 @@ export function PortalSwitcher({
             transition: "all 0.18s ease",
             boxShadow:
               currentMode === "b2c"
-                ? "0 2px 6px rgba(16, 185, 129, 0.35)"
+                ? "0 2px 6px rgba(224, 86, 56, 0.35)"
                 : "none",
           }}
         >
           <ShoppingBag size={16} />
-          <span>{isRtl ? "متجر المستهلك (B2C)" : "Consumer Store (B2C)"}</span>
+          <span>{isRtl ? "سوق الأكل البيتي (العملاء)" : "Home Food Store (B2C)"}</span>
         </button>
 
-        {/* B2B Merchant Procurement Portal */}
+        {/* Cook / Housewife Kitchen Portal */}
+        <button
+          onClick={() => setPortal("supplier")}
+          style={{
+            border: 0,
+            background:
+              currentMode === "supplier"
+                ? "linear-gradient(135deg, #16a34a, #15803d)"
+                : "transparent",
+            color: currentMode === "supplier" ? "#ffffff" : "#94a3b8",
+            padding: "6px 14px",
+            borderRadius: 7,
+            fontSize: 13,
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+            transition: "all 0.18s ease",
+            boxShadow:
+              currentMode === "supplier"
+                ? "0 2px 6px rgba(22, 163, 74, 0.35)"
+                : "none",
+          }}
+        >
+          <Store size={16} />
+          <span>{isRtl ? "مطبخ الستات (الشيفات)" : "Cook Kitchen Portal"}</span>
+        </button>
+
+        {/* B2B Corporate Catering */}
         <button
           onClick={() => setPortal("b2b")}
           style={{
@@ -172,36 +201,7 @@ export function PortalSwitcher({
           }}
         >
           <Building2 size={16} />
-          <span>{isRtl ? "بوابة الشركات (B2B)" : "B2B Procurement"}</span>
-        </button>
-
-        {/* Supplier Portal */}
-        <button
-          onClick={() => setPortal("supplier")}
-          style={{
-            border: 0,
-            background:
-              currentMode === "supplier"
-                ? "linear-gradient(135deg, #059669, #047857)"
-                : "transparent",
-            color: currentMode === "supplier" ? "#ffffff" : "#94a3b8",
-            padding: "6px 14px",
-            borderRadius: 7,
-            fontSize: 13,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            cursor: "pointer",
-            transition: "all 0.18s ease",
-            boxShadow:
-              currentMode === "supplier"
-                ? "0 2px 6px rgba(5, 150, 105, 0.35)"
-                : "none",
-          }}
-        >
-          <Store size={16} />
-          <span>{isRtl ? "بوابة الموردين" : "Supplier"}</span>
+          <span>{isRtl ? "طلبات الشركات والعزومات" : "Corporate & Catering"}</span>
         </button>
 
         {/* Admin Dashboard */}
@@ -230,7 +230,7 @@ export function PortalSwitcher({
           }}
         >
           <ShieldCheck size={16} />
-          <span>{isRtl ? "الإدارة المركزية" : "Admin"}</span>
+          <span>{isRtl ? "لوحة الإدارة المركزية" : "Admin Operations"}</span>
         </button>
       </div>
 

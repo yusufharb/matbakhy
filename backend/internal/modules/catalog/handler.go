@@ -18,8 +18,9 @@ func NewHandler(repo *Repository) *Handler {
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	categoryID := r.URL.Query().Get("category_id")
 	search := r.URL.Query().Get("search")
+	kitchenID := r.URL.Query().Get("kitchen_id")
 
-	products, err := h.repo.ListProducts(r.Context(), categoryID, search)
+	products, err := h.repo.ListProducts(r.Context(), categoryID, search, kitchenID)
 	if err != nil {
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 		return

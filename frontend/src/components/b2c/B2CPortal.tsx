@@ -22,9 +22,18 @@ import {
   Home,
   Briefcase,
   ExternalLink,
+  ChefHat,
+  Flame,
+  Calendar,
+  Clock,
+  Sparkles,
+  Filter,
+  Utensils,
+  Info,
 } from "lucide-react"
 import { api } from "../../services/api"
 import { translations } from "../../data/i18n"
+import { sampleKitchens, sampleProducts } from "../../data/mockStorefront"
 import type {
   Locale,
   B2CPage,
@@ -34,6 +43,8 @@ import type {
   CartItem,
   ParentOrder,
   LedgerTransaction,
+  KitchenProfile,
+  DishPortion,
 } from "../../types"
 
 interface Props {
@@ -48,9 +59,16 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
   const tc = t.b2c
 
   const [activeTab, setActiveTab] = useState<B2CPage>("home")
-  const [products, setProducts] = useState<StorefrontProduct[]>([])
-  const [selectedProduct, setSelectedProduct] =
-    useState<StorefrontProduct | null>(null)
+  const [products, setProducts] = useState<StorefrontProduct[]>(sampleProducts)
+  const [kitchens, setKitchens] = useState<KitchenProfile[]>(sampleKitchens)
+  const [selectedKitchenId, setSelectedKitchenId] = useState<string | null>(null)
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("All")
+  const [orderMode, setOrderMode] = useState<"instant" | "scheduled">("scheduled")
+  const [scheduledDate, setScheduledDate] = useState<string>(new Date().toISOString().split("T")[0])
+  const [selectedSlot, setSelectedSlot] = useState<string>("14:00 - 16:00")
+  const [selectedPortions, setSelectedPortions] = useState<Record<string, string>>({})
+  const [customerNotes, setCustomerNotes] = useState<string>("")
+  const [selectedProduct, setSelectedProduct] = useState<StorefrontProduct | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
   const [addresses, setAddresses] = useState<B2CCustomerAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string>("")
@@ -64,24 +82,22 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const [showAddAddressModal, setShowAddAddressModal] = useState(false)
   const [showTopupModal, setShowTopupModal] = useState(false)
-  const [topupAmount, setTopupAmount] = useState("50")
-  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">(
-    "wallet",
-  )
+  const [topupAmount, setTopupAmount] = useState("200")
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">("wallet")
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null)
 
-  // New Address Form State
+  // New Address Form State (Egyptian Cities & Districts)
   const [newAddr, setNewAddr] = useState({
     label: "Home" as const,
-    recipientName: "سارة الزهراني / Sara",
-    recipientPhone: "+966501234567",
-    city: "الرياض / Riyadh",
-    district: "حي العليا / Olaya",
-    streetAddress: "شارع التحلية، عمارة 42",
-    buildingNumber: "42",
+    recipientName: "سارة محمود / Sara Mahmoud",
+    recipientPhone: "01012345678",
+    city: "القاهرة / Cairo",
+    district: "المعادي / Maadi",
+    streetAddress: "شارع النصر، دجلة المعادي، عمارة 15",
+    buildingNumber: "15",
     floorNumber: "3",
-    apartmentNumber: "12",
-    deliveryInstructions: "يرجى ترك الشحنة عند الباب",
+    apartmentNumber: "7",
+    deliveryInstructions: "يرجى رن جرس الباب والاتصال قبل الوصول",
     isDefault: true,
   })
 
@@ -91,86 +107,154 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
 
   const loadB2CData = async () => {
     try {
-      const [addrList, wlt, txList, ordList] = await Promise.all([
-        api.getCustomerAddresses(),
-        api.getB2CWallet(),
-        api.getLedgerTransactions("b2c"),
-        api.getOrders(),
+      const [addrList, wlt, txList, ordList, kList, prodList] = await Promise.all([
+        api.getCustomerAddresses().catch(() => []),
+        api.getB2CWallet().catch(() => null),
+        api.getLedgerTransactions("b2c").catch(() => []),
+        api.getOrders().catch(() => []),
+        api.getKitchens().catch(() => []),
+        api.getProducts().catch(() => []),
       ])
-      setAddresses(addrList)
-      if (addrList.length > 0) {
+
+      if (addrList && addrList.length > 0) {
+        setAddresses(addrList)
         const def = addrList.find((a) => a.isDefault) || addrList[0]
         setSelectedAddressId(def.id)
+      } else {
+        const defaultEgyptAddr: B2CCustomerAddress = {
+          id: "addr-eg-01",
+          userId: "usr-cairo-01",
+          label: "Home",
+          recipientName: "سارة محمود",
+          recipientPhone: "01012345678",
+          city: "القاهرة / Cairo",
+          district: "المعادي / Maadi",
+          streetAddress: "شارع النصر، دجلة المعادي، عمارة 15",
+          buildingNumber: "15",
+          floorNumber: "3",
+          apartmentNumber: "7",
+          deliveryInstructions: "يرجى رن الجرس والتسليم باليد",
+          isDefault: true,
+          createdAt: new Date().toISOString(),
+        }
+        setAddresses([defaultEgyptAddr])
+        setSelectedAddressId(defaultEgyptAddr.id)
       }
+
       setWallet(wlt)
       setTransactions(txList)
+
+      if (kList && kList.length > 0) {
+        setKitchens(
+          kList.map((k) => ({
+            id: k.id,
+            organizationId: k.organization_id,
+            chefName: k.chef_name,
+            kitchenName: k.kitchen_name,
+            bio: k.bio,
+            governorate: k.governorate,
+            district: k.district,
+            addressLine: k.address_line,
+            latitude: k.latitude,
+            longitude: k.longitude,
+            deliveryRadiusKm: k.delivery_radius_km,
+            isOpen: k.is_open,
+            hygieneRating: k.hygiene_rating,
+            hygieneBadge: k.hygiene_badge,
+            dishesCount: k.dishes_count,
+          }))
+        )
+      } else {
+        setKitchens(sampleKitchens)
+      }
+
+      if (prodList && prodList.length > 0) {
+        setProducts(
+          prodList.map((p) => {
+            const sampleMatch = sampleProducts.find((sp) => sp.sku === p.sku)
+            return {
+              id: p.id,
+              sku: p.sku,
+              name: p.name,
+              category: p.category_name,
+              image: sampleMatch?.image || "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=700&auto=format&fit=crop&q=80",
+              brand: p.brand_name || "مطبخ بيتي معتمد",
+              description: p.description,
+              rating: 4.9,
+              reviewCount: 95,
+              dietaryTags: p.dietary_tags || ["سمنة بلدي", "طازج يومياً"],
+              specs: p.attributes || { "المطبخ": "أكل بيتي مصري", "التحضير": "طازج بالطلب" },
+              offers: [
+                {
+                  id: `off-${p.id}`,
+                  supplierId: "b1000000-0000-0000-0000-000000000001",
+                  supplierName: "مطبخ أم أحمد للأكلات المصرية",
+                  supplierRating: 4.95,
+                  verified: true,
+                  price: (p.min_price_cents || 15000) / 100,
+                  retailPrice: (p.min_price_cents || 15000) / 100,
+                  moq: 1,
+                  stock: p.total_stock || 20,
+                  location: "المعادي / Maadi",
+                  deliveryDays: 1,
+                  returnPolicy: "ضمان الجودة والطعم البيتي الأصيل",
+                  prepLeadHours: 2,
+                  isInstant: true,
+                  isScheduled: true,
+                  dailyPortionLimit: 20,
+                  portions: sampleMatch?.offers[0]?.portions || [
+                    {
+                      id: `port-${p.id}-default`,
+                      name: { ar: "وجبة قياسية", en: "Standard Portion" },
+                      price_cents: p.min_price_cents || 15000,
+                      is_default: true,
+                    },
+                  ],
+                },
+              ],
+            }
+          })
+        )
+      } else {
+        setProducts(sampleProducts)
+      }
+
       if (ordList && ordList.length > 0) {
         setOrders(
           ordList.map((o) => ({
             id: o.id,
             orderNumber: o.order_number,
-            date: o.created_at ? o.created_at.split("T")[0] : "2026-11-04",
+            date: o.created_at ? o.created_at.split("T")[0] : "2026-11-08",
             total: o.grand_total_cents / 100,
-            status: "Delivered",
-            paymentMethod: o.payment_method || "Consumer Wallet (2050)",
+            status: "Confirmed",
+            paymentMethod: o.payment_method || "فودافون كاش / إنستاباي",
             orderType: "b2c",
-            destinationAddress: "Olaya District, Riyadh",
+            destinationAddress: "شارع النصر، دجلة المعادي، القاهرة",
             suborders: (o.suborders || []).map((so) => ({
               id: so.id,
               suborderNumber: so.suborder_number,
               supplierName: so.supplier_name,
               itemsCount: (so.items || []).length || 1,
               amount: so.subtotal_cents / 100,
-              status: "Delivered",
-              trackingNumber: `SMSA-${so.suborder_number}`,
+              status: "Confirmed",
+              trackingNumber: `CAP-${so.suborder_number}`,
+              orderMode: so.order_mode as any,
+              scheduledDate: so.scheduled_date,
+              slotStartTime: so.slot_start_time,
+              slotEndTime: so.slot_end_time,
+              prepStatus: so.prep_status as any,
+              fulfillmentType: so.fulfillment_type as any,
+              deliveryFeeCents: so.delivery_fee_cents,
+              cookNotes: so.cook_notes,
             })),
-          })),
+          }))
         )
       }
     } catch (e) {
       console.error("Failed to load B2C initial data", e)
+      setProducts(sampleProducts)
+      setKitchens(sampleKitchens)
     }
-
-    try {
-      const prods = await api.getProducts()
-      if (prods && prods.length > 0) {
-        setProducts(
-          prods.map((p) => ({
-            id: p.id,
-            sku: p.sku,
-            name: p.name,
-            category: p.category_name,
-            image:
-              "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=500&auto=format&fit=crop&q=60",
-            brand: p.brand_name || "Premium Brand",
-            description: p.description,
-            rating: 4.8,
-            reviewCount: 128,
-            specs: p.attributes || {
-              Color: "Matte Black",
-              Warranty: "2 Years Official",
-            },
-            offers: [
-              {
-                id: `ret-off-${p.id}`,
-                supplierId: "sup-retail",
-                supplierName: "Direct Retail Fulfilled",
-                supplierRating: 4.9,
-                verified: true,
-                price: ((p.min_price_cents || 2400) * 1.25) / 100, // Consumer Retail Unit Price
-                moq: 1, // Single-unit consumer purchase
-                stock: p.total_stock || 120,
-                location: "Central Riyadh Hub",
-                deliveryDays: 1,
-                returnPolicy: "Hassle-Free Return Policy",
-                b2cEnabled: true,
-                retailPrice: ((p.min_price_cents || 2400) * 1.25) / 100,
-              },
-            ],
-          })),
-        )
-      }
-    } catch {}
   }
 
   const showToast = (msg: string) => {
@@ -178,19 +262,37 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
     setTimeout(() => setToastMsg(null), 3500)
   }
 
-  const handleAddToCart = (product: StorefrontProduct, qty = 1) => {
+  const handleAddToCart = (product: StorefrontProduct, qty = 1, chosenPortion?: DishPortion) => {
     const offer = product.offers[0]
-    const existingIndex = cart.findIndex((item) => item.offer.id === offer.id)
+    const effectivePrice = chosenPortion ? chosenPortion.price_cents / 100 : offer.price
+    const itemOffer = {
+      ...offer,
+      price: effectivePrice,
+    }
+    const existingIndex = cart.findIndex(
+      (item) => item.product.id === product.id && item.selectedPortion?.id === chosenPortion?.id
+    )
     if (existingIndex > -1) {
       const updated = [...cart]
       updated[existingIndex].quantity += qty
       setCart(updated)
     } else {
-      setCart([...cart, { product, offer, quantity: qty }])
+      setCart([
+        ...cart,
+        {
+          product,
+          offer: itemOffer,
+          quantity: qty,
+          selectedPortion: chosenPortion,
+          orderMode,
+          scheduledDate,
+          slotTime: selectedSlot,
+        },
+      ])
     }
     showToast(
       isRtl
-        ? `تمت إضافة ${product.name.ar} إلى السلة`
+        ? `تمت إضافة ${product.name.ar} ${chosenPortion ? `(${chosenPortion.name.ar})` : ""} إلى السلة`
         : `Added ${product.name.en} to cart`,
     )
   }
@@ -199,43 +301,73 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
     if (cart.length === 0) return
     const selectedAddr =
       addresses.find((a) => a.id === selectedAddressId) || addresses[0]
-    const totalAmount = cart.reduce((s, i) => s + i.offer.price * i.quantity, 0)
+    const foodSubtotal = cart.reduce((s, i) => s + i.offer.price * i.quantity, 0)
+    const deliveryFee = 25.0 // 25 EGP standard platform delivery fee
+    const grandTotal = foodSubtotal + deliveryFee
+
+    const orderId = `MAT-${Math.floor(10000 + Math.random() * 90000)}`
 
     try {
       await api.checkout({
+        order_type: "b2c",
+        payment_method: paymentMethod === "wallet" ? "wallet" : "credit_card",
+        delivery_address: `${selectedAddr?.streetAddress || "شارع النصر"}, ${selectedAddr?.district || "المعادي"}, ${selectedAddr?.city || "القاهرة"}`,
+        order_mode: orderMode,
+        scheduled_date: scheduledDate,
+        slot_start_time: selectedSlot.split(" - ")[0] || "14:00",
+        slot_end_time: selectedSlot.split(" - ")[1] || "16:00",
+        fulfillment_type: "platform_delivery",
+        customer_notes: customerNotes || "تسليم الوجبة ساخنة من فضلك",
         items: cart.map((i) => ({
           offer_id: i.offer.id,
           quantity: i.quantity,
         })),
-        payment_method: paymentMethod === "wallet" ? "wallet" : "credit_card",
-        idempotency_key: `b2c-checkout-${Date.now()}`,
       })
-    } catch {}
+    } catch (e) {
+      console.warn("Backend checkout call:", e)
+    }
 
-    const orderId = `ORD-RET-${Math.floor(10000 + Math.random() * 90000)}`
+    // Group cart items into kitchen suborders
+    const kitchenSubordersMap: Record<string, { name: string; amount: number; items: number }> = {}
+    cart.forEach((item) => {
+      const supId = item.offer.supplierId || "um-ahmed"
+      const supName = item.offer.supplierName || "مطبخ أم أحمد للأكلات المصرية"
+      if (!kitchenSubordersMap[supId]) {
+        kitchenSubordersMap[supId] = { name: supName, amount: 0, items: 0 }
+      }
+      kitchenSubordersMap[supId].amount += item.offer.price * item.quantity
+      kitchenSubordersMap[supId].items += item.quantity
+    })
+
     const newOrder: ParentOrder = {
       id: `ord-${Date.now()}`,
       orderNumber: orderId,
-      date: new Date().toISOString().split("T")[0],
-      total: totalAmount,
+      date: scheduledDate,
+      total: grandTotal,
       status: "Confirmed",
       paymentMethod:
         paymentMethod === "wallet"
-          ? "Consumer Wallet (Account 2050)"
-          : "Credit Card (Visa/Mastercard)",
+          ? "محفظة مطبخي الذكية"
+          : "بطاقة دفع / فودافون كاش",
       orderType: "b2c",
-      destinationAddress: `${selectedAddr?.streetAddress}, ${selectedAddr?.city}`,
-      suborders: [
-        {
-          id: `so-${Date.now()}`,
-          suborderNumber: `SUB-${orderId}`,
-          supplierName: "Direct Fulfillment Express",
-          itemsCount: cart.length,
-          amount: totalAmount,
-          status: "Processing",
-          trackingNumber: `SMSA-${Date.now().toString().slice(-8)}`,
-        },
-      ],
+      destinationAddress: `${selectedAddr?.streetAddress || "شارع النصر"}، ${selectedAddr?.district || "المعادي"}`,
+      suborders: Object.entries(kitchenSubordersMap).map(([sId, sData], idx) => ({
+        id: `so-${Date.now()}-${idx}`,
+        suborderNumber: `SUB-${orderId}-${idx + 1}`,
+        supplierName: sData.name,
+        itemsCount: sData.items,
+        amount: sData.amount + (idx === 0 ? deliveryFee : 0),
+        status: "Confirmed",
+        trackingNumber: `CAP-${Date.now().toString().slice(-6)}`,
+        orderMode: orderMode,
+        scheduledDate: scheduledDate,
+        slotStartTime: selectedSlot.split(" - ")[0] || "14:00",
+        slotEndTime: selectedSlot.split(" - ")[1] || "16:00",
+        prepStatus: "new",
+        fulfillmentType: "platform_delivery",
+        deliveryFeeCents: 2500,
+        cookNotes: customerNotes,
+      })),
     }
 
     setOrders([newOrder, ...orders])
@@ -244,7 +376,7 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
     setActiveTab("orders")
     showToast(
       isRtl
-        ? `تم استلام طلبك بنجاح! رقم الطلب: ${orderId}`
+        ? `ألف هنا! تم تأكيد طلبك بنجاح رقم #${orderId}`
         : `Order placed successfully! #${orderId}`,
     )
   }
@@ -258,8 +390,8 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
     setShowTopupModal(false)
     showToast(
       isRtl
-        ? `تم شحن رصيد المحفظة بمبلغ $${amount}`
-        : `Wallet topped up by $${amount}`,
+        ? `تم شحن رصيد المحفظة بمبلغ ${amount} ج.م`
+        : `Wallet topped up by ${amount} EGP`,
     )
   }
 
@@ -485,21 +617,178 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
         {/* HOME TAB */}
         {activeTab === "home" && (
           <div>
-            {/* Hero Marketing Banner */}
+            {/* 1. Egyptian Delivery District & Order Mode Selector Bar */}
+            <div
+              style={{
+                background: "#141210",
+                border: "1px solid #292524",
+                borderRadius: 16,
+                padding: "16px 20px",
+                marginBottom: 24,
+                display: "flex",
+                flexWrap: "wrap",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 16,
+              }}
+            >
+              {/* District Selector */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <MapPin size={18} color="#e05638" />
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#a8a29e" }}>
+                  {isRtl ? "توصيل إلى:" : "Deliver to:"}
+                </span>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  style={{
+                    background: "#1c1917",
+                    color: "#fafaf9",
+                    border: "1px solid #334155",
+                    borderRadius: 8,
+                    padding: "6px 12px",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="All">{isRtl ? "جميع أحياء القاهرة والجيزة" : "All Cairo & Giza Districts"}</option>
+                  <option value="Maadi">{isRtl ? "المعادي / Maadi" : "Maadi"}</option>
+                  <option value="5th Settlement">{isRtl ? "التجمع الخامس / New Cairo" : "5th Settlement"}</option>
+                  <option value="Sheikh Zayed">{isRtl ? "الشيخ زايد / Sheikh Zayed" : "Sheikh Zayed"}</option>
+                  <option value="Nasr City">{isRtl ? "مدينة نصر / Nasr City" : "Nasr City"}</option>
+                  <option value="Mohandessin">{isRtl ? "المهندسين والدقي / Dokki" : "Mohandessin"}</option>
+                  <option value="October">{isRtl ? "6 أكتوبر / 6th of October" : "6th of October"}</option>
+                </select>
+              </div>
+
+              {/* Order Mode Switcher: Instant vs Scheduled */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#1c1917",
+                  padding: "4px",
+                  borderRadius: 10,
+                  border: "1px solid #292524",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setOrderMode("instant")}
+                  style={{
+                    border: 0,
+                    background:
+                      orderMode === "instant"
+                        ? "linear-gradient(135deg, #e05638, #c2410c)"
+                        : "transparent",
+                    color: orderMode === "instant" ? "#ffffff" : "#a8a29e",
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <Flame size={14} />
+                  <span>{isRtl ? "طلب فوري ساخن ⚡" : "Instant (45-60m)"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderMode("scheduled")}
+                  style={{
+                    border: 0,
+                    background:
+                      orderMode === "scheduled"
+                        ? "linear-gradient(135deg, #2563eb, #1d4ed8)"
+                        : "transparent",
+                    color: orderMode === "scheduled" ? "#ffffff" : "#a8a29e",
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <Calendar size={14} />
+                  <span>{isRtl ? "جدولة مسبقة 📅" : "Schedule Ahead"}</span>
+                </button>
+              </div>
+
+              {/* Scheduled Date & Window Picker */}
+              {orderMode === "scheduled" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <select
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                    style={{
+                      background: "#1c1917",
+                      color: "#60a5fa",
+                      border: "1px solid rgba(37, 99, 235, 0.4)",
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <option value={new Date().toISOString().split("T")[0]}>
+                      {isRtl ? "اليوم" : "Today"} ({new Date().toISOString().split("T")[0]})
+                    </option>
+                    <option value={new Date(Date.now() + 86400000).toISOString().split("T")[0]}>
+                      {isRtl ? "غداً" : "Tomorrow"} ({new Date(Date.now() + 86400000).toISOString().split("T")[0]})
+                    </option>
+                    <option value={new Date(Date.now() + 172800000).toISOString().split("T")[0]}>
+                      {isRtl ? "بعد غد" : "In 2 Days"} ({new Date(Date.now() + 172800000).toISOString().split("T")[0]})
+                    </option>
+                  </select>
+
+                  <select
+                    value={selectedSlot}
+                    onChange={(e) => setSelectedSlot(e.target.value)}
+                    style={{
+                      background: "#1c1917",
+                      color: "#fafaf9",
+                      border: "1px solid #334155",
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <option value="13:00 - 15:00">{isRtl ? "1:00 م - 3:00 م (غداء مبكر)" : "1:00 PM - 3:00 PM (Early Lunch)"}</option>
+                    <option value="15:00 - 17:00">{isRtl ? "3:00 م - 5:00 م (غداء عائلي)" : "3:00 PM - 5:00 PM (Family Lunch)"}</option>
+                    <option value="19:00 - 21:00">{isRtl ? "7:00 م - 9:00 م (عشاء)" : "7:00 PM - 9:00 PM (Dinner)"}</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Hero Marketing Banner */}
             <div
               style={{
                 background:
-                  "linear-gradient(135deg, #065f46 0%, #047857 50%, #0f766e 100%)",
+                  "linear-gradient(135deg, #7f1d1d 0%, #991b1b 30%, #e05638 100%)",
                 borderRadius: 16,
-                padding: "44px 48px",
-                marginBottom: 36,
+                padding: "36px 40px",
+                marginBottom: 32,
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                boxShadow: "0 12px 30px rgba(5, 150, 105, 0.2)",
+                boxShadow: "0 12px 30px rgba(224, 86, 56, 0.25)",
               }}
             >
-              <div style={{ maxWidth: 540 }}>
+              <div style={{ maxWidth: 600 }}>
                 <span
                   style={{
                     background: "rgba(255,255,255,0.2)",
@@ -508,134 +797,177 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     fontSize: 12,
                     fontWeight: 800,
                     color: "#ffffff",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
-                  🌟{" "}
-                  {isRtl ? "موسم التخفيضات الكبرى" : "EXCLUSIVE CONSUMER DEALS"}
+                  <Sparkles size={13} />
+                  <span>{isRtl ? "أكل بيتي مضمون ونظيف 100%" : "100% Certified Egyptian Home Cooking"}</span>
                 </span>
                 <h1
                   style={{
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: 900,
                     color: "#ffffff",
                     margin: "14px 0 10px 0",
-                    lineHeight: 1.2,
+                    lineHeight: 1.25,
                   }}
                 >
-                  {tc.heroTitle}
+                  {isRtl ? "طواجن ومحاشي وصواني بالسمنة البلدي من أيدي ستات بيوت شاطرات" : tc.heroTitle}
                 </h1>
                 <p
                   style={{
-                    color: "#d1fae5",
-                    fontSize: 16,
-                    margin: "0 0 24px 0",
+                    color: "#ffedd5",
+                    fontSize: 15,
+                    margin: "0 0 20px 0",
+                    lineHeight: 1.6,
                   }}
                 >
-                  {tc.heroSubtitle}
+                  {isRtl
+                    ? "اطلبي وجبة غدا فورية سخنة توصلك خلال ساعة، أو جدولي صواني العزومات والمناسبات للغد بأفضل طعم مصري أصيل."
+                    : tc.heroSubtitle}
                 </p>
-                <button
-                  onClick={() => setActiveTab("catalog")}
-                  style={{
-                    background: "#ffffff",
-                    color: "#065f46",
-                    border: 0,
-                    padding: "12px 28px",
-                    borderRadius: 24,
-                    fontWeight: 900,
-                    fontSize: 14,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
-                  }}
-                >
-                  {tc.shopDealsBtn} →
-                </button>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <button
+                    onClick={() => setActiveTab("catalog")}
+                    style={{
+                      background: "#ffffff",
+                      color: "#991b1b",
+                      border: 0,
+                      padding: "10px 24px",
+                      borderRadius: 20,
+                      fontWeight: 900,
+                      fontSize: 14,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+                    }}
+                  >
+                    {isRtl ? "استعراض منيو اليوم" : "Browse Food Menu"} →
+                  </button>
+                  <button
+                    onClick={() => onSwitchPortal?.("supplier")}
+                    style={{
+                      background: "rgba(0,0,0,0.25)",
+                      color: "#ffffff",
+                      border: "1px solid rgba(255,255,255,0.4)",
+                      padding: "10px 20px",
+                      borderRadius: 20,
+                      fontWeight: 800,
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {isRtl ? "أنتِ شيف منزلية؟ انضمي لمطبخي 👩‍🍳" : "Home Cook? Join Us"}
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize: 90, opacity: 0.9 }}>🎁</div>
+              <div style={{ fontSize: 80, opacity: 0.9 }}>🍲</div>
             </div>
 
-            {/* Value Propositions */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 18,
-                marginBottom: 36,
-              }}
-            >
+            {/* 3. Certified Home Kitchens Showcase (مطابخ الستات) */}
+            <div style={{ marginBottom: 32 }}>
               <div
                 style={{
-                  background: "#111827",
-                  padding: "18px 24px",
-                  borderRadius: 12,
-                  border: "1px solid #1f2937",
                   display: "flex",
+                  justifyContent: "space-between",
                   alignItems: "center",
-                  gap: 14,
+                  marginBottom: 14,
                 }}
               >
-                <Truck size={28} style={{ color: "#10b981" }} />
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 14 }}>
-                    {isRtl ? "توصيل سريع مجاني" : "Fast Doorstep Delivery"}
-                  </div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>
-                    {isRtl ? "للطلبات فوق 100 ريال" : "On orders over $50"}
-                  </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <ChefHat size={20} color="#e05638" />
+                  <h2 style={{ fontSize: 18, fontWeight: 900, color: "#ffffff", margin: 0 }}>
+                    {isRtl ? "مطابخ الستات المعتمدة بالقاهرة والجيزة" : "Certified Home Kitchens"}
+                  </h2>
                 </div>
+                {selectedKitchenId && (
+                  <button
+                    onClick={() => setSelectedKitchenId(null)}
+                    style={{
+                      background: "transparent",
+                      color: "#e05638",
+                      border: 0,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {isRtl ? "إلغاء التحديد وعرض كل المطابخ" : "Clear Filter"}
+                  </button>
+                )}
               </div>
+
               <div
                 style={{
-                  background: "#111827",
-                  padding: "18px 24px",
-                  borderRadius: 12,
-                  border: "1px solid #1f2937",
-                  display: "flex",
-                  alignItems: "center",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
                   gap: 14,
                 }}
               >
-                <ShieldCheck size={28} style={{ color: "#38bdf8" }} />
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 14 }}>
-                    {isRtl
-                      ? "ضمان المنتجات الأصلية 100%"
-                      : "100% Verified Quality"}
-                  </div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>
-                    {isRtl
-                      ? "من الموردين المعتمدين"
-                      : "Direct from audited suppliers"}
-                  </div>
-                </div>
-              </div>
-              <div
-                style={{
-                  background: "#111827",
-                  padding: "18px 24px",
-                  borderRadius: 12,
-                  border: "1px solid #1f2937",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 14,
-                }}
-              >
-                <WalletCards size={28} style={{ color: "#f59e0b" }} />
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 14 }}>
-                    {isRtl
-                      ? "محفظة كاش باك ومكافآت"
-                      : "Instant Wallet & Cashback"}
-                  </div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>
-                    {isRtl
-                      ? "استرداد نقدي فوري"
-                      : "Automatic credits to Account 2050"}
-                  </div>
-                </div>
+                {kitchens.map((k) => {
+                  const isSelected = selectedKitchenId === k.organizationId || selectedKitchenId === k.id
+                  return (
+                    <div
+                      key={k.id}
+                      onClick={() => setSelectedKitchenId(isSelected ? null : (k.organizationId || k.id))}
+                      style={{
+                        background: isSelected ? "rgba(224, 86, 56, 0.15)" : "#141210",
+                        border: `1px solid ${isSelected ? "#e05638" : "#292524"}`,
+                        borderRadius: 14,
+                        padding: "16px",
+                        cursor: "pointer",
+                        transition: "all 0.18s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: "50%",
+                              background: "linear-gradient(135deg, #e05638, #b91c1c)",
+                              display: "grid",
+                              placeItems: "center",
+                              color: "#ffffff",
+                              fontWeight: 800,
+                            }}
+                          >
+                            <ChefHat size={20} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: "#fafaf9" }}>
+                              {k.chefName}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#a8a29e" }}>
+                              {k.district}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            background: "rgba(34, 197, 94, 0.15)",
+                            color: "#4ade80",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "2px 6px",
+                            borderRadius: 6,
+                          }}
+                        >
+                          ★ {k.hygieneRating}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 12, color: "#a8a29e", margin: "10px 0 0 0", lineHeight: 1.4 }}>
+                        {k.bio}
+                      </p>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
-            {/* Trending Deals Grid */}
+            {/* 4. Trending Food Dishes Grid with Portions & EGP */}
             <div
               style={{
                 marginBottom: 18,
@@ -644,163 +976,231 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 alignItems: "center",
               }}
             >
-              <h2
-                style={{
-                  fontSize: 22,
-                  fontWeight: 900,
-                  color: "#ffffff",
-                  margin: 0,
-                }}
-              >
-                {tc.trendingDeals}
-              </h2>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Flame size={20} color="#e05638" />
+                <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff", margin: 0 }}>
+                  {isRtl ? "الأكلات الأكثر طلباً اليوم في منطقتك" : tc.trendingDeals}
+                </h2>
+              </div>
               <button
                 onClick={() => setActiveTab("catalog")}
                 style={{
                   background: "transparent",
-                  color: "#34d399",
+                  color: "#e05638",
                   border: 0,
                   fontWeight: 700,
                   fontSize: 13,
                   cursor: "pointer",
                 }}
               >
-                {isRtl ? "عرض جميع المنتجات" : "View All Products"} →
+                {isRtl ? "عرض كل الأصناف" : "View All"} →
               </button>
             </div>
 
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
                 gap: 20,
               }}
             >
-              {products.slice(0, 4).map((p) => {
-                const offer = p.offers[0]
-                return (
-                  <div
-                    key={p.id}
-                    style={{
-                      background: "#111827",
-                      borderRadius: 12,
-                      border: "1px solid #1f2937",
-                      overflow: "hidden",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: 180,
-                        background: "#1e293b",
-                        position: "relative",
-                      }}
-                    >
-                      <img
-                        src={p.image}
-                        alt={p.name.en}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: 10,
-                          right: isRtl ? "auto" : 10,
-                          left: isRtl ? 10 : "auto",
-                          background: "rgba(16, 185, 129, 0.9)",
-                          color: "#ffffff",
-                          padding: "2px 8px",
-                          borderRadius: 12,
-                          fontSize: 11,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {isRtl ? "متوفر" : "In Stock"}
-                      </span>
-                    </div>
+              {products
+                .filter((p) => {
+                  if (!selectedKitchenId) return true
+                  return p.offers.some((o) => o.supplierId === selectedKitchenId)
+                })
+                .slice(0, 6)
+                .map((p) => {
+                  const offer = p.offers[0]
+                  const portions = offer?.portions || []
+                  const currentPortionId = selectedPortions[p.id] || portions[0]?.id
+                  const chosenPortion = portions.find((po) => po.id === currentPortionId) || portions[0]
+                  const displayPrice = chosenPortion ? chosenPortion.price_cents / 100 : offer.price
 
+                  return (
                     <div
+                      key={p.id}
                       style={{
-                        padding: "16px",
-                        flex: 1,
+                        background: "#141210",
+                        borderRadius: 14,
+                        border: "1px solid #292524",
+                        overflow: "hidden",
                         display: "flex",
                         flexDirection: "column",
                       }}
                     >
                       <div
                         style={{
-                          color: "#94a3b8",
-                          fontSize: 11,
-                          fontWeight: 700,
+                          height: 190,
+                          background: "#1e293b",
+                          position: "relative",
                         }}
                       >
-                        {p.category.en}
-                      </div>
-                      <h4
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 800,
-                          margin: "4px 0 8px 0",
-                          color: "#ffffff",
-                        }}
-                      >
-                        {isRtl ? p.name.ar : p.name.en}
-                      </h4>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "baseline",
-                          gap: 6,
-                          margin: "6px 0 14px 0",
-                        }}
-                      >
+                        <img
+                          src={p.image}
+                          alt={p.name.ar}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
                         <span
                           style={{
-                            fontSize: 20,
-                            fontWeight: 900,
-                            color: "#10b981",
+                            position: "absolute",
+                            top: 10,
+                            right: isRtl ? "auto" : 10,
+                            left: isRtl ? 10 : "auto",
+                            background: offer?.isInstant ? "rgba(224, 86, 56, 0.9)" : "rgba(37, 99, 235, 0.9)",
+                            color: "#ffffff",
+                            padding: "3px 9px",
+                            borderRadius: 12,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
                           }}
                         >
-                          ${offer.price.toFixed(2)}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 12,
-                            color: "#64748b",
-                            textDecoration: "line-through",
-                          }}
-                        >
-                          ${(offer.price * 1.2).toFixed(2)}
+                          {offer?.isInstant ? <Flame size={12} /> : <Calendar size={12} />}
+                          <span>{offer?.isInstant ? "طلب فوري" : "حجز مسبق"}</span>
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => handleAddToCart(p, 1)}
+                      <div
                         style={{
-                          marginTop: "auto",
-                          width: "100%",
-                          background:
-                            "linear-gradient(135deg, #10b981, #059669)",
-                          color: "#ffffff",
-                          border: 0,
-                          padding: "10px",
-                          borderRadius: 8,
-                          fontWeight: 800,
-                          fontSize: 13,
-                          cursor: "pointer",
+                          padding: "16px",
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
                         }}
                       >
-                        {tc.addToCartBtn}
-                      </button>
+                        <div
+                          style={{
+                            color: "#e05638",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <span>{p.category.ar}</span>
+                          <span style={{ color: "#a8a29e" }}>{p.brand}</span>
+                        </div>
+                        <h4
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 800,
+                            margin: "6px 0 8px 0",
+                            color: "#ffffff",
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {isRtl ? p.name.ar : p.name.en}
+                        </h4>
+
+                        {/* Dietary Tags */}
+                        {p.dietaryTags && p.dietaryTags.length > 0 && (
+                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
+                            {p.dietaryTags.slice(0, 3).map((tag, tIdx) => (
+                              <span
+                                key={tIdx}
+                                style={{
+                                  background: "#1c1917",
+                                  color: "#d6d3d1",
+                                  border: "1px solid #292524",
+                                  padding: "2px 7px",
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Portion Selector Pills if available */}
+                        {portions.length > 1 && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, color: "#a8a29e", marginBottom: 5 }}>
+                              اختيار الحجم والكمية:
+                            </div>
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              {portions.map((po) => (
+                                <button
+                                  key={po.id}
+                                  type="button"
+                                  onClick={() => setSelectedPortions({ ...selectedPortions, [p.id]: po.id })}
+                                  style={{
+                                    border: 0,
+                                    background: (chosenPortion?.id === po.id) ? "rgba(224, 86, 56, 0.25)" : "#1c1917",
+                                    borderWidth: 1,
+                                    borderStyle: "solid",
+                                    borderColor: (chosenPortion?.id === po.id) ? "#e05638" : "#292524",
+                                    color: (chosenPortion?.id === po.id) ? "#f87171" : "#a8a29e",
+                                    padding: "4px 8px",
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {po.name.ar}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Price in EGP */}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "baseline",
+                            gap: 6,
+                            margin: "auto 0 14px 0",
+                            paddingTop: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 22,
+                              fontWeight: 900,
+                              color: "#4ade80",
+                            }}
+                          >
+                            {displayPrice.toLocaleString()} <span style={{ fontSize: 13 }}>ج.م</span>
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => handleAddToCart(p, 1, chosenPortion)}
+                          style={{
+                            width: "100%",
+                            background:
+                              "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
+                            color: "#ffffff",
+                            border: 0,
+                            padding: "10px",
+                            borderRadius: 8,
+                            fontWeight: 800,
+                            fontSize: 13,
+                            cursor: "pointer",
+                            boxShadow: "0 4px 12px rgba(224, 86, 56, 0.3)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <ShoppingCart size={15} />
+                          <span>{tc.addToCartBtn}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
             </div>
           </div>
         )}
@@ -893,13 +1293,13 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       </h4>
                       <div
                         style={{
-                          fontSize: 22,
+                          fontSize: 20,
                           fontWeight: 900,
-                          color: "#10b981",
+                          color: "#e05638",
                           margin: "6px 0 14px 0",
                         }}
                       >
-                        ${offer.price.toFixed(2)}
+                        {offer.price.toFixed(2)} {isRtl ? "ج.م" : "EGP"}
                       </div>
 
                       <div
@@ -1044,10 +1444,11 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           style={{
                             fontSize: 16,
                             fontWeight: 900,
-                            color: "#10b981",
+                            color: "#e05638",
                           }}
                         >
-                          ${(item.offer.price * item.quantity).toFixed(2)}
+                          {(item.offer.price * item.quantity).toFixed(2)}{" "}
+                          {isRtl ? "ج.م" : "EGP"}
                         </span>
                         <button
                           onClick={() => {
@@ -1116,7 +1517,7 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     >
                       {addresses.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.label}: {a.streetAddress} ({a.city})
+                          {a.label}: {a.streetAddress} ({a.district || a.city})
                         </option>
                       ))}
                     </select>
@@ -1143,24 +1544,22 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           padding: "10px",
                           borderRadius: 8,
                           border: `1px solid ${
-                            paymentMethod === "wallet" ? "#10b981" : "#334155"
+                            paymentMethod === "wallet" ? "#e05638" : "#334155"
                           }`,
                           background:
                             paymentMethod === "wallet"
-                              ? "rgba(16, 185, 129, 0.15)"
+                              ? "rgba(224, 86, 56, 0.15)"
                               : "#0b0f19",
                           color:
-                            paymentMethod === "wallet" ? "#34d399" : "#94a3b8",
+                            paymentMethod === "wallet" ? "#e05638" : "#94a3b8",
                           fontSize: 12,
                           fontWeight: 700,
                           cursor: "pointer",
                         }}
                       >
-                        Wallet 2050 ($
-                        {((wallet?.availableBalanceCents || 0) / 100).toFixed(
-                          2,
-                        )}
-                        )
+                        {isRtl ? "المحفظة الإلكترونية (" : "Wallet ("}
+                        {((wallet?.availableBalanceCents || 0) / 100).toFixed(2)}{" "}
+                        {isRtl ? "ج.م" : "EGP"})
                       </button>
                       <button
                         onClick={() => setPaymentMethod("card")}
@@ -1169,20 +1568,20 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           padding: "10px",
                           borderRadius: 8,
                           border: `1px solid ${
-                            paymentMethod === "card" ? "#10b981" : "#334155"
+                            paymentMethod === "card" ? "#e05638" : "#334155"
                           }`,
                           background:
                             paymentMethod === "card"
-                              ? "rgba(16, 185, 129, 0.15)"
+                              ? "rgba(224, 86, 56, 0.15)"
                               : "#0b0f19",
                           color:
-                            paymentMethod === "card" ? "#34d399" : "#94a3b8",
+                            paymentMethod === "card" ? "#e05638" : "#94a3b8",
                           fontSize: 12,
                           fontWeight: 700,
                           cursor: "pointer",
                         }}
                       >
-                        Credit Card
+                        {isRtl ? "بطاقة بنكية / ميزة" : "Bank Card / Meeza"}
                       </button>
                     </div>
                   </div>
@@ -1203,12 +1602,12 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                         color: "#94a3b8",
                       }}
                     >
-                      <span>Subtotal</span>
+                      <span>{isRtl ? "المجموع الفرعي" : "Subtotal"}</span>
                       <span>
-                        $
                         {cart
                           .reduce((s, i) => s + i.offer.price * i.quantity, 0)
-                          .toFixed(2)}
+                          .toFixed(2)}{" "}
+                        {isRtl ? "ج.م" : "EGP"}
                       </span>
                     </div>
                     <div
@@ -1220,9 +1619,32 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                         color: "#94a3b8",
                       }}
                     >
-                      <span>Delivery</span>
-                      <span style={{ color: "#34d399" }}>FREE</span>
+                      <span>{isRtl ? "خدمة التوصيل" : "Delivery"}</span>
+                      <span style={{ color: "#34d399", fontWeight: 700 }}>
+                        {isRtl ? "25.00 ج.م (توصيل المنصة)" : "25.00 EGP (Platform)"}
+                      </span>
                     </div>
+
+                    {orderMode === "scheduled" && (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: 8,
+                          fontSize: 12,
+                          color: "#f59e0b",
+                          background: "rgba(245, 158, 11, 0.1)",
+                          padding: "6px 10px",
+                          borderRadius: 6,
+                        }}
+                      >
+                        <span>{isRtl ? "موعد التسليم" : "Scheduled Slot"}</span>
+                        <span>
+                          {scheduledDate} ({selectedSlot})
+                        </span>
+                      </div>
+                    )}
+
                     <div
                       style={{
                         display: "flex",
@@ -1234,10 +1656,10 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     >
                       <span>{tc.orderTotal}</span>
                       <span>
-                        $
-                        {cart
-                          .reduce((s, i) => s + i.offer.price * i.quantity, 0)
-                          .toFixed(2)}
+                        {(
+                          cart.reduce((s, i) => s + i.offer.price * i.quantity, 0) + 25
+                        ).toFixed(2)}{" "}
+                        {isRtl ? "ج.م" : "EGP"}
                       </span>
                     </div>
                   </div>
@@ -1332,7 +1754,7 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           color: "#ffffff",
                         }}
                       >
-                        ${o.total.toFixed(2)}
+                        {o.total.toFixed(2)} {isRtl ? "ج.م" : "EGP"}
                       </span>
                     </div>
                   </div>
@@ -1621,14 +2043,17 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 style={{
                   fontSize: 32,
                   fontWeight: 900,
-                  color: "#10b981",
+                  color: "#e05638",
                   margin: "8px 0",
                 }}
               >
-                ${((wallet?.availableBalanceCents || 0) / 100).toFixed(2)}
+                {((wallet?.availableBalanceCents || 0) / 100).toFixed(2)}{" "}
+                {isRtl ? "ج.م" : "EGP"}
               </div>
               <div style={{ color: "#64748b", fontSize: 12 }}>
-                Account 2050 • Instant 1-Click Checkout Enabled
+                {isRtl
+                  ? "الحساب 2050 • الدفع بنقرة واحدة مفعل"
+                  : "Account 2050 • Instant 1-Click Checkout Enabled"}
               </div>
             </div>
 
@@ -1643,7 +2068,7 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <h3
                 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 16px 0" }}
               >
-                Recent Wallet Activity
+                {isRtl ? "سجل معاملات المحفظة الأخيرة" : "Recent Wallet Activity"}
               </h3>
               <table
                 style={{
@@ -1660,10 +2085,10 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       textAlign: isRtl ? "right" : "left",
                     }}
                   >
-                    <th style={{ padding: "10px" }}>Date</th>
-                    <th style={{ padding: "10px" }}>Description</th>
-                    <th style={{ padding: "10px" }}>Reference</th>
-                    <th style={{ padding: "10px" }}>Amount</th>
+                    <th style={{ padding: "10px" }}>{isRtl ? "التاريخ" : "Date"}</th>
+                    <th style={{ padding: "10px" }}>{isRtl ? "الوصف" : "Description"}</th>
+                    <th style={{ padding: "10px" }}>{isRtl ? "المرجع" : "Reference"}</th>
+                    <th style={{ padding: "10px" }}>{isRtl ? "المبلغ" : "Amount"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1688,8 +2113,9 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           color: tx.isDebit ? "#ef4444" : "#10b981",
                         }}
                       >
-                        {tx.isDebit ? "-" : "+"}$
-                        {(tx.amountCents / 100).toFixed(2)}
+                        {tx.isDebit ? "-" : "+"}
+                        {(tx.amountCents / 100).toFixed(2)}{" "}
+                        {isRtl ? "ج.م" : "EGP"}
                       </td>
                     </tr>
                   ))}
@@ -1724,14 +2150,16 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
             }}
           >
             <h3 style={{ fontSize: 18, fontWeight: 900, margin: "0 0 8px 0" }}>
-              Top Up Consumer Wallet (2050)
+              {isRtl ? "شحن رصيد المحفظة" : "Top Up Consumer Wallet"}
             </h3>
             <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 18 }}>
-              Instant funds for 1-click retail purchases
+              {isRtl
+                ? "رصيد فوري لطلب الطعام البيتي بنقرة واحدة (فودافون كاش / إنستاباي)"
+                : "Instant funds for home food purchases via Vodafone Cash / InstaPay"}
             </p>
 
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-              {["25", "50", "100", "200"].map((val) => (
+              {["50", "100", "200", "500"].map((val) => (
                 <button
                   key={val}
                   onClick={() => setTopupAmount(val)}
@@ -1740,18 +2168,18 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     padding: "8px",
                     borderRadius: 8,
                     border: `1px solid ${
-                      topupAmount === val ? "#10b981" : "#334155"
+                      topupAmount === val ? "#e05638" : "#334155"
                     }`,
                     background:
                       topupAmount === val
-                        ? "rgba(16, 185, 129, 0.15)"
+                        ? "rgba(224, 86, 56, 0.15)"
                         : "#0b0f19",
-                    color: topupAmount === val ? "#34d399" : "#94a3b8",
+                    color: topupAmount === val ? "#e05638" : "#94a3b8",
                     fontWeight: 800,
                     cursor: "pointer",
                   }}
                 >
-                  ${val}
+                  {val} {isRtl ? "ج.م" : "EGP"}
                 </button>
               ))}
             </div>
@@ -1761,7 +2189,7 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onClick={handleTopup}
                 style={{
                   flex: 1,
-                  background: "linear-gradient(135deg, #10b981, #059669)",
+                  background: "linear-gradient(135deg, #e05638, #b83d25)",
                   color: "#ffffff",
                   border: 0,
                   padding: "12px",
@@ -1770,7 +2198,7 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   cursor: "pointer",
                 }}
               >
-                Confirm ${topupAmount}
+                {isRtl ? `تأكيد شحن ${topupAmount} ج.م` : `Confirm ${topupAmount} EGP`}
               </button>
               <button
                 onClick={() => setShowTopupModal(false)}

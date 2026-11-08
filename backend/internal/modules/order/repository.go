@@ -25,6 +25,12 @@ type CheckoutRequest struct {
 	PaymentMethod   string              `json:"payment_method"`
 	DeliveryAddress json.RawMessage     `json:"delivery_address"`
 	WarehouseID     string              `json:"warehouse_id,omitempty"`
+	OrderMode       string              `json:"order_mode,omitempty"`       // "instant" or "scheduled"
+	ScheduledDate   string              `json:"scheduled_date,omitempty"`   // "2026-11-09"
+	SlotStartTime   string              `json:"slot_start_time,omitempty"` // "13:00"
+	SlotEndTime     string              `json:"slot_end_time,omitempty"`   // "14:30"
+	FulfillmentType string              `json:"fulfillment_type,omitempty"` // "platform_delivery" or "cook_delivery"
+	CookNotes       string              `json:"cook_notes,omitempty"`
 	Items           []CheckoutItemInput `json:"items"`
 }
 
@@ -280,6 +286,28 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 		CreatedAt:       time.Now().UTC(),
 	}
 
+	orderMode := req.OrderMode
+	if orderMode == "" {
+		orderMode = "scheduled"
+	}
+	scheduledDate := req.ScheduledDate
+	if scheduledDate == "" {
+		scheduledDate = time.Now().Format("2006-01-02")
+	}
+	slotStart := req.SlotStartTime
+	if slotStart == "" {
+		slotStart = "13:00:00"
+	}
+	slotEnd := req.SlotEndTime
+	if slotEnd == "" {
+		slotEnd = "15:00:00"
+	}
+	fulfillmentType := req.FulfillmentType
+	if fulfillmentType == "" {
+		fulfillmentType = "platform_delivery"
+	}
+	deliveryFee := int64(2500) // 25.00 EGP standard delivery fee
+
 	// Insert Suborders & Items
 	idx := 1
 	for _, g := range groups {
@@ -290,10 +318,11 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 
 		subQuery := `
 			INSERT INTO commerce.suborders (
-				id, suborder_number, order_id, supplier_id, subtotal, shipping_total, total, commission_rate, commission_amount, supplier_payable, status
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'new')
+				id, suborder_number, order_id, supplier_id, subtotal, shipping_total, total, commission_rate, commission_amount, supplier_payable, status,
+				order_mode, scheduled_date, slot_start_time, slot_end_time, prep_status, fulfillment_type, delivery_fee, cook_notes
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'new', $11, $12, $13, $14, 'new', $15, $16, $17)
 		`
-		_, err = tx.Exec(ctx, subQuery, suborderID, soNumber, parentOrderID, g.SupplierID, g.Subtotal, g.Shipping, soTotal, g.CommissionRate, g.CommissionAmt, g.SupplierNet)
+		_, err = tx.Exec(ctx, subQuery, suborderID, soNumber, parentOrderID, g.SupplierID, g.Subtotal, g.Shipping, soTotal, g.CommissionRate, g.CommissionAmt, g.SupplierNet, orderMode, scheduledDate, slotStart, slotEnd, fulfillmentType, deliveryFee, req.CookNotes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create suborder: %w", err)
 		}
@@ -311,6 +340,15 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 				return nil, fmt.Errorf("failed to create order item: %w", err)
 			}
 
+			// Reserve portion in kitchen.capacity_slots
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO kitchen.capacity_slots (offer_id, slot_date, daily_limit, reserved_count, sold_count)
+				VALUES ($1, $2, 20, $3, 0)
+				ON CONFLICT (offer_id, slot_date)
+				DO UPDATE SET reserved_count = kitchen.capacity_slots.reserved_count + $3, updated_at = NOW()
+				WHERE (kitchen.capacity_slots.reserved_count + kitchen.capacity_slots.sold_count + $3) <= kitchen.capacity_slots.daily_limit
+			`, it.OfferID, scheduledDate, it.Quantity)
+
 			itemsList = append(itemsList, OrderItem{
 				ID:              itemID,
 				SuborderID:      suborderID,
@@ -322,18 +360,26 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 		}
 
 		parentOrder.Suborders = append(parentOrder.Suborders, Suborder{
-			ID:              suborderID,
-			SuborderNumber:  soNumber,
-			ParentOrderID:   parentOrderID,
-			SupplierID:      g.SupplierID,
-			SupplierName:    g.SupplierName,
-			SubtotalCents:   g.Subtotal,
-			ShippingCents:   g.Shipping,
-			CommissionRate:  g.CommissionRate,
-			CommissionCents: g.CommissionAmt,
-			SupplierPayable: g.SupplierNet,
-			Status:          "new",
-			Items:           itemsList,
+			ID:               suborderID,
+			SuborderNumber:   soNumber,
+			ParentOrderID:    parentOrderID,
+			SupplierID:       g.SupplierID,
+			SupplierName:     g.SupplierName,
+			SubtotalCents:    g.Subtotal,
+			ShippingCents:    g.Shipping,
+			CommissionRate:   g.CommissionRate,
+			CommissionCents:  g.CommissionAmt,
+			SupplierPayable:  g.SupplierNet,
+			Status:           "new",
+			OrderMode:        orderMode,
+			ScheduledDate:    scheduledDate,
+			SlotStartTime:    slotStart,
+			SlotEndTime:      slotEnd,
+			PrepStatus:       "new",
+			FulfillmentType:  fulfillmentType,
+			DeliveryFeeCents: deliveryFee,
+			CookNotes:        req.CookNotes,
+			Items:            itemsList,
 		})
 	}
 
@@ -578,10 +624,14 @@ func (r *Repository) ListOrders(ctx context.Context, orderType, merchantID, user
 
 		// Fetch suborders
 		subRows, err := r.pool.Query(ctx, `
-			SELECT s.id, s.suborder_number, s.parent_order_id, s.supplier_id,
+			SELECT s.id, s.suborder_number, s.order_id, s.supplier_id,
 			       coalesce(org.legal_name, org.name->>'en') as supplier_name,
 			       s.subtotal, s.shipping_total, s.commission_rate, s.commission_amount,
-			       s.supplier_payable, s.status
+			       s.supplier_payable, s.status,
+			       coalesce(s.order_mode, 'scheduled'), coalesce(s.scheduled_date::text, ''),
+			       coalesce(to_char(s.slot_start_time, 'HH24:MI'), ''), coalesce(to_char(s.slot_end_time, 'HH24:MI'), ''),
+			       coalesce(s.prep_status, 'new'), coalesce(s.fulfillment_type, 'platform_delivery'),
+			       coalesce(s.delivery_fee, 2500), coalesce(s.cook_notes, '')
 			FROM commerce.suborders s
 			JOIN iam.organizations org ON org.id = s.supplier_id
 			WHERE s.order_id = $1
@@ -593,6 +643,8 @@ func (r *Repository) ListOrders(ctx context.Context, orderType, merchantID, user
 					&so.ID, &so.SuborderNumber, &so.ParentOrderID, &so.SupplierID, &so.SupplierName,
 					&so.SubtotalCents, &so.ShippingCents, &so.CommissionRate, &so.CommissionCents,
 					&so.SupplierPayable, &so.Status,
+					&so.OrderMode, &so.ScheduledDate, &so.SlotStartTime, &so.SlotEndTime,
+					&so.PrepStatus, &so.FulfillmentType, &so.DeliveryFeeCents, &so.CookNotes,
 				); err == nil {
 					po.Suborders = append(po.Suborders, so)
 				}
@@ -792,7 +844,11 @@ func (r *Repository) ListSupplierSuborders(ctx context.Context, supplierID strin
 		SELECT s.id, s.suborder_number, s.order_id, s.supplier_id,
 		       coalesce(org.legal_name, org.name->>'en') as supplier_name,
 		       s.subtotal, s.shipping_total, s.commission_rate, s.commission_amount,
-		       s.supplier_payable, s.status
+		       s.supplier_payable, s.status,
+		       coalesce(s.order_mode, 'scheduled'), coalesce(s.scheduled_date::text, ''),
+		       coalesce(to_char(s.slot_start_time, 'HH24:MI'), ''), coalesce(to_char(s.slot_end_time, 'HH24:MI'), ''),
+		       coalesce(s.prep_status, 'new'), coalesce(s.fulfillment_type, 'platform_delivery'),
+		       coalesce(s.delivery_fee, 2500), coalesce(s.cook_notes, '')
 		FROM commerce.suborders s
 		JOIN iam.organizations org ON org.id = s.supplier_id
 		WHERE s.supplier_id = $1
@@ -811,6 +867,8 @@ func (r *Repository) ListSupplierSuborders(ctx context.Context, supplierID strin
 			&so.ID, &so.SuborderNumber, &so.ParentOrderID, &so.SupplierID, &so.SupplierName,
 			&so.SubtotalCents, &so.ShippingCents, &so.CommissionRate, &so.CommissionCents,
 			&so.SupplierPayable, &so.Status,
+			&so.OrderMode, &so.ScheduledDate, &so.SlotStartTime, &so.SlotEndTime,
+			&so.PrepStatus, &so.FulfillmentType, &so.DeliveryFeeCents, &so.CookNotes,
 		); err != nil {
 			return nil, err
 		}
@@ -851,7 +909,11 @@ func (r *Repository) UpdateSuborderStatus(ctx context.Context, suborderID, newSt
 func (r *Repository) GetSuborderByID(ctx context.Context, suborderID string) (*Suborder, error) {
 	query := `
 		SELECT so.id, so.suborder_number, so.order_id, so.supplier_id, coalesce(org.legal_name, org.name->>'en', 'Supplier'),
-		       so.subtotal, so.shipping_total, so.commission_rate, so.commission_amount, so.supplier_payable, so.status
+		       so.subtotal, so.shipping_total, so.commission_rate, so.commission_amount, so.supplier_payable, so.status,
+		       coalesce(so.order_mode, 'scheduled'), coalesce(so.scheduled_date::text, ''),
+		       coalesce(to_char(so.slot_start_time, 'HH24:MI'), ''), coalesce(to_char(so.slot_end_time, 'HH24:MI'), ''),
+		       coalesce(so.prep_status, 'new'), coalesce(so.fulfillment_type, 'platform_delivery'),
+		       coalesce(so.delivery_fee, 2500), coalesce(so.cook_notes, '')
 		FROM commerce.suborders so
 		JOIN iam.organizations org ON org.id = so.supplier_id
 		WHERE so.id = $1
@@ -861,6 +923,8 @@ func (r *Repository) GetSuborderByID(ctx context.Context, suborderID string) (*S
 		&so.ID, &so.SuborderNumber, &so.ParentOrderID, &so.SupplierID, &so.SupplierName,
 		&so.SubtotalCents, &so.ShippingCents, &so.CommissionRate, &so.CommissionCents,
 		&so.SupplierPayable, &so.Status,
+		&so.OrderMode, &so.ScheduledDate, &so.SlotStartTime, &so.SlotEndTime,
+		&so.PrepStatus, &so.FulfillmentType, &so.DeliveryFeeCents, &so.CookNotes,
 	)
 	if err != nil {
 		return nil, err

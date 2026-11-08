@@ -1,0 +1,27 @@
+{
+  "brandId": "matbakhy-eg",
+  "version": "1.0.0",
+  "legalName": "شركة مطبخي لتكنولوجيا الأغذية المنزلية ذ.م.م",
+  "displayName": {
+    "ar": "مطبخي",
+    "en": "Matbakhy"
+  },
+  "tagline": {
+    "ar": "أكل بيتي طازج بحب من مطابخ بيوتنا إلى مائدتك",
+    "en": "Fresh Homemade Food, Cooked with Love from Our Homes to Your Table"
+  },
+  "market": {
+    "countryCode": "EG",
+    "countryName": {
+      "ar": "جمهورية مصر العربية",
+      "en": "Egypt"
+    },
+    "currency": "EGP",
+    "currencySymbol": "ج.م",
+    "defaultLocale": "ar"
+  },
+  "contact": {
+    "supportEmail": "support@matbakhy.com",
+    "supportPhone": "+20 100 123 4567"
+  }
+}

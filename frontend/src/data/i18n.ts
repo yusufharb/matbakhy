@@ -480,11 +480,11 @@ export interface TranslationDictionary {
 export const translations: Record<Locale, TranslationDictionary> = {
   ar: {
     brand: {
-      name: "نكسوس",
+      name: "مطبخي",
 
-      sub: "نظام السوق الموحد",
+      sub: "أكل بيتي طازج من بيوتنا لمائدتك",
 
-      version: "الإصدار 2.0",
+      version: "الإصدار 1.0 (مصر)",
     },
 
     nav: {
@@ -800,7 +800,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
 
       cancel: "إلغاء",
 
-      currency: "دولار أمريكي",
+      currency: "جنيه مصري",
 
       loading: "جاري التحميل...",
 
@@ -906,48 +906,48 @@ export const translations: Record<Locale, TranslationDictionary> = {
     },
 
     b2c: {
-      brandTitle: "نكسوس للتجزئة",
+      brandTitle: "مطبخي",
 
-      brandSub: "تسوق الأفراد والاحتياجات اليومية",
+      brandSub: "أكل بيتي طازج من بيوتنا لمائدتك",
 
-      navHome: "الرئيسية",
+      navHome: "المطابخ والأطباق",
 
-      navCatalog: "المنتجات",
+      navCatalog: "قائمة الطعام",
 
-      navCart: "السلة",
+      navCart: "سلة الوجبات",
 
       navOrders: "طلباتي",
 
-      navAddresses: "عناويني",
+      navAddresses: "عناويني في مصر",
 
       navWallet: "محفظتي",
 
       navProfile: "حسابي",
 
-      heroTitle: "أفضل المنتجات بأفضل الأسعار",
+      heroTitle: "أكل بيتي على أصوله بسمنة بلدي وحب",
 
       heroSubtitle:
-        "آلاف المنتجات الأصلية مع توصيل سريع وضمان حقيقي حتى باب منزلك",
+        "طواجن، محاشي، صواني فرن، وحلويات طازجة محضرة بأيدي أمهات وشيفات منزليات محترفات في القاهرة والجيزة",
 
-      shopDealsBtn: "تسوق العروض المميزة",
+      shopDealsBtn: "تصفح أطباق اليوم",
 
-      trendingDeals: "العروض الأكثر طلباً اليوم",
+      trendingDeals: "أشهر الأطباق طلباً اليوم",
 
-      featuredCategories: "تصفح حسب الفئات",
+      featuredCategories: "تصفح حسب نوع الأكل",
 
-      searchPlaceholder: "ابحث عن أي منتج أو ماركة أو فئة...",
+      searchPlaceholder: "ابحث عن طبق، مطبخ بيتي، أو منطقة في القاهرة والجيزة...",
 
-      addToCartBtn: "أضف إلى السلة",
+      addToCartBtn: "إضافة للوجبة",
 
-      buyNowBtn: "شراء فوري",
+      buyNowBtn: "طلب فوري",
 
-      retailPrice: "السعر شامل الضريبة",
+      retailPrice: "السعر شامل التحضير",
 
-      emptyCartMsg: "سلة التسوق فارغة، تصفح المنتجات وأضف ما يعجبك!",
+      emptyCartMsg: "سلة الوجبات فارغة، اختر أشهى الأطباق البيتية وأضفها للسلة!",
 
-      checkoutBtn: "إتمام الشراء الآن",
+      checkoutBtn: "تأكيد الطلب وتحديد موعد التسليم",
 
-      step1Address: "عنوان التوصيل الشخصي",
+      step1Address: "عنوان التوصيل (المحافظة / الحي)",
 
       step2Payment: "طريقة الدفع وتأكيد الطلب",
 
@@ -973,11 +973,11 @@ export const translations: Record<Locale, TranslationDictionary> = {
 
   en: {
     brand: {
-      name: "NEXUS",
+      name: "Matbakhy",
 
-      sub: "MARKETPLACE OS",
+      sub: "Homemade Food Marketplace",
 
-      version: "v2.0 Core",
+      version: "v1.0 (Egypt)",
     },
 
     nav: {
@@ -1294,7 +1294,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
 
       cancel: "Cancel",
 
-      currency: "USD",
+      currency: "EGP",
 
       loading: "Loading…",
 
@@ -1400,48 +1400,48 @@ export const translations: Record<Locale, TranslationDictionary> = {
     },
 
     b2c: {
-      brandTitle: "NEXUS Retail",
+      brandTitle: "Matbakhy",
 
-      brandSub: "Consumer Shopping Storefront",
+      brandSub: "Fresh Homemade Food Delivered to Your Door",
 
-      navHome: "Home",
+      navHome: "Kitchens & Dishes",
 
-      navCatalog: "Products",
+      navCatalog: "Food Menu",
 
-      navCart: "Cart",
+      navCart: "Meal Cart",
 
       navOrders: "My Orders",
 
-      navAddresses: "Addresses",
+      navAddresses: "Delivery Addresses (Egypt)",
 
       navWallet: "My Wallet",
 
       navProfile: "My Account",
 
-      heroTitle: "Premium Products, Direct to You",
+      heroTitle: "Authentic Homemade Food, Cooked with Love",
 
       heroSubtitle:
-        "Explore verified consumer goods with lightning-fast delivery to your door",
+        "Oven tagines, stuffed vine leaves, pasta trays, and fresh desserts crafted by certified home chefs across Cairo & Giza",
 
-      shopDealsBtn: "Shop Hot Deals",
+      shopDealsBtn: "Browse Today's Dishes",
 
-      trendingDeals: "Trending Deals Today",
+      trendingDeals: "Trending Dishes Today",
 
-      featuredCategories: "Browse Categories",
+      featuredCategories: "Browse by Cuisine",
 
-      searchPlaceholder: "Search products, brands, categories…",
+      searchPlaceholder: "Search dishes, home kitchens, or Cairo/Giza districts…",
 
-      addToCartBtn: "Add to Cart",
+      addToCartBtn: "Add to Order",
 
-      buyNowBtn: "Buy Now",
+      buyNowBtn: "Order Now",
 
-      retailPrice: "Retail Unit Price",
+      retailPrice: "Price per Portion",
 
-      emptyCartMsg: "Your shopping cart is empty. Discover great deals today!",
+      emptyCartMsg: "Your meal cart is empty. Pick your favorite homemade dishes!",
 
-      checkoutBtn: "Proceed to Checkout",
+      checkoutBtn: "Confirm Order & Choose Delivery Time",
 
-      step1Address: "Delivery Address",
+      step1Address: "Delivery Address (Governorate / District)",
 
       step2Payment: "Payment Method",
 
