@@ -340,14 +340,29 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 				return nil, fmt.Errorf("failed to create order item: %w", err)
 			}
 
-			// Reserve portion in kitchen.capacity_slots
-			_, _ = tx.Exec(ctx, `
-				INSERT INTO kitchen.capacity_slots (offer_id, slot_date, daily_limit, reserved_count, sold_count)
-				VALUES ($1, $2, 20, $3, 0)
-				ON CONFLICT (offer_id, slot_date)
-				DO UPDATE SET reserved_count = kitchen.capacity_slots.reserved_count + $3, updated_at = NOW()
-				WHERE (kitchen.capacity_slots.reserved_count + kitchen.capacity_slots.sold_count + $3) <= kitchen.capacity_slots.daily_limit
-			`, it.OfferID, scheduledDate, it.Quantity)
+			// Reserve portion in kitchen.capacity_slots if this offer belongs to a home kitchen
+			var dailyPortionLimit int
+			err = tx.QueryRow(ctx, `
+				SELECT o.daily_portion_limit
+				FROM catalog.supplier_offers o
+				JOIN kitchen.kitchen_profiles kp ON kp.organization_id = o.supplier_id
+				WHERE o.id = $1
+			`, it.OfferID).Scan(&dailyPortionLimit)
+			if err == nil && dailyPortionLimit > 0 {
+				tag, err := tx.Exec(ctx, `
+					INSERT INTO kitchen.capacity_slots (offer_id, slot_date, daily_limit, reserved_count, sold_count)
+					VALUES ($1, $2, $3, $4, 0)
+					ON CONFLICT (offer_id, slot_date)
+					DO UPDATE SET reserved_count = kitchen.capacity_slots.reserved_count + $4, updated_at = NOW()
+					WHERE (kitchen.capacity_slots.reserved_count + kitchen.capacity_slots.sold_count + $4) <= kitchen.capacity_slots.daily_limit
+				`, it.OfferID, scheduledDate, dailyPortionLimit, it.Quantity)
+				if err != nil {
+					return nil, fmt.Errorf("failed to reserve kitchen capacity for item %s: %w", it.ProductTitle, err)
+				}
+				if tag.RowsAffected() == 0 {
+					return nil, fmt.Errorf("kitchen daily capacity limit reached for %s on %s (available: %d)", it.ProductTitle, scheduledDate, dailyPortionLimit)
+				}
+			}
 
 			itemsList = append(itemsList, OrderItem{
 				ID:              itemID,

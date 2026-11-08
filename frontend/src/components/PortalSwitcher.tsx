@@ -1,4 +1,5 @@
 import { useState } from "react"
+
 import {
   ShieldCheck,
   Store,
@@ -8,42 +9,63 @@ import {
   User,
   ChevronDown,
 } from "lucide-react"
+
 import type { PortalMode, Locale } from "../types"
 
 interface Props {
   portal: PortalMode
+
   setPortal: (p: PortalMode) => void
+
   locale: Locale
+
   setLocale: (l: Locale) => void
 }
 
 export function PortalSwitcher({
   portal,
+
   setPortal,
+
   locale,
+
   setLocale,
 }: Props) {
   const isRtl = locale === "ar"
+
   const [showContextDropdown, setShowContextDropdown] = useState(false)
 
   // Map legacy 'merchant' to 'b2b' for highlighting
+
   const currentMode = portal === "merchant" ? "b2b" : portal
 
   return (
     <div
       style={{
         height: 52,
+
         background: "#090d16",
+
         color: "#f8fafc",
+
         display: "flex",
+
         alignItems: "center",
+
         justifyContent: "space-between",
+
         padding: "0 24px",
+
         fontFamily: "'Cairo', sans-serif",
+
         borderBottom: "1px solid #1e293b",
+
         position: "sticky",
+
         top: 0,
+
         zIndex: 50,
+
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
       }}
       dir={isRtl ? "rtl" : "ltr"}
@@ -54,14 +76,23 @@ export function PortalSwitcher({
           <div
             style={{
               width: 28,
+
               height: 28,
+
               borderRadius: 8,
+
               background: "linear-gradient(135deg, #e05638 0%, #b91c1c 100%)",
+
               display: "grid",
+
               placeItems: "center",
+
               color: "#ffffff",
+
               fontWeight: 900,
+
               fontSize: 15,
+
               boxShadow: "0 2px 8px rgba(224, 86, 56, 0.4)",
             }}
           >
@@ -70,8 +101,11 @@ export function PortalSwitcher({
           <span
             style={{
               fontWeight: 900,
+
               fontSize: 15,
+
               letterSpacing: isRtl ? "0" : "0.04em",
+
               color: "#ffffff",
             }}
           >
@@ -80,23 +114,36 @@ export function PortalSwitcher({
           <span
             style={{
               fontSize: 11,
+
               fontWeight: 700,
+
               padding: "2px 8px",
+
               borderRadius: 12,
+
               background: "rgba(34, 197, 94, 0.15)",
+
               color: "#4ade80",
+
               border: "1px solid rgba(34, 197, 94, 0.3)",
+
               display: "flex",
+
               alignItems: "center",
+
               gap: 5,
             }}
           >
             <span
               style={{
                 width: 6,
+
                 height: 6,
+
                 borderRadius: "50%",
+
                 background: "#22c55e",
+
                 boxShadow: "0 0 8px #22c55e",
               }}
             />
@@ -109,11 +156,17 @@ export function PortalSwitcher({
       <div
         style={{
           display: "flex",
+
           alignItems: "center",
+
           gap: 6,
+
           background: "#111827",
+
           padding: "4px 6px",
+
           borderRadius: 10,
+
           border: "1px solid #1f2937",
         }}
       >
@@ -122,20 +175,32 @@ export function PortalSwitcher({
           onClick={() => setPortal("b2c")}
           style={{
             border: 0,
+
             background:
               currentMode === "b2c"
                 ? "linear-gradient(135deg, #e05638, #c2410c)"
                 : "transparent",
+
             color: currentMode === "b2c" ? "#ffffff" : "#94a3b8",
+
             padding: "6px 14px",
+
             borderRadius: 7,
+
             fontSize: 13,
+
             fontWeight: 700,
+
             display: "flex",
+
             alignItems: "center",
+
             gap: 8,
+
             cursor: "pointer",
+
             transition: "all 0.18s ease",
+
             boxShadow:
               currentMode === "b2c"
                 ? "0 2px 6px rgba(224, 86, 56, 0.35)"
@@ -143,7 +208,9 @@ export function PortalSwitcher({
           }}
         >
           <ShoppingBag size={16} />
-          <span>{isRtl ? "سوق الأكل البيتي (العملاء)" : "Home Food Store (B2C)"}</span>
+          <span>
+            {isRtl ? "سوق الأكل البيتي (العملاء)" : "Home Food Store (B2C)"}
+          </span>
         </button>
 
         {/* Cook / Housewife Kitchen Portal */}
@@ -151,20 +218,32 @@ export function PortalSwitcher({
           onClick={() => setPortal("supplier")}
           style={{
             border: 0,
+
             background:
               currentMode === "supplier"
                 ? "linear-gradient(135deg, #16a34a, #15803d)"
                 : "transparent",
+
             color: currentMode === "supplier" ? "#ffffff" : "#94a3b8",
+
             padding: "6px 14px",
+
             borderRadius: 7,
+
             fontSize: 13,
+
             fontWeight: 700,
+
             display: "flex",
+
             alignItems: "center",
+
             gap: 8,
+
             cursor: "pointer",
+
             transition: "all 0.18s ease",
+
             boxShadow:
               currentMode === "supplier"
                 ? "0 2px 6px rgba(22, 163, 74, 0.35)"
@@ -180,20 +259,32 @@ export function PortalSwitcher({
           onClick={() => setPortal("b2b")}
           style={{
             border: 0,
+
             background:
               currentMode === "b2b"
                 ? "linear-gradient(135deg, #2563eb, #1d4ed8)"
                 : "transparent",
+
             color: currentMode === "b2b" ? "#ffffff" : "#94a3b8",
+
             padding: "6px 14px",
+
             borderRadius: 7,
+
             fontSize: 13,
+
             fontWeight: 700,
+
             display: "flex",
+
             alignItems: "center",
+
             gap: 8,
+
             cursor: "pointer",
+
             transition: "all 0.18s ease",
+
             boxShadow:
               currentMode === "b2b"
                 ? "0 2px 6px rgba(37, 99, 235, 0.35)"
@@ -201,7 +292,9 @@ export function PortalSwitcher({
           }}
         >
           <Building2 size={16} />
-          <span>{isRtl ? "طلبات الشركات والعزومات" : "Corporate & Catering"}</span>
+          <span>
+            {isRtl ? "طلبات الشركات والعزومات" : "Corporate & Catering"}
+          </span>
         </button>
 
         {/* Admin Dashboard */}
@@ -209,20 +302,32 @@ export function PortalSwitcher({
           onClick={() => setPortal("admin")}
           style={{
             border: 0,
+
             background:
               currentMode === "admin"
                 ? "linear-gradient(135deg, #7c3aed, #6d28d9)"
                 : "transparent",
+
             color: currentMode === "admin" ? "#ffffff" : "#94a3b8",
+
             padding: "6px 14px",
+
             borderRadius: 7,
+
             fontSize: 13,
+
             fontWeight: 700,
+
             display: "flex",
+
             alignItems: "center",
+
             gap: 8,
+
             cursor: "pointer",
+
             transition: "all 0.18s ease",
+
             boxShadow:
               currentMode === "admin"
                 ? "0 2px 6px rgba(124, 58, 237, 0.35)"
@@ -242,15 +347,25 @@ export function PortalSwitcher({
             onClick={() => setShowContextDropdown(!showContextDropdown)}
             style={{
               display: "flex",
+
               alignItems: "center",
+
               gap: 8,
+
               background: "rgba(255, 255, 255, 0.05)",
+
               border: "1px solid #334155",
+
               padding: "5px 12px",
+
               borderRadius: 8,
+
               color: "#f8fafc",
+
               fontSize: 12,
+
               fontWeight: 700,
+
               cursor: "pointer",
             }}
           >
@@ -276,23 +391,36 @@ export function PortalSwitcher({
             <div
               style={{
                 position: "absolute",
+
                 top: 42,
+
                 right: isRtl ? "auto" : 0,
+
                 left: isRtl ? 0 : "auto",
+
                 background: "#111827",
+
                 border: "1px solid #334155",
+
                 borderRadius: 8,
+
                 padding: "8px",
+
                 width: 240,
+
                 boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
+
                 zIndex: 60,
               }}
             >
               <div
                 style={{
                   fontSize: 11,
+
                   fontWeight: 700,
+
                   color: "#64748b",
+
                   padding: "4px 8px",
                 }}
               >
@@ -302,24 +430,37 @@ export function PortalSwitcher({
               <button
                 onClick={() => {
                   setPortal("b2b")
+
                   setShowContextDropdown(false)
                 }}
                 style={{
                   width: "100%",
+
                   textAlign: isRtl ? "right" : "left",
+
                   padding: "8px 10px",
+
                   borderRadius: 6,
+
                   border: 0,
+
                   background:
                     currentMode === "b2b"
                       ? "rgba(37, 99, 235, 0.15)"
                       : "transparent",
+
                   color: currentMode === "b2b" ? "#60a5fa" : "#cbd5e1",
+
                   fontSize: 12,
+
                   fontWeight: 700,
+
                   display: "flex",
+
                   alignItems: "center",
+
                   gap: 8,
+
                   cursor: "pointer",
                 }}
               >
@@ -335,24 +476,37 @@ export function PortalSwitcher({
               <button
                 onClick={() => {
                   setPortal("b2c")
+
                   setShowContextDropdown(false)
                 }}
                 style={{
                   width: "100%",
+
                   textAlign: isRtl ? "right" : "left",
+
                   padding: "8px 10px",
+
                   borderRadius: 6,
+
                   border: 0,
+
                   background:
                     currentMode === "b2c"
                       ? "rgba(16, 185, 129, 0.15)"
                       : "transparent",
+
                   color: currentMode === "b2c" ? "#34d399" : "#cbd5e1",
+
                   fontSize: 12,
+
                   fontWeight: 700,
+
                   display: "flex",
+
                   alignItems: "center",
+
                   gap: 8,
+
                   cursor: "pointer",
                 }}
               >
@@ -373,16 +527,27 @@ export function PortalSwitcher({
           onClick={() => setLocale(locale === "ar" ? "en" : "ar")}
           style={{
             border: "1px solid #334155",
+
             background: "rgba(255, 255, 255, 0.05)",
+
             color: "#f8fafc",
+
             padding: "5px 12px",
+
             borderRadius: 8,
+
             fontSize: 12,
+
             fontWeight: 700,
+
             display: "flex",
+
             alignItems: "center",
+
             gap: 6,
+
             cursor: "pointer",
+
             transition: "all 0.15s ease",
           }}
           title={isRtl ? "Switch to English" : "التبديل إلى العربية"}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+
 import {
   LayoutDashboard,
   Box,
@@ -28,8 +29,11 @@ import {
   CreditCard,
   Building,
 } from "lucide-react"
+
 import { api } from "../../services/api"
+
 import { translations } from "../../data/i18n"
+
 import type {
   Locale,
   B2BPage,
@@ -46,57 +50,93 @@ import type {
 
 interface Props {
   locale: Locale
+
   setLocale: (l: Locale) => void
+
   onSwitchPortal?: (portal: "b2c" | "supplier" | "admin") => void
 }
 
 export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
   const isRtl = locale === "ar"
+
   const t = translations[locale]
+
   const tb = t.b2b
 
   const [activeTab, setActiveTab] = useState<B2BPage>("overview")
+
   const [products, setProducts] = useState<StorefrontProduct[]>([])
+
   const [warehouses, setWarehouses] = useState<B2BReceivingWarehouse[]>([])
+
   const [teamMembers, setTeamMembers] = useState<B2BTeamMember[]>([])
+
   const [kycDocs, setKycDocs] = useState<B2BKYCDocument[]>([])
+
   const [profile, setProfile] = useState<B2BCorporateProfile | null>(null)
+
   const [wallet, setWallet] = useState<WalletAccount | null>(null)
+
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([])
+
   const [cart, setCart] = useState<CartItem[]>([])
+
   const [orders, setOrders] = useState<ParentOrder[]>([])
 
   // Modal States
+
   const [showAddWarehouse, setShowAddWarehouse] = useState(false)
+
   const [showInviteTeam, setShowInviteTeam] = useState(false)
+
   const [showTopupModal, setShowTopupModal] = useState(false)
+
   const [topupAmount, setTopupAmount] = useState("5000")
+
   const [selectedOfferProduct, setSelectedOfferProduct] =
     useState<StorefrontProduct | null>(null)
+
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("")
+
   const [poNumber, setPoNumber] = useState("PO-2026-0981")
+
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   // Form States
+
   const [newWh, setNewWh] = useState({
     name: "",
+
     code: "",
+
     countryCode: "SA",
+
     city: "الرياض / Riyadh",
+
     addressLine: "",
+
     dockType: "standard_bay" as const,
+
     hasForklift: true,
+
     receivingHours: "08:00 - 17:00",
+
     contactName: "",
+
     contactPhone: "",
+
     isDefault: false,
   })
 
   const [newMember, setNewMember] = useState({
     firstName: "",
+
     lastName: "",
+
     email: "",
+
     role: "procurement_manager" as B2BTeamMember["role"],
+
     spendingLimitCents: 5000000,
   })
 
@@ -109,42 +149,72 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
       const [whList, tmList, kycList, prof, wlt, txList, ordList] =
         await Promise.all([
           api.getMerchantWarehouses(),
+
           api.getB2BTeamMembers(),
+
           api.getB2BKYCDocuments(),
+
           api.getB2BCorporateProfile(),
+
           api.getB2BWallet(),
+
           api.getLedgerTransactions("b2b"),
+
           api.getOrders(),
         ])
+
       setWarehouses(whList)
+
       if (whList.length > 0) {
         const def = whList.find((w) => w.isDefault) || whList[0]
+
         setSelectedWarehouseId(def.id)
       }
+
       setTeamMembers(tmList)
+
       setKycDocs(kycList)
+
       setProfile(prof)
+
       setWallet(wlt)
+
       setTransactions(txList)
+
       if (ordList && ordList.length > 0) {
         setOrders(
           ordList.map((o) => ({
             id: o.id,
+
             orderNumber: o.order_number,
+
             date: o.created_at ? o.created_at.split("T")[0] : "2026-11-05",
+
             total: o.grand_total_cents / 100,
+
             status: "Confirmed",
+
             paymentMethod: o.payment_method || "Wallet (Account 2010)",
+
             orderType: "b2b",
+
             poReference: "PO-2026-4412",
+
             destinationWarehouse: "Dammam Logistics Hub",
+
             suborders: (o.suborders || []).map((so) => ({
               id: so.id,
+
               suborderNumber: so.suborder_number,
+
               supplierName: so.supplier_name,
+
               itemsCount: (so.items || []).length || 1,
+
               amount: so.subtotal_cents / 100,
+
               status: "Processing",
+
               trackingNumber: `TRK-${so.suborder_number}`,
             })),
           })),
@@ -156,50 +226,81 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
 
     try {
       const prods = await api.getProducts()
+
       if (prods && prods.length > 0) {
         setProducts(
           prods.map((p) => ({
             id: p.id,
+
             sku: p.sku,
+
             name: p.name,
+
             category: p.category_name,
+
             image:
               "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60",
+
             brand: p.brand_name || "Enterprise Brand",
+
             description: p.description,
+
             rating: 4.9,
+
             reviewCount: 42,
+
             specs: p.attributes || {
               Grade: "Industrial",
+
               Origin: "GCC Verified",
             },
+
             offers: [
               {
                 id: `off-${p.id}-1`,
+
                 supplierId: "sup-01",
+
                 supplierName: "Noura Foods Trading LLC",
+
                 supplierRating: 4.9,
+
                 verified: true,
+
                 price: (p.min_price_cents || 1800) / 100,
+
                 moq: 10,
+
                 stock: p.total_stock || 450,
+
                 location: "Riyadh Hub",
+
                 deliveryDays: 2,
+
                 returnPolicy: "Commercial SLA Guarantee",
+
                 tiers: [
                   {
                     minQty: 10,
+
                     maxQty: 49,
+
                     price: (p.min_price_cents || 1800) / 100,
                   },
+
                   {
                     minQty: 50,
+
                     maxQty: 99,
+
                     price: ((p.min_price_cents || 1800) * 0.9) / 100,
                   },
+
                   {
                     minQty: 100,
+
                     maxQty: "+",
+
                     price: ((p.min_price_cents || 1800) * 0.8) / 100,
                   },
                 ],
@@ -213,31 +314,41 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
 
   const showToast = (msg: string) => {
     setToastMsg(msg)
+
     setTimeout(() => setToastMsg(null), 3500)
   }
 
   const handleAddToCart = (
     product: StorefrontProduct,
+
     offerIndex = 0,
+
     qty = 10,
   ) => {
     const offer = product.offers[offerIndex]
+
     if (qty < offer.moq) {
       showToast(
         isRtl
           ? `الكمية أقل من الحد الأدنى للطلب (${offer.moq})`
           : `Quantity is below MOQ (${offer.moq})`,
       )
+
       return
     }
+
     const existingIndex = cart.findIndex((item) => item.offer.id === offer.id)
+
     if (existingIndex > -1) {
       const updated = [...cart]
+
       updated[existingIndex].quantity += qty
+
       setCart(updated)
     } else {
       setCart([...cart, { product, offer, quantity: qty }])
     }
+
     showToast(
       isRtl
         ? `تمت إضافة ${qty} وحدة إلى سلة المشتريات`
@@ -247,10 +358,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
 
   const handleExecuteCheckout = async () => {
     if (cart.length === 0) return
+
     const selectedWh =
       warehouses.find((w) => w.id === selectedWarehouseId) || warehouses[0]
+
     const cartTotal = cart.reduce(
       (sum, item) => sum + item.offer.price * item.quantity,
+
       0,
     )
 
@@ -258,39 +372,60 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
       await api.checkout({
         items: cart.map((i) => ({
           offer_id: i.offer.id,
+
           quantity: i.quantity,
         })),
+
         payment_method: "wallet",
+
         idempotency_key: `b2b-checkout-${Date.now()}`,
       })
     } catch {}
 
     const newOrder: ParentOrder = {
       id: `ord-${Date.now()}`,
+
       orderNumber: `ORD-B2B-${Math.floor(1000 + Math.random() * 9000)}`,
+
       date: new Date().toISOString().split("T")[0],
+
       total: cartTotal,
+
       status: "Confirmed",
+
       paymentMethod: "Corporate Wallet (Account 2010)",
+
       orderType: "b2b",
+
       poReference: poNumber,
+
       destinationWarehouse: selectedWh?.name || "Main Dock",
+
       suborders: [
         {
           id: `so-${Date.now()}-1`,
+
           suborderNumber: `SUB-B2B-${Math.floor(1000 + Math.random() * 9000)}`,
+
           supplierName: cart[0]?.offer.supplierName || "Enterprise Supplier",
+
           itemsCount: cart.length,
+
           amount: cartTotal,
+
           status: "Processing",
+
           trackingNumber: `TRK-EXP-${Date.now().toString().slice(-6)}`,
         },
       ],
     }
 
     setOrders([newOrder, ...orders])
+
     setCart([])
+
     setActiveTab("orders")
+
     showToast(
       isRtl
         ? `تم اعتماد أمر التوريد رقم ${newOrder.orderNumber} بنجاح`
@@ -300,11 +435,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
 
   const handleTopup = async () => {
     const amount = parseFloat(topupAmount)
+
     if (isNaN(amount) || amount <= 0) return
+
     await api.topupWallet("b2b", amount * 100)
+
     const w = await api.getB2BWallet()
+
     setWallet(w)
+
     setShowTopupModal(false)
+
     showToast(
       isRtl
         ? `تم شحن رصيد المحفظة بمبلغ $${amount}`
@@ -316,9 +457,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
     <div
       style={{
         display: "flex",
+
         minHeight: "calc(100vh - 52px)",
+
         background: "#0b0f19",
+
         color: "#f8fafc",
+
         fontFamily: "'Cairo', sans-serif",
       }}
       dir={isRtl ? "rtl" : "ltr"}
@@ -328,19 +473,33 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
         <div
           style={{
             position: "fixed",
+
             bottom: 24,
+
             right: isRtl ? "auto" : 24,
+
             left: isRtl ? 24 : "auto",
+
             zIndex: 100,
+
             background: "linear-gradient(135deg, #059669, #047857)",
+
             color: "#ffffff",
+
             padding: "12px 24px",
+
             borderRadius: 10,
+
             boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
+
             display: "flex",
+
             alignItems: "center",
+
             gap: 10,
+
             fontWeight: 700,
+
             fontSize: 14,
           }}
         >
@@ -353,19 +512,28 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
       <aside
         style={{
           width: 270,
+
           background: "#0d1322",
+
           borderRight: isRtl ? "none" : "1px solid #1e293b",
+
           borderLeft: isRtl ? "1px solid #1e293b" : "none",
+
           display: "flex",
+
           flexDirection: "column",
+
           padding: "20px 14px",
+
           gap: 6,
         }}
       >
         <div
           style={{
             padding: "0 10px 16px 10px",
+
             borderBottom: "1px solid #1e293b",
+
             marginBottom: 12,
           }}
         >
@@ -373,13 +541,21 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 width: 36,
+
                 height: 36,
+
                 borderRadius: 10,
+
                 background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+
                 display: "grid",
+
                 placeItems: "center",
+
                 color: "#ffffff",
+
                 fontWeight: 900,
+
                 fontSize: 16,
               }}
             >
@@ -399,22 +575,32 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
           <div
             style={{
               marginTop: 12,
+
               padding: "6px 10px",
+
               borderRadius: 8,
+
               background:
                 profile?.status === "approved"
                   ? "rgba(16, 185, 129, 0.12)"
                   : "rgba(245, 158, 11, 0.12)",
+
               border: `1px solid ${
                 profile?.status === "approved"
                   ? "rgba(16, 185, 129, 0.3)"
                   : "rgba(245, 158, 11, 0.3)"
               }`,
+
               display: "flex",
+
               alignItems: "center",
+
               gap: 6,
+
               fontSize: 11,
+
               fontWeight: 700,
+
               color: profile?.status === "approved" ? "#34d399" : "#fbbf24",
             }}
           >
@@ -431,30 +617,48 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
         {[
           {
             id: "overview" as B2BPage,
+
             label: tb.navDashboard,
+
             icon: LayoutDashboard,
           },
+
           { id: "catalog" as B2BPage, label: tb.navCatalog, icon: Box },
+
           {
             id: "cart" as B2BPage,
+
             label: `${tb.navCart} (${cart.length})`,
+
             icon: ShoppingCart,
+
             badge: cart.length > 0 ? String(cart.length) : undefined,
           },
+
           {
             id: "orders" as B2BPage,
+
             label: tb.navOrders,
+
             icon: ReceiptText,
+
             badge: String(orders.length),
           },
+
           {
             id: "warehouses" as B2BPage,
+
             label: tb.navWarehouses,
+
             icon: Warehouse,
           },
+
           { id: "team" as B2BPage, label: tb.navTeam, icon: Users },
+
           { id: "wallet" as B2BPage, label: tb.navWallet, icon: WalletCards },
+
           { id: "onboarding" as B2BPage, label: tb.navKYC, icon: ShieldCheck },
+
           { id: "profile" as B2BPage, label: tb.navProfile, icon: Building2 },
         ].map((item) => (
           <button
@@ -462,19 +666,30 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             onClick={() => setActiveTab(item.id)}
             style={{
               display: "flex",
+
               alignItems: "center",
+
               justifyContent: "space-between",
+
               padding: "10px 14px",
+
               borderRadius: 8,
+
               border: 0,
+
               background:
                 activeTab === item.id
                   ? "rgba(37, 99, 235, 0.18)"
                   : "transparent",
+
               color: activeTab === item.id ? "#60a5fa" : "#94a3b8",
+
               fontWeight: activeTab === item.id ? 800 : 600,
+
               fontSize: 13,
+
               cursor: "pointer",
+
               transition: "all 0.15s ease",
             }}
           >
@@ -486,10 +701,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <span
                 style={{
                   background: activeTab === item.id ? "#2563eb" : "#1e293b",
+
                   color: "#ffffff",
+
                   fontSize: 11,
+
                   padding: "1px 7px",
+
                   borderRadius: 12,
+
                   fontWeight: 700,
                 }}
               >
@@ -503,7 +723,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
         <div
           style={{
             marginTop: "auto",
+
             paddingTop: 16,
+
             borderTop: "1px solid #1e293b",
           }}
         >
@@ -511,17 +733,29 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             onClick={() => onSwitchPortal?.("b2c")}
             style={{
               width: "100%",
+
               padding: "10px",
+
               borderRadius: 8,
+
               border: "1px solid #334155",
+
               background: "rgba(255,255,255,0.03)",
+
               color: "#cbd5e1",
+
               fontSize: 12,
+
               fontWeight: 700,
+
               display: "flex",
+
               alignItems: "center",
+
               justifyContent: "center",
+
               gap: 8,
+
               cursor: "pointer",
             }}
           >
@@ -544,8 +778,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <h1
                 style={{
                   fontSize: 24,
+
                   fontWeight: 900,
+
                   color: "#ffffff",
+
                   margin: "0 0 6px 0",
                 }}
               >
@@ -562,16 +799,22 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "grid",
+
                 gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+
                 gap: 18,
+
                 marginBottom: 28,
               }}
             >
               <div
                 style={{
                   background: "#111827",
+
                   padding: "20px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
@@ -583,14 +826,18 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     fontSize: 26,
+
                     fontWeight: 900,
+
                     color: "#10b981",
+
                     margin: "8px 0",
                   }}
                 >
                   $
                   {((wallet?.availableBalanceCents || 0) / 100).toLocaleString(
                     "en-US",
+
                     { minimumFractionDigits: 2 },
                   )}
                 </div>
@@ -602,8 +849,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   background: "#111827",
+
                   padding: "20px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
@@ -615,14 +865,18 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     fontSize: 26,
+
                     fontWeight: 900,
+
                     color: "#f59e0b",
+
                     margin: "8px 0",
                   }}
                 >
                   $
                   {((wallet?.heldBalanceCents || 0) / 100).toLocaleString(
                     "en-US",
+
                     { minimumFractionDigits: 2 },
                   )}
                 </div>
@@ -634,8 +888,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   background: "#111827",
+
                   padding: "20px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
@@ -647,8 +904,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     fontSize: 26,
+
                     fontWeight: 900,
+
                     color: "#60a5fa",
+
                     margin: "8px 0",
                   }}
                 >
@@ -662,8 +922,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   background: "#111827",
+
                   padding: "20px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
@@ -675,8 +938,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     fontSize: 26,
+
                     fontWeight: 900,
+
                     color: "#a78bfa",
+
                     margin: "8px 0",
                   }}
                 >
@@ -692,23 +958,31 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "grid",
+
                 gridTemplateColumns: "2fr 1fr",
+
                 gap: 20,
               }}
             >
               <div
                 style={{
                   background: "#111827",
+
                   padding: "24px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
                 <div
                   style={{
                     display: "flex",
+
                     justifyContent: "space-between",
+
                     alignItems: "center",
+
                     marginBottom: 16,
                   }}
                 >
@@ -719,12 +993,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     onClick={() => setActiveTab("catalog")}
                     style={{
                       background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+
                       border: 0,
+
                       color: "#ffffff",
+
                       padding: "6px 14px",
+
                       borderRadius: 6,
+
                       fontSize: 12,
+
                       fontWeight: 700,
+
                       cursor: "pointer",
                     }}
                   >
@@ -736,7 +1017,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <div
                     style={{
                       textAlign: "center",
+
                       padding: "40px 0",
+
                       color: "#64748b",
                     }}
                   >
@@ -748,7 +1031,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <table
                     style={{
                       width: "100%",
+
                       borderCollapse: "collapse",
+
                       fontSize: 13,
                     }}
                   >
@@ -756,7 +1041,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <tr
                         style={{
                           color: "#64748b",
+
                           borderBottom: "1px solid #1f2937",
+
                           textAlign: isRtl ? "right" : "left",
                         }}
                       >
@@ -778,7 +1065,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           <td
                             style={{
                               padding: "12px",
+
                               fontWeight: 700,
+
                               color: "#60a5fa",
                             }}
                           >
@@ -797,10 +1086,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                             <span
                               style={{
                                 background: "rgba(16, 185, 129, 0.15)",
+
                                 color: "#34d399",
+
                                 padding: "2px 8px",
+
                                 borderRadius: 6,
+
                                 fontSize: 11,
+
                                 fontWeight: 700,
                               }}
                             >
@@ -818,15 +1112,20 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   background: "#111827",
+
                   padding: "24px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
                 <h3
                   style={{
                     fontSize: 16,
+
                     fontWeight: 800,
+
                     margin: "0 0 16px 0",
                   }}
                 >
@@ -835,9 +1134,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     background: "#0b0f19",
+
                     padding: "16px",
+
                     borderRadius: 8,
+
                     marginBottom: 16,
+
                     border: "1px solid #1e293b",
                   }}
                 >
@@ -847,8 +1150,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <div
                     style={{
                       fontSize: 24,
+
                       fontWeight: 900,
+
                       color: "#ffffff",
+
                       margin: "4px 0",
                     }}
                   >
@@ -857,9 +1163,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <div
                     style={{
                       color: "#34d399",
+
                       fontSize: 11,
+
                       display: "flex",
+
                       alignItems: "center",
+
                       gap: 4,
                     }}
                   >
@@ -870,13 +1180,21 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   onClick={() => setShowTopupModal(true)}
                   style={{
                     width: "100%",
+
                     background: "linear-gradient(135deg, #059669, #047857)",
+
                     color: "#ffffff",
+
                     border: 0,
+
                     padding: "10px",
+
                     borderRadius: 8,
+
                     fontSize: 13,
+
                     fontWeight: 700,
+
                     cursor: "pointer",
                   }}
                 >
@@ -893,8 +1211,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 marginBottom: 24,
+
                 display: "flex",
+
                 justifyContent: "space-between",
+
                 alignItems: "center",
               }}
             >
@@ -902,8 +1223,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <h1
                   style={{
                     fontSize: 24,
+
                     fontWeight: 900,
+
                     color: "#ffffff",
+
                     margin: "0 0 6px 0",
                   }}
                 >
@@ -918,28 +1242,38 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "grid",
+
                 gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+
                 gap: 20,
               }}
             >
               {products.map((p) => {
                 const offer = p.offers[0]
+
                 return (
                   <div
                     key={p.id}
                     style={{
                       background: "#111827",
+
                       borderRadius: 12,
+
                       border: "1px solid #1f2937",
+
                       overflow: "hidden",
+
                       display: "flex",
+
                       flexDirection: "column",
                     }}
                   >
                     <div
                       style={{
                         height: 180,
+
                         background: "#1e293b",
+
                         position: "relative",
                       }}
                     >
@@ -948,21 +1282,32 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                         alt={p.name.en}
                         style={{
                           width: "100%",
+
                           height: "100%",
+
                           objectFit: "cover",
                         }}
                       />
                       <span
                         style={{
                           position: "absolute",
+
                           top: 12,
+
                           right: isRtl ? "auto" : 12,
+
                           left: isRtl ? 12 : "auto",
+
                           background: "rgba(15, 23, 42, 0.85)",
+
                           color: "#38bdf8",
+
                           padding: "3px 8px",
+
                           borderRadius: 6,
+
                           fontSize: 11,
+
                           fontWeight: 700,
                         }}
                       >
@@ -973,15 +1318,20 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     <div
                       style={{
                         padding: "18px",
+
                         flex: 1,
+
                         display: "flex",
+
                         flexDirection: "column",
                       }}
                     >
                       <div
                         style={{
                           color: "#94a3b8",
+
                           fontSize: 11,
+
                           fontWeight: 700,
                         }}
                       >
@@ -990,8 +1340,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <h4
                         style={{
                           fontSize: 16,
+
                           fontWeight: 800,
+
                           margin: "6px 0 10px 0",
+
                           color: "#ffffff",
                         }}
                       >
@@ -1002,17 +1355,24 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <div
                         style={{
                           background: "#0b0f19",
+
                           padding: "10px",
+
                           borderRadius: 8,
+
                           marginBottom: 14,
+
                           border: "1px solid #1e293b",
                         }}
                       >
                         <div
                           style={{
                             fontSize: 11,
+
                             fontWeight: 700,
+
                             color: "#94a3b8",
+
                             marginBottom: 6,
                           }}
                         >
@@ -1021,7 +1381,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                         <div
                           style={{
                             display: "flex",
+
                             justifyContent: "space-between",
+
                             fontSize: 12,
                           }}
                         >
@@ -1043,8 +1405,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <div
                         style={{
                           marginTop: "auto",
+
                           display: "flex",
+
                           gap: 10,
+
                           alignItems: "center",
                         }}
                       >
@@ -1052,14 +1417,22 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           onClick={() => handleAddToCart(p, 0, offer.moq)}
                           style={{
                             flex: 1,
+
                             background:
                               "linear-gradient(135deg, #2563eb, #1d4ed8)",
+
                             color: "#ffffff",
+
                             border: 0,
+
                             padding: "10px",
+
                             borderRadius: 8,
+
                             fontSize: 13,
+
                             fontWeight: 700,
+
                             cursor: "pointer",
                           }}
                         >
@@ -1081,8 +1454,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <h1
                 style={{
                   fontSize: 24,
+
                   fontWeight: 900,
+
                   color: "#ffffff",
+
                   margin: "0 0 6px 0",
                 }}
               >
@@ -1098,9 +1474,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   textAlign: "center",
+
                   padding: "60px 0",
+
                   background: "#111827",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
@@ -1119,11 +1499,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   onClick={() => setActiveTab("catalog")}
                   style={{
                     background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+
                     border: 0,
+
                     color: "#ffffff",
+
                     padding: "8px 18px",
+
                     borderRadius: 8,
+
                     fontWeight: 700,
+
                     cursor: "pointer",
                   }}
                 >
@@ -1134,7 +1520,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   display: "grid",
+
                   gridTemplateColumns: "2fr 1fr",
+
                   gap: 24,
                 }}
               >
@@ -1142,8 +1530,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     background: "#111827",
+
                     padding: "20px",
+
                     borderRadius: 12,
+
                     border: "1px solid #1f2937",
                   }}
                 >
@@ -1152,9 +1543,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       key={idx}
                       style={{
                         display: "flex",
+
                         gap: 16,
+
                         padding: "16px 0",
+
                         borderBottom: "1px solid #1f2937",
+
                         alignItems: "center",
                       }}
                     >
@@ -1163,8 +1558,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                         alt={item.product.name.en}
                         style={{
                           width: 64,
+
                           height: 64,
+
                           borderRadius: 8,
+
                           objectFit: "cover",
                         }}
                       />
@@ -1193,16 +1591,22 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     background: "#111827",
+
                     padding: "24px",
+
                     borderRadius: 12,
+
                     border: "1px solid #1f2937",
+
                     height: "fit-content",
                   }}
                 >
                   <h3
                     style={{
                       fontSize: 16,
+
                       fontWeight: 800,
+
                       margin: "0 0 16px 0",
                     }}
                   >
@@ -1214,9 +1618,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     <label
                       style={{
                         display: "block",
+
                         fontSize: 12,
+
                         fontWeight: 700,
+
                         color: "#94a3b8",
+
                         marginBottom: 6,
                       }}
                     >
@@ -1227,11 +1635,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       onChange={(e) => setSelectedWarehouseId(e.target.value)}
                       style={{
                         width: "100%",
+
                         background: "#0b0f19",
+
                         color: "#ffffff",
+
                         border: "1px solid #334155",
+
                         borderRadius: 8,
+
                         padding: "10px",
+
                         fontSize: 13,
                       }}
                     >
@@ -1248,9 +1662,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     <label
                       style={{
                         display: "block",
+
                         fontSize: 12,
+
                         fontWeight: 700,
+
                         color: "#94a3b8",
+
                         marginBottom: 6,
                       }}
                     >
@@ -1262,11 +1680,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       onChange={(e) => setPoNumber(e.target.value)}
                       style={{
                         width: "100%",
+
                         background: "#0b0f19",
+
                         color: "#ffffff",
+
                         border: "1px solid #334155",
+
                         borderRadius: 8,
+
                         padding: "10px",
+
                         fontSize: 13,
                       }}
                     />
@@ -1275,16 +1699,22 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <div
                     style={{
                       borderTop: "1px solid #1f2937",
+
                       paddingTop: 16,
+
                       marginBottom: 20,
                     }}
                   >
                     <div
                       style={{
                         display: "flex",
+
                         justifyContent: "space-between",
+
                         marginBottom: 8,
+
                         fontSize: 13,
+
                         color: "#94a3b8",
                       }}
                     >
@@ -1292,16 +1722,22 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <span>
                         $
                         {cart
+
                           .reduce((s, i) => s + i.offer.price * i.quantity, 0)
+
                           .toFixed(2)}
                       </span>
                     </div>
                     <div
                       style={{
                         display: "flex",
+
                         justifyContent: "space-between",
+
                         marginBottom: 8,
+
                         fontSize: 13,
+
                         color: "#94a3b8",
                       }}
                     >
@@ -1311,9 +1747,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     <div
                       style={{
                         display: "flex",
+
                         justifyContent: "space-between",
+
                         fontSize: 18,
+
                         fontWeight: 900,
+
                         color: "#ffffff",
                       }}
                     >
@@ -1321,7 +1761,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <span>
                         $
                         {cart
+
                           .reduce((s, i) => s + i.offer.price * i.quantity, 0)
+
                           .toFixed(2)}
                       </span>
                     </div>
@@ -1331,13 +1773,21 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     onClick={handleExecuteCheckout}
                     style={{
                       width: "100%",
+
                       background: "linear-gradient(135deg, #059669, #047857)",
+
                       color: "#ffffff",
+
                       border: 0,
+
                       padding: "12px",
+
                       borderRadius: 8,
+
                       fontSize: 14,
+
                       fontWeight: 800,
+
                       cursor: "pointer",
                     }}
                   >
@@ -1357,8 +1807,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "flex",
+
                 justifyContent: "space-between",
+
                 alignItems: "center",
+
                 marginBottom: 24,
               }}
             >
@@ -1366,8 +1819,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <h1
                   style={{
                     fontSize: 24,
+
                     fontWeight: 900,
+
                     color: "#ffffff",
+
                     margin: "0 0 6px 0",
                   }}
                 >
@@ -1381,12 +1837,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onClick={() => setShowAddWarehouse(true)}
                 style={{
                   background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+
                   color: "#ffffff",
+
                   border: 0,
+
                   padding: "10px 18px",
+
                   borderRadius: 8,
+
                   fontWeight: 700,
+
                   fontSize: 13,
+
                   cursor: "pointer",
                 }}
               >
@@ -1397,7 +1860,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "grid",
+
                 gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+
                 gap: 20,
               }}
             >
@@ -1406,16 +1871,22 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   key={w.id}
                   style={{
                     background: "#111827",
+
                     padding: "24px",
+
                     borderRadius: 12,
+
                     border: "1px solid #1f2937",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
+
                       justifyContent: "space-between",
+
                       alignItems: "flex-start",
+
                       marginBottom: 12,
                     }}
                   >
@@ -1423,8 +1894,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <h4
                         style={{
                           fontSize: 16,
+
                           fontWeight: 800,
+
                           margin: "0 0 4px 0",
+
                           color: "#ffffff",
                         }}
                       >
@@ -1433,7 +1907,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <span
                         style={{
                           color: "#60a5fa",
+
                           fontSize: 12,
+
                           fontWeight: 700,
                         }}
                       >
@@ -1444,10 +1920,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <span
                         style={{
                           background: "rgba(16, 185, 129, 0.15)",
+
                           color: "#34d399",
+
                           padding: "2px 8px",
+
                           borderRadius: 6,
+
                           fontSize: 11,
+
                           fontWeight: 700,
                         }}
                       >
@@ -1462,8 +1943,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     <div
                       style={{
                         display: "flex",
+
                         alignItems: "center",
+
                         gap: 6,
+
                         marginBottom: 4,
                       }}
                     >
@@ -1472,8 +1956,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     <div
                       style={{
                         display: "flex",
+
                         alignItems: "center",
+
                         gap: 6,
+
                         marginBottom: 4,
                       }}
                     >
@@ -1490,11 +1977,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <div
                     style={{
                       background: "#0b0f19",
+
                       padding: "8px 12px",
+
                       borderRadius: 6,
+
                       fontSize: 12,
+
                       color: "#cbd5e1",
+
                       display: "flex",
+
                       justifyContent: "space-between",
                     }}
                   >
@@ -1517,8 +2010,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "flex",
+
                 justifyContent: "space-between",
+
                 alignItems: "center",
+
                 marginBottom: 24,
               }}
             >
@@ -1526,8 +2022,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <h1
                   style={{
                     fontSize: 24,
+
                     fontWeight: 900,
+
                     color: "#ffffff",
+
                     margin: "0 0 6px 0",
                   }}
                 >
@@ -1541,12 +2040,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onClick={() => setShowInviteTeam(true)}
                 style={{
                   background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+
                   color: "#ffffff",
+
                   border: 0,
+
                   padding: "10px 18px",
+
                   borderRadius: 8,
+
                   fontWeight: 700,
+
                   fontSize: 13,
+
                   cursor: "pointer",
                 }}
               >
@@ -1557,15 +2063,20 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 background: "#111827",
+
                 borderRadius: 12,
+
                 border: "1px solid #1f2937",
+
                 overflow: "hidden",
               }}
             >
               <table
                 style={{
                   width: "100%",
+
                   borderCollapse: "collapse",
+
                   fontSize: 13,
                 }}
               >
@@ -1573,8 +2084,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <tr
                     style={{
                       background: "#0d1322",
+
                       color: "#64748b",
+
                       borderBottom: "1px solid #1f2937",
+
                       textAlign: isRtl ? "right" : "left",
                     }}
                   >
@@ -1595,7 +2109,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <td
                         style={{
                           padding: "14px 16px",
+
                           fontWeight: 700,
+
                           color: "#ffffff",
                         }}
                       >
@@ -1608,10 +2124,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                         <span
                           style={{
                             background: "rgba(37, 99, 235, 0.15)",
+
                             color: "#60a5fa",
+
                             padding: "3px 10px",
+
                             borderRadius: 6,
+
                             fontSize: 11,
+
                             fontWeight: 700,
                           }}
                         >
@@ -1625,11 +2146,16 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                               m.status === "active"
                                 ? "rgba(16, 185, 129, 0.15)"
                                 : "rgba(245, 158, 11, 0.15)",
+
                             color:
                               m.status === "active" ? "#34d399" : "#fbbf24",
+
                             padding: "3px 10px",
+
                             borderRadius: 6,
+
                             fontSize: 11,
+
                             fontWeight: 700,
                           }}
                         >
@@ -1650,8 +2176,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "flex",
+
                 justifyContent: "space-between",
+
                 alignItems: "center",
+
                 marginBottom: 24,
               }}
             >
@@ -1659,8 +2188,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <h1
                   style={{
                     fontSize: 24,
+
                     fontWeight: 900,
+
                     color: "#ffffff",
+
                     margin: "0 0 6px 0",
                   }}
                 >
@@ -1674,12 +2206,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onClick={() => setShowTopupModal(true)}
                 style={{
                   background: "linear-gradient(135deg, #059669, #047857)",
+
                   color: "#ffffff",
+
                   border: 0,
+
                   padding: "10px 18px",
+
                   borderRadius: 8,
+
                   fontWeight: 700,
+
                   fontSize: 13,
+
                   cursor: "pointer",
                 }}
               >
@@ -1691,16 +2230,22 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "grid",
+
                 gridTemplateColumns: "1fr 1fr 1fr",
+
                 gap: 20,
+
                 marginBottom: 28,
               }}
             >
               <div
                 style={{
                   background: "#111827",
+
                   padding: "20px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
@@ -1712,8 +2257,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     fontSize: 28,
+
                     fontWeight: 900,
+
                     color: "#10b981",
+
                     margin: "8px 0",
                   }}
                 >
@@ -1727,8 +2275,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   background: "#111827",
+
                   padding: "20px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
@@ -1740,8 +2291,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     fontSize: 28,
+
                     fontWeight: 900,
+
                     color: "#f59e0b",
+
                     margin: "8px 0",
                   }}
                 >
@@ -1755,8 +2309,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   background: "#111827",
+
                   padding: "20px",
+
                   borderRadius: 12,
+
                   border: "1px solid #1f2937",
                 }}
               >
@@ -1768,8 +2325,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <div
                   style={{
                     fontSize: 28,
+
                     fontWeight: 900,
+
                     color: "#ffffff",
+
                     margin: "8px 0",
                   }}
                 >
@@ -1785,8 +2345,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 background: "#111827",
+
                 borderRadius: 12,
+
                 border: "1px solid #1f2937",
+
                 padding: "20px",
               }}
             >
@@ -1798,7 +2361,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <table
                 style={{
                   width: "100%",
+
                   borderCollapse: "collapse",
+
                   fontSize: 13,
                 }}
               >
@@ -1806,7 +2371,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <tr
                     style={{
                       color: "#64748b",
+
                       borderBottom: "1px solid #1f2937",
+
                       textAlign: isRtl ? "right" : "left",
                     }}
                   >
@@ -1826,7 +2393,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <td
                         style={{
                           padding: "12px 10px",
+
                           fontWeight: 700,
+
                           color: "#60a5fa",
                         }}
                       >
@@ -1844,7 +2413,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <td
                         style={{
                           padding: "12px 10px",
+
                           fontWeight: 800,
+
                           color: tx.isDebit ? "#ef4444" : "#10b981",
                         }}
                       >
@@ -1866,8 +2437,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <h1
                 style={{
                   fontSize: 24,
+
                   fontWeight: 900,
+
                   color: "#ffffff",
+
                   margin: "0 0 6px 0",
                 }}
               >
@@ -1881,9 +2455,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 background: "#111827",
+
                 padding: "28px",
+
                 borderRadius: 12,
+
                 border: "1px solid #1f2937",
+
                 maxWidth: 700,
               }}
             >
@@ -1891,9 +2469,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <label
                   style={{
                     display: "block",
+
                     fontSize: 13,
+
                     fontWeight: 700,
+
                     color: "#94a3b8",
+
                     marginBottom: 6,
                   }}
                 >
@@ -1905,10 +2487,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   value={profile?.crNumber || "1010928374"}
                   style={{
                     width: "100%",
+
                     background: "#0b0f19",
+
                     color: "#ffffff",
+
                     border: "1px solid #334155",
+
                     borderRadius: 8,
+
                     padding: "10px",
                   }}
                 />
@@ -1918,9 +2505,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <label
                   style={{
                     display: "block",
+
                     fontSize: 13,
+
                     fontWeight: 700,
+
                     color: "#94a3b8",
+
                     marginBottom: 6,
                   }}
                 >
@@ -1932,10 +2523,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   value={profile?.vatNumber || "310029384700003"}
                   style={{
                     width: "100%",
+
                     background: "#0b0f19",
+
                     color: "#ffffff",
+
                     border: "1px solid #334155",
+
                     borderRadius: 8,
+
                     padding: "10px",
                   }}
                 />
@@ -1949,8 +2545,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   display: "flex",
+
                   flexDirection: "column",
+
                   gap: 10,
+
                   marginBottom: 24,
                 }}
               >
@@ -1959,11 +2558,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     key={doc.id}
                     style={{
                       display: "flex",
+
                       justifyContent: "space-between",
+
                       alignItems: "center",
+
                       padding: "12px 16px",
+
                       background: "#0b0f19",
+
                       borderRadius: 8,
+
                       border: "1px solid #1e293b",
                     }}
                   >
@@ -1978,10 +2583,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     <span
                       style={{
                         background: "rgba(16, 185, 129, 0.15)",
+
                         color: "#34d399",
+
                         padding: "2px 8px",
+
                         borderRadius: 6,
+
                         fontSize: 11,
+
                         fontWeight: 700,
                       }}
                     >
@@ -2001,12 +2611,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 }
                 style={{
                   background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+
                   color: "#ffffff",
+
                   border: 0,
+
                   padding: "12px 24px",
+
                   borderRadius: 8,
+
                   fontWeight: 800,
+
                   fontSize: 14,
+
                   cursor: "pointer",
                 }}
               >
@@ -2023,8 +2640,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <h1
                 style={{
                   fontSize: 24,
+
                   fontWeight: 900,
+
                   color: "#ffffff",
+
                   margin: "0 0 6px 0",
                 }}
               >
@@ -2041,18 +2661,26 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   key={o.id}
                   style={{
                     background: "#111827",
+
                     padding: "20px",
+
                     borderRadius: 12,
+
                     border: "1px solid #1f2937",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
+
                       justifyContent: "space-between",
+
                       alignItems: "center",
+
                       marginBottom: 14,
+
                       borderBottom: "1px solid #1f2937",
+
                       paddingBottom: 12,
                     }}
                   >
@@ -2060,7 +2688,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <span
                         style={{
                           fontSize: 16,
+
                           fontWeight: 900,
+
                           color: "#60a5fa",
                         }}
                       >
@@ -2069,7 +2699,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <span
                         style={{
                           color: "#94a3b8",
+
                           fontSize: 12,
+
                           margin: "0 10px",
                         }}
                       >
@@ -2083,7 +2715,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                       <span
                         style={{
                           fontSize: 18,
+
                           fontWeight: 900,
+
                           color: "#ffffff",
                         }}
                       >
@@ -2103,16 +2737,22 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <div
                     style={{
                       background: "#0b0f19",
+
                       borderRadius: 8,
+
                       padding: "12px",
+
                       border: "1px solid #1e293b",
                     }}
                   >
                     <div
                       style={{
                         fontSize: 12,
+
                         fontWeight: 700,
+
                         color: "#64748b",
+
                         marginBottom: 8,
                       }}
                     >
@@ -2123,9 +2763,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                         key={so.id}
                         style={{
                           display: "flex",
+
                           justifyContent: "space-between",
+
                           alignItems: "center",
+
                           padding: "6px 0",
+
                           fontSize: 13,
                         }}
                       >
@@ -2136,7 +2780,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           <span
                             style={{
                               color: "#64748b",
+
                               fontSize: 11,
+
                               margin: "0 8px",
                             }}
                           >
@@ -2146,7 +2792,9 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                         <div
                           style={{
                             display: "flex",
+
                             gap: 12,
+
                             alignItems: "center",
                           }}
                         >
@@ -2156,10 +2804,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           <span
                             style={{
                               background: "rgba(37, 99, 235, 0.15)",
+
                               color: "#60a5fa",
+
                               padding: "2px 8px",
+
                               borderRadius: 6,
+
                               fontSize: 11,
+
                               fontWeight: 700,
                             }}
                           >
@@ -2182,8 +2835,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <h1
                 style={{
                   fontSize: 24,
+
                   fontWeight: 900,
+
                   color: "#ffffff",
+
                   margin: "0 0 6px 0",
                 }}
               >
@@ -2197,9 +2853,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 background: "#111827",
+
                 padding: "28px",
+
                 borderRadius: 12,
+
                 border: "1px solid #1f2937",
+
                 maxWidth: 700,
               }}
             >
@@ -2207,9 +2867,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <label
                   style={{
                     display: "block",
+
                     fontSize: 12,
+
                     fontWeight: 700,
+
                     color: "#94a3b8",
+
                     marginBottom: 6,
                   }}
                 >
@@ -2221,10 +2885,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   value={profile?.legalName}
                   style={{
                     width: "100%",
+
                     background: "#0b0f19",
+
                     color: "#ffffff",
+
                     border: "1px solid #334155",
+
                     borderRadius: 8,
+
                     padding: "10px",
                   }}
                 />
@@ -2233,9 +2902,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 <label
                   style={{
                     display: "block",
+
                     fontSize: 12,
+
                     fontWeight: 700,
+
                     color: "#94a3b8",
+
                     marginBottom: 6,
                   }}
                 >
@@ -2247,10 +2920,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   value={profile?.billingAddress}
                   style={{
                     width: "100%",
+
                     background: "#0b0f19",
+
                     color: "#ffffff",
+
                     border: "1px solid #334155",
+
                     borderRadius: 8,
+
                     padding: "10px",
                   }}
                 />
@@ -2258,8 +2936,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div
                 style={{
                   display: "grid",
+
                   gridTemplateColumns: "1fr 1fr",
+
                   gap: 16,
+
                   marginBottom: 16,
                 }}
               >
@@ -2267,9 +2948,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <label
                     style={{
                       display: "block",
+
                       fontSize: 12,
+
                       fontWeight: 700,
+
                       color: "#94a3b8",
+
                       marginBottom: 6,
                     }}
                   >
@@ -2281,10 +2966,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     value={profile?.contactEmail}
                     style={{
                       width: "100%",
+
                       background: "#0b0f19",
+
                       color: "#ffffff",
+
                       border: "1px solid #334155",
+
                       borderRadius: 8,
+
                       padding: "10px",
                     }}
                   />
@@ -2293,9 +2983,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                   <label
                     style={{
                       display: "block",
+
                       fontSize: 12,
+
                       fontWeight: 700,
+
                       color: "#94a3b8",
+
                       marginBottom: 6,
                     }}
                   >
@@ -2307,10 +3001,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                     value={profile?.contactPhone}
                     style={{
                       width: "100%",
+
                       background: "#0b0f19",
+
                       color: "#ffffff",
+
                       border: "1px solid #334155",
+
                       borderRadius: 8,
+
                       padding: "10px",
                     }}
                   />
@@ -2326,21 +3025,32 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
         <div
           style={{
             position: "fixed",
+
             inset: 0,
+
             background: "rgba(0,0,0,0.7)",
+
             zIndex: 100,
+
             display: "grid",
+
             placeItems: "center",
+
             padding: 20,
           }}
         >
           <div
             style={{
               background: "#111827",
+
               padding: "28px",
+
               borderRadius: 12,
+
               border: "1px solid #334155",
+
               width: "100%",
+
               maxWidth: 420,
             }}
           >
@@ -2355,9 +3065,13 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <label
                 style={{
                   display: "block",
+
                   fontSize: 12,
+
                   fontWeight: 700,
+
                   color: "#cbd5e1",
+
                   marginBottom: 6,
                 }}
               >
@@ -2369,12 +3083,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onChange={(e) => setTopupAmount(e.target.value)}
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
+
                   fontSize: 16,
+
                   fontWeight: 800,
                 }}
               />
@@ -2385,12 +3106,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onClick={handleTopup}
                 style={{
                   flex: 1,
+
                   background: "linear-gradient(135deg, #059669, #047857)",
+
                   color: "#ffffff",
+
                   border: 0,
+
                   padding: "12px",
+
                   borderRadius: 8,
+
                   fontWeight: 800,
+
                   cursor: "pointer",
                 }}
               >
@@ -2400,11 +3128,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onClick={() => setShowTopupModal(false)}
                 style={{
                   background: "#1f2937",
+
                   color: "#94a3b8",
+
                   border: 0,
+
                   padding: "12px 18px",
+
                   borderRadius: 8,
+
                   fontWeight: 700,
+
                   cursor: "pointer",
                 }}
               >
@@ -2420,21 +3154,32 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
         <div
           style={{
             position: "fixed",
+
             inset: 0,
+
             background: "rgba(0,0,0,0.7)",
+
             zIndex: 100,
+
             display: "grid",
+
             placeItems: "center",
+
             padding: 20,
           }}
         >
           <div
             style={{
               background: "#111827",
+
               padding: "28px",
+
               borderRadius: 12,
+
               border: "1px solid #334155",
+
               width: "100%",
+
               maxWidth: 480,
             }}
           >
@@ -2444,8 +3189,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "flex",
+
                 flexDirection: "column",
+
                 gap: 12,
+
                 marginBottom: 18,
               }}
             >
@@ -2456,10 +3204,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onChange={(e) => setNewWh({ ...newWh, name: e.target.value })}
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
                 }}
               />
@@ -2470,10 +3223,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onChange={(e) => setNewWh({ ...newWh, code: e.target.value })}
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
                 }}
               />
@@ -2486,10 +3244,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 }
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
                 }}
               />
@@ -2500,16 +3263,23 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onChange={(e) =>
                   setNewWh({
                     ...newWh,
+
                     contactName: e.target.value,
+
                     contactPhone: "+966550000000",
                   })
                 }
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
                 }}
               />
@@ -2518,10 +3288,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <button
                 onClick={async () => {
                   if (!newWh.name || !newWh.code) return
+
                   await api.createMerchantWarehouse(newWh)
+
                   const list = await api.getMerchantWarehouses()
+
                   setWarehouses(list)
+
                   setShowAddWarehouse(false)
+
                   showToast(
                     isRtl
                       ? "تمت إضافة مستودع الاستلام بنجاح"
@@ -2530,12 +3305,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 }}
                 style={{
                   flex: 1,
+
                   background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+
                   color: "#ffffff",
+
                   border: 0,
+
                   padding: "12px",
+
                   borderRadius: 8,
+
                   fontWeight: 800,
+
                   cursor: "pointer",
                 }}
               >
@@ -2545,11 +3327,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onClick={() => setShowAddWarehouse(false)}
                 style={{
                   background: "#1f2937",
+
                   color: "#94a3b8",
+
                   border: 0,
+
                   padding: "12px 18px",
+
                   borderRadius: 8,
+
                   fontWeight: 700,
+
                   cursor: "pointer",
                 }}
               >
@@ -2565,21 +3353,32 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
         <div
           style={{
             position: "fixed",
+
             inset: 0,
+
             background: "rgba(0,0,0,0.7)",
+
             zIndex: 100,
+
             display: "grid",
+
             placeItems: "center",
+
             padding: 20,
           }}
         >
           <div
             style={{
               background: "#111827",
+
               padding: "28px",
+
               borderRadius: 12,
+
               border: "1px solid #334155",
+
               width: "100%",
+
               maxWidth: 440,
             }}
           >
@@ -2589,8 +3388,11 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
             <div
               style={{
                 display: "flex",
+
                 flexDirection: "column",
+
                 gap: 12,
+
                 marginBottom: 18,
               }}
             >
@@ -2603,10 +3405,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 }
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
                 }}
               />
@@ -2619,10 +3426,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 }
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
                 }}
               />
@@ -2635,10 +3447,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 }
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
                 }}
               />
@@ -2649,10 +3466,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 }
                 style={{
                   width: "100%",
+
                   background: "#0b0f19",
+
                   color: "#ffffff",
+
                   border: "1px solid #334155",
+
                   borderRadius: 8,
+
                   padding: "10px",
                 }}
               >
@@ -2674,10 +3496,15 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <button
                 onClick={async () => {
                   if (!newMember.email) return
+
                   await api.inviteB2BTeamMember(newMember)
+
                   const list = await api.getB2BTeamMembers()
+
                   setTeamMembers(list)
+
                   setShowInviteTeam(false)
+
                   showToast(
                     isRtl
                       ? "تم إرسال رابط التفعيل للموظف"
@@ -2686,12 +3513,19 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 }}
                 style={{
                   flex: 1,
+
                   background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+
                   color: "#ffffff",
+
                   border: 0,
+
                   padding: "12px",
+
                   borderRadius: 8,
+
                   fontWeight: 800,
+
                   cursor: "pointer",
                 }}
               >
@@ -2701,11 +3535,17 @@ export function B2BPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 onClick={() => setShowInviteTeam(false)}
                 style={{
                   background: "#1f2937",
+
                   color: "#94a3b8",
+
                   border: 0,
+
                   padding: "12px 18px",
+
                   borderRadius: 8,
+
                   fontWeight: 700,
+
                   cursor: "pointer",
                 }}
               >

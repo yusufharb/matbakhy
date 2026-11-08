@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+
 import {
   Search,
   ShoppingCart,
@@ -22,8 +23,11 @@ import {
   Check,
   AlertTriangle,
 } from "lucide-react"
+
 import { sampleProducts, mockOrders } from "../data/mockStorefront"
+
 import { api } from "../services/api"
+
 import type {
   StorefrontProduct,
   StorefrontOffer,
@@ -34,21 +38,29 @@ import type {
 
 interface Props {
   locale: Locale
+
   setLocale: (l: Locale) => void
 }
 
 export function MerchantStorefront({ locale, setLocale }: Props) {
   const [products, setProducts] = useState<StorefrontProduct[]>(sampleProducts)
+
   const [orders, setOrders] = useState<ParentOrder[]>(mockOrders)
+
   const [cart, setCart] = useState<CartItem[]>([
     {
       offer: sampleProducts[0].offers[0],
+
       product: sampleProducts[0],
+
       quantity: 2,
     },
+
     {
       offer: sampleProducts[1].offers[0],
+
       product: sampleProducts[1],
+
       quantity: 1,
     },
   ])
@@ -57,27 +69,43 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
     async function loadBackendData() {
       try {
         const apiProds = await api.getProducts()
+
         if (apiProds && apiProds.length > 0) {
           const loaded: StorefrontProduct[] = await Promise.all(
             apiProds.map(async (p, idx) => {
               let offers: StorefrontOffer[] = []
+
               try {
                 const apiOffers = await api.getProductOffers(p.id)
+
                 offers = apiOffers.map((o) => ({
                   id: o.id,
+
                   supplierId: o.supplier_id,
+
                   supplierName: o.supplier_name,
+
                   supplierRating: o.supplier_rating || 4.9,
+
                   verified: o.verified ?? true,
+
                   price: o.price_cents / 100,
+
                   moq: o.moq,
+
                   stock: o.stock,
+
                   location: o.location || "Riyadh",
+
                   deliveryDays: o.lead_time_days || 2,
+
                   returnPolicy: "14-day warranty & direct replacement",
+
                   tiers: (o.price_tiers || []).map((t) => ({
                     minQty: t.minQty,
+
                     maxQty: t.maxQty,
+
                     price: t.price / 100,
                   })),
                 }))
@@ -91,48 +119,70 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
 
               return {
                 id: p.id,
+
                 sku: p.sku,
+
                 name: p.name,
+
                 category: p.category_name,
+
                 image:
                   sampleProducts[idx]?.image ||
                   "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80",
+
                 brand: p.brand_name || "Platform Certified",
+
                 description: p.description,
+
                 rating: 4.8,
+
                 reviewCount: 38 + idx * 8,
+
                 offers: offers,
+
                 specs: p.attributes || {},
               }
             }),
           )
+
           setProducts(loaded)
         }
 
         const apiOrders = await api.getOrders()
+
         if (apiOrders && apiOrders.length > 0) {
           setOrders(
             apiOrders.map((o) => ({
               id: o.order_number,
+
               date: new Date(o.created_at).toLocaleDateString(),
+
               total: o.grand_total_cents / 100,
+
               status: (o.status === "confirmed"
                 ? "Processing"
                 : o.status === "delivered"
                   ? "Delivered"
                   : "Processing") as any,
+
               paymentMethod:
                 o.payment_method === "wallet"
                   ? `Merchant Wallet Balance ($${(o.grand_total_cents / 100).toFixed(2)} deducted)`
                   : "Credit Card (•••• 4018)",
+
               suborders: (o.suborders || []).map((so) => ({
                 id: so.suborder_number,
+
                 supplierName: so.supplier_name,
+
                 itemsCount: (so.items || []).reduce(
                   (acc, it) => acc + it.quantity,
+
                   0,
                 ),
+
                 amount: (so.subtotal_cents + so.shipping_cents) / 100,
+
                 status: (so.status === "shipped"
                   ? "Shipped"
                   : so.status === "delivered"
@@ -145,78 +195,109 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
       } catch (err) {
         console.warn(
           "Backend API unavailable, using built-in demo fixtures:",
+
           err,
         )
       }
     }
+
     loadBackendData()
   }, [])
 
   const [activeCategory, setActiveCategory] = useState("All")
+
   const [searchQuery, setSearchQuery] = useState("")
+
   const [selectedProduct, setSelectedProduct] =
     useState<StorefrontProduct | null>(null)
+
   const [selectedOffer, setSelectedOffer] = useState<StorefrontOffer | null>(
     null,
   )
+
   const [cartOpen, setCartOpen] = useState(false)
+
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+
   const [ordersOpen, setOrdersOpen] = useState(false)
+
   const [orderConfirmed, setOrderConfirmed] = useState<ParentOrder | null>(null)
+
   const [walletBalance, setWalletBalance] = useState(4850.0)
+
   const [paymentChoice, setPaymentChoice] = useState<"wallet" | "card">(
     "wallet",
   )
+
   const [productQty, setProductQty] = useState(1)
 
   const isRtl = locale === "ar"
 
   // Filter products
+
   const filteredProducts = products.filter((p) => {
     const matchesCat =
       activeCategory === "All" ||
       p.category.en.toLowerCase().includes(activeCategory.toLowerCase())
+
     const matchesSearch =
       p.name[locale].toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.brand.toLowerCase().includes(searchQuery.toLowerCase())
+
     return matchesCat && matchesSearch
   })
 
   // Group cart items by supplier
+
   const supplierGroups = cart.reduce(
     (acc, item) => {
       const sId = item.offer.supplierId
+
       if (!acc[sId]) {
         acc[sId] = {
           supplierName: item.offer.supplierName,
+
           items: [],
+
           subtotal: 0,
         }
       }
+
       acc[sId].items.push(item)
+
       acc[sId].subtotal += item.offer.price * item.quantity
+
       return acc
     },
+
     {} as Record<string, {
       supplierName: string
+
       items: CartItem[]
+
       subtotal: number
     }>,
   )
 
   const cartSubtotal = cart.reduce(
     (sum, item) => sum + item.offer.price * item.quantity,
+
     0,
   )
+
   const shippingFee = Object.keys(supplierGroups).length * 15.0 // $15 per supplier fulfillment
+
   const grandTotal = cartSubtotal + shippingFee
 
   const addToCart = (
     product: StorefrontProduct,
+
     offer: StorefrontOffer,
+
     qty = 1,
   ) => {
     const existing = cart.find((i) => i.offer.id === offer.id)
+
     if (existing) {
       setCart(
         cart.map((i) =>
@@ -226,6 +307,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
     } else {
       setCart([...cart, { product, offer, quantity: qty }])
     }
+
     setCartOpen(true)
   }
 
@@ -245,26 +327,39 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
     try {
       const res = await api.checkout({
         payment_method: paymentChoice,
+
         items: cart.map((i) => ({
           offer_id: i.offer.id,
+
           quantity: i.quantity,
         })),
       })
+
       const po = res.parent_order
+
       const newOrder: ParentOrder = {
         id: po.order_number,
+
         date: "Just now",
+
         total: po.grand_total_cents / 100,
+
         status: "Processing",
+
         paymentMethod:
           paymentChoice === "wallet"
             ? `Merchant Wallet Balance ($${(po.grand_total_cents / 100).toFixed(2)} deducted)`
             : "Credit Card (•••• 4018)",
+
         suborders: (po.suborders || []).map((so) => ({
           id: so.suborder_number,
+
           supplierName: so.supplier_name,
+
           itemsCount: (so.items || []).reduce((s, it) => s + it.quantity, 0),
+
           amount: (so.subtotal_cents + so.shipping_cents) / 100,
+
           status: "Processing" as const,
         })),
       }
@@ -276,30 +371,43 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
       }
 
       setOrders([newOrder, ...orders])
+
       setCart([])
+
       setOrderConfirmed(newOrder)
     } catch (err) {
       console.warn("Real API checkout failed or offline, falling back:", err)
+
       const parentId = `ORD-2025-${Math.floor(1000 + Math.random() * 9000)}`
+
       const newSuborders = Object.entries(supplierGroups).map(
         ([, group], idx) => ({
           id: `SO-${10490 + idx}`,
+
           supplierName: group.supplierName,
+
           itemsCount: group.items.reduce((s, i) => s + i.quantity, 0),
+
           amount: group.subtotal + 15,
+
           status: "Processing" as const,
         }),
       )
 
       const newOrder: ParentOrder = {
         id: parentId,
+
         date: "Just now",
+
         total: grandTotal,
+
         status: "Processing",
+
         paymentMethod:
           paymentChoice === "wallet"
             ? `Merchant Wallet Balance ($${grandTotal.toFixed(2)} deducted)`
             : "Credit Card (•••• 4018)",
+
         suborders: newSuborders,
       }
 
@@ -308,7 +416,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
       }
 
       setOrders([newOrder, ...orders])
+
       setCart([])
+
       setOrderConfirmed(newOrder)
     }
   }
@@ -317,7 +427,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
     <div
       style={{
         background: "#f8faf9",
+
         minHeight: "100vh",
+
         margin: "-22px -28px -34px",
       }}
       dir={isRtl ? "rtl" : "ltr"}
@@ -326,20 +438,30 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
       <header
         style={{
           background: "#fff",
+
           borderBottom: "1px solid var(--line)",
+
           position: "sticky",
+
           top: 0,
+
           zIndex: 40,
         }}
       >
         <div
           style={{
             maxWidth: 1380,
+
             margin: "0 auto",
+
             padding: "12px 24px",
+
             display: "flex",
+
             alignItems: "center",
+
             justifyContent: "space-between",
+
             gap: 20,
           }}
         >
@@ -348,13 +470,21 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
             <div
               style={{
                 width: 36,
+
                 height: 36,
+
                 borderRadius: 8,
+
                 background: "var(--green-dark)",
+
                 color: "#fff",
+
                 display: "grid",
+
                 placeItems: "center",
+
                 fontWeight: 900,
+
                 fontSize: 16,
               }}
             >
@@ -365,8 +495,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
               <small
                 style={{
                   display: "block",
+
                   color: "var(--muted)",
+
                   fontSize: 10,
+
                   letterSpacing: "0.1em",
                 }}
               >
@@ -379,13 +512,21 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
           <div
             style={{
               flex: 1,
+
               maxWidth: 580,
+
               display: "flex",
+
               alignItems: "center",
+
               background: "#f4f7f6",
+
               borderRadius: 8,
+
               border: "1px solid var(--line)",
+
               padding: "0 12px",
+
               height: 42,
             }}
           >
@@ -400,10 +541,15 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
               }
               style={{
                 border: 0,
+
                 background: "transparent",
+
                 flex: 1,
+
                 padding: "0 10px",
+
                 fontSize: 13,
+
                 outline: "none",
               }}
             />
@@ -415,12 +561,19 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
             <div
               style={{
                 background: "var(--green-soft)",
+
                 border: "1px solid #bce1d4",
+
                 borderRadius: 20,
+
                 padding: "6px 14px",
+
                 display: "flex",
+
                 alignItems: "center",
+
                 gap: 8,
+
                 fontSize: 12,
               }}
             >
@@ -453,11 +606,17 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 <span
                   style={{
                     background: "#e55b4d",
+
                     color: "#fff",
+
                     borderRadius: 10,
+
                     fontSize: 10,
+
                     fontWeight: 800,
+
                     padding: "1px 6px",
+
                     marginLeft: 4,
                   }}
                 >
@@ -472,35 +631,51 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
         <div
           style={{
             borderTop: "1px solid var(--line)",
+
             background: "#fafcfb",
+
             padding: "8px 24px",
           }}
         >
           <div
             style={{
               maxWidth: 1380,
+
               margin: "0 auto",
+
               display: "flex",
+
               alignItems: "center",
+
               gap: 8,
+
               overflowX: "auto",
             }}
           >
             {[
               { id: "All", en: "All Categories", ar: "جميع الفئات" },
+
               {
                 id: "Electronics",
+
                 en: "Electronics & Audio",
+
                 ar: "إلكترونيات وصوتيات",
               },
+
               {
                 id: "Computers",
+
                 en: "Computers & Docks",
+
                 ar: "كمبيوتر وإكسسوارات",
               },
+
               {
                 id: "Business",
+
                 en: "Business Supplies",
+
                 ar: "مستلزمات الأعمال",
               },
             ].map((cat) => (
@@ -509,14 +684,20 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 onClick={() => setActiveCategory(cat.id)}
                 style={{
                   border: 0,
+
                   background:
                     activeCategory === cat.id
                       ? "var(--green-dark)"
                       : "transparent",
+
                   color: activeCategory === cat.id ? "#fff" : "var(--muted)",
+
                   padding: "6px 14px",
+
                   borderRadius: 20,
+
                   fontSize: 12,
+
                   fontWeight: activeCategory === cat.id ? 700 : 500,
                 }}
               >
@@ -534,13 +715,21 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
           style={{
             background:
               "linear-gradient(135deg, #09261d 0%, #0d4a37 50%, #157356 100%)",
+
             color: "#fff",
+
             borderRadius: 12,
+
             padding: "36px 40px",
+
             marginBottom: 32,
+
             display: "flex",
+
             justifyContent: "space-between",
+
             alignItems: "center",
+
             boxShadow: "0 4px 20px rgba(9,38,29,0.15)",
           }}
         >
@@ -548,10 +737,15 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
             <span
               style={{
                 color: "#66dfb3",
+
                 fontSize: 11,
+
                 fontWeight: 800,
+
                 letterSpacing: "0.15em",
+
                 display: "block",
+
                 marginBottom: 6,
               }}
             >
@@ -560,8 +754,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
             <h1
               style={{
                 fontSize: 28,
+
                 fontWeight: 900,
+
                 letterSpacing: "-0.03em",
+
                 margin: "4px 0 10px",
               }}
             >
@@ -572,8 +769,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
             <p
               style={{
                 color: "#b9dfd2",
+
                 fontSize: 14,
+
                 maxWidth: 620,
+
                 lineHeight: 1.5,
               }}
             >
@@ -585,10 +785,15 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
           <div
             style={{
               background: "rgba(255,255,255,0.08)",
+
               borderRadius: 12,
+
               padding: "18px 24px",
+
               backdropFilter: "blur(8px)",
+
               textAlign: "center",
+
               border: "1px solid rgba(255,255,255,0.12)",
             }}
           >
@@ -627,12 +832,15 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
         <div
           style={{
             display: "grid",
+
             gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))",
+
             gap: 20,
           }}
         >
           {filteredProducts.map((p) => {
             const lowestPrice = Math.min(...p.offers.map((o) => o.price))
+
             const offersCount = p.offers.length
 
             return (
@@ -641,8 +849,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 className="card"
                 style={{
                   display: "flex",
+
                   flexDirection: "column",
+
                   overflow: "hidden",
+
                   transition: "transform 0.2s, box-shadow 0.2s",
                 }}
               >
@@ -650,9 +861,13 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 <div
                   style={{
                     height: 180,
+
                     background: "#f0f5f3",
+
                     display: "grid",
+
                     placeItems: "center",
+
                     position: "relative",
                   }}
                 >
@@ -660,14 +875,23 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <span
                     style={{
                       position: "absolute",
+
                       top: 12,
+
                       left: isRtl ? "auto" : 12,
+
                       right: isRtl ? 12 : "auto",
+
                       background: "#fff",
+
                       padding: "4px 8px",
+
                       borderRadius: 4,
+
                       fontSize: 10,
+
                       fontWeight: 700,
+
                       color: "var(--muted)",
                     }}
                   >
@@ -676,14 +900,23 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <span
                     style={{
                       position: "absolute",
+
                       bottom: 12,
+
                       right: isRtl ? "auto" : 12,
+
                       left: isRtl ? 12 : "auto",
+
                       background: "var(--green-dark)",
+
                       color: "#fff",
+
                       padding: "3px 8px",
+
                       borderRadius: 4,
+
                       fontSize: 10,
+
                       fontWeight: 700,
                     }}
                   >
@@ -695,16 +928,22 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 <div
                   style={{
                     padding: 16,
+
                     flex: 1,
+
                     display: "flex",
+
                     flexDirection: "column",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
+
                       alignItems: "center",
+
                       gap: 4,
+
                       marginBottom: 6,
                     }}
                   >
@@ -718,8 +957,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <h3
                     style={{
                       fontSize: 14,
+
                       fontWeight: 800,
+
                       lineHeight: 1.3,
+
                       marginBottom: 8,
                     }}
                   >
@@ -728,9 +970,13 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <p
                     style={{
                       color: "var(--muted)",
+
                       fontSize: 11,
+
                       lineHeight: 1.4,
+
                       flex: 1,
+
                       marginBottom: 14,
                     }}
                   >
@@ -740,9 +986,13 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <div
                     style={{
                       borderTop: "1px solid var(--line)",
+
                       paddingTop: 12,
+
                       display: "flex",
+
                       alignItems: "flex-end",
+
                       justifyContent: "space-between",
                     }}
                   >
@@ -750,7 +1000,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                       <small
                         style={{
                           color: "var(--muted)",
+
                           fontSize: 10,
+
                           display: "block",
                         }}
                       >
@@ -759,7 +1011,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                       <strong
                         style={{
                           fontFamily: "DM Mono",
+
                           fontSize: 18,
+
                           color: "var(--ink)",
                         }}
                       >
@@ -771,7 +1025,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                       className="primary-btn"
                       onClick={() => {
                         setSelectedProduct(p)
+
                         setSelectedOffer(p.offers[0])
+
                         setProductQty(p.offers[0].moq || 1)
                       }}
                     >
@@ -812,10 +1068,15 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
               <div
                 style={{
                   display: "grid",
+
                   gridTemplateColumns: "repeat(5, 1fr)",
+
                   gap: 10,
+
                   background: "#f5f8f7",
+
                   padding: 12,
+
                   borderRadius: 8,
                 }}
               >
@@ -824,7 +1085,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <span
                       style={{
                         fontSize: 9,
+
                         color: "var(--muted)",
+
                         textTransform: "uppercase",
                       }}
                     >
@@ -842,8 +1105,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 <div
                   style={{
                     display: "flex",
+
                     alignItems: "center",
+
                     justifyContent: "space-between",
+
                     marginBottom: 10,
                   }}
                 >
@@ -868,7 +1134,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 <div
                   style={{
                     border: "1px solid var(--line)",
+
                     borderRadius: 8,
+
                     overflow: "hidden",
                   }}
                 >
@@ -886,6 +1154,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <tbody>
                       {selectedProduct.offers.map((off) => {
                         const isSelected = selectedOffer.id === off.id
+
                         return (
                           <tr
                             key={off.id}
@@ -903,7 +1172,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                                   <div
                                     style={{
                                       display: "flex",
+
                                       alignItems: "center",
+
                                       gap: 4,
                                     }}
                                   >
@@ -917,7 +1188,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                                       <span
                                         style={{
                                           color: "var(--green)",
+
                                           fontSize: 9,
+
                                           fontWeight: 700,
                                         }}
                                       >
@@ -932,6 +1205,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                               <strong
                                 style={{
                                   fontFamily: "DM Mono",
+
                                   fontSize: 13,
                                 }}
                               >
@@ -941,7 +1215,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                                 <small
                                   style={{
                                     display: "block",
+
                                     color: "var(--green)",
+
                                     fontSize: 9,
                                   }}
                                 >
@@ -959,6 +1235,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                               <small
                                 style={{
                                   display: "block",
+
                                   color: "var(--muted)",
                                 }}
                               >
@@ -976,6 +1253,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                                 }
                                 onClick={() => {
                                   setSelectedOffer(off)
+
                                   setProductQty(off.moq)
                                 }}
                               >
@@ -1000,10 +1278,15 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
               <div
                 style={{
                   background: "#f5f8f7",
+
                   padding: 16,
+
                   borderRadius: 8,
+
                   display: "flex",
+
                   alignItems: "center",
+
                   justifyContent: "space-between",
                 }}
               >
@@ -1022,9 +1305,13 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <div
                     style={{
                       display: "flex",
+
                       alignItems: "center",
+
                       background: "#fff",
+
                       border: "1px solid var(--line)",
+
                       borderRadius: 6,
                     }}
                   >
@@ -1046,16 +1333,22 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                         setProductQty(
                           Math.max(
                             selectedOffer.moq,
+
                             parseInt(e.target.value) || selectedOffer.moq,
                           ),
                         )
                       }
                       style={{
                         width: 50,
+
                         border: 0,
+
                         textAlign: "center",
+
                         fontFamily: "DM Mono",
+
                         fontSize: 14,
+
                         fontWeight: 700,
                       }}
                     />
@@ -1072,7 +1365,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <small
                       style={{
                         color: "var(--muted)",
+
                         fontSize: 10,
+
                         display: "block",
                       }}
                     >
@@ -1097,6 +1392,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 className="primary-btn"
                 onClick={() => {
                   addToCart(selectedProduct, selectedOffer, productQty)
+
                   setSelectedProduct(null)
                 }}
               >
@@ -1146,8 +1442,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     key={supId}
                     style={{
                       background: "#fff",
+
                       border: "1px solid var(--line)",
+
                       borderRadius: 8,
+
                       overflow: "hidden",
                     }}
                   >
@@ -1155,17 +1454,24 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <div
                       style={{
                         padding: "10px 14px",
+
                         background: "#f5f8f7",
+
                         borderBottom: "1px solid var(--line)",
+
                         display: "flex",
+
                         alignItems: "center",
+
                         justifyContent: "space-between",
                       }}
                     >
                       <div
                         style={{
                           display: "flex",
+
                           alignItems: "center",
+
                           gap: 8,
                         }}
                       >
@@ -1183,14 +1489,19 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <div style={{ padding: 12 }}>
                       {group.items.map((item) => {
                         const hasMoqIssue = item.quantity < item.offer.moq
+
                         return (
                           <div
                             key={item.offer.id}
                             style={{
                               display: "flex",
+
                               alignItems: "center",
+
                               justifyContent: "space-between",
+
                               padding: "8px 0",
+
                               borderBottom: "1px solid #edf1ef",
                             }}
                           >
@@ -1206,11 +1517,17 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                                 <div
                                   style={{
                                     display: "flex",
+
                                     alignItems: "center",
+
                                     gap: 4,
+
                                     color: "var(--red)",
+
                                     fontSize: 10,
+
                                     fontWeight: 700,
+
                                     marginTop: 2,
                                   }}
                                 >
@@ -1223,15 +1540,20 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                             <div
                               style={{
                                 display: "flex",
+
                                 alignItems: "center",
+
                                 gap: 10,
                               }}
                             >
                               <div
                                 style={{
                                   display: "flex",
+
                                   alignItems: "center",
+
                                   border: "1px solid var(--line)",
+
                                   borderRadius: 4,
                                 }}
                               >
@@ -1241,6 +1563,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                                   onClick={() =>
                                     updateCartQty(
                                       item.offer.id,
+
                                       item.quantity - 1,
                                     )
                                   }
@@ -1250,8 +1573,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                                 <span
                                   style={{
                                     width: 28,
+
                                     textAlign: "center",
+
                                     fontFamily: "DM Mono",
+
                                     fontSize: 12,
                                   }}
                                 >
@@ -1263,6 +1589,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                                   onClick={() =>
                                     updateCartQty(
                                       item.offer.id,
+
                                       item.quantity + 1,
                                     )
                                   }
@@ -1274,8 +1601,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                               <b
                                 style={{
                                   fontFamily: "DM Mono",
+
                                   fontSize: 13,
+
                                   minWidth: 60,
+
                                   textAlign: isRtl ? "left" : "right",
                                 }}
                               >
@@ -1288,8 +1618,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                       <div
                         style={{
                           textAlign: isRtl ? "left" : "right",
+
                           marginTop: 8,
+
                           fontSize: 11,
+
                           color: "var(--muted)",
                         }}
                       >
@@ -1308,16 +1641,22 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 <div
                   style={{
                     background: "#fff",
+
                     border: "1px solid var(--line)",
+
                     borderRadius: 8,
+
                     padding: 16,
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
+
                       justifyContent: "space-between",
+
                       fontSize: 12,
+
                       padding: "4px 0",
                     }}
                   >
@@ -1329,8 +1668,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <div
                     style={{
                       display: "flex",
+
                       justifyContent: "space-between",
+
                       fontSize: 12,
+
                       padding: "4px 0",
                     }}
                   >
@@ -1346,11 +1688,17 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <div
                     style={{
                       display: "flex",
+
                       justifyContent: "space-between",
+
                       fontSize: 15,
+
                       fontWeight: 800,
+
                       padding: "10px 0 0",
+
                       borderTop: "1px solid var(--line)",
+
                       marginTop: 6,
                     }}
                   >
@@ -1358,6 +1706,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <strong
                       style={{
                         fontFamily: "DM Mono",
+
                         color: "var(--green-dark)",
                       }}
                     >
@@ -1380,6 +1729,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   className="primary-btn"
                   onClick={() => {
                     setCartOpen(false)
+
                     setCheckoutOpen(true)
                   }}
                 >
@@ -1430,8 +1780,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <div
                     style={{
                       background: "#f5f8f7",
+
                       padding: 16,
+
                       borderRadius: 8,
+
                       textAlign: isRtl ? "right" : "left",
                     }}
                   >
@@ -1445,9 +1798,13 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                         key={sub.id}
                         style={{
                           display: "flex",
+
                           justifyContent: "space-between",
+
                           padding: "6px 0",
+
                           borderBottom: "1px solid #e7ecea",
+
                           fontSize: 12,
                         }}
                       >
@@ -1468,7 +1825,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <b
                       style={{
                         fontSize: 12,
+
                         display: "block",
+
                         marginBottom: 6,
                       }}
                     >
@@ -1477,10 +1836,15 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <div
                       style={{
                         border: "1px solid #bce1d4",
+
                         background: "var(--green-soft)",
+
                         padding: 12,
+
                         borderRadius: 6,
+
                         display: "flex",
+
                         gap: 10,
                       }}
                     >
@@ -1492,7 +1856,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                         <small
                           style={{
                             display: "block",
+
                             color: "var(--muted)",
+
                             fontSize: 11,
                           }}
                         >
@@ -1508,7 +1874,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <b
                       style={{
                         fontSize: 12,
+
                         display: "block",
+
                         marginBottom: 8,
                       }}
                     >
@@ -1523,20 +1891,29 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                               ? "var(--green)"
                               : "var(--line)"
                           }`,
+
                           background:
                             paymentChoice === "wallet" ? "#f2faf6" : "#fff",
+
                           padding: 12,
+
                           borderRadius: 8,
+
                           display: "flex",
+
                           alignItems: "center",
+
                           justifyContent: "space-between",
+
                           cursor: "pointer",
                         }}
                       >
                         <div
                           style={{
                             display: "flex",
+
                             alignItems: "center",
+
                             gap: 10,
                           }}
                         >
@@ -1550,6 +1927,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                             <small
                               style={{
                                 display: "block",
+
                                 color: "var(--muted)",
                               }}
                             >
@@ -1574,20 +1952,29 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                               ? "var(--green)"
                               : "var(--line)"
                           }`,
+
                           background:
                             paymentChoice === "card" ? "#f2faf6" : "#fff",
+
                           padding: 12,
+
                           borderRadius: 8,
+
                           display: "flex",
+
                           alignItems: "center",
+
                           justifyContent: "space-between",
+
                           cursor: "pointer",
                         }}
                       >
                         <div
                           style={{
                             display: "flex",
+
                             alignItems: "center",
+
                             gap: 10,
                           }}
                         >
@@ -1599,6 +1986,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                             <small
                               style={{
                                 display: "block",
+
                                 color: "var(--muted)",
                               }}
                             >
@@ -1619,15 +2007,20 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   <div
                     style={{
                       background: "#f5f8f7",
+
                       padding: 12,
+
                       borderRadius: 6,
                     }}
                   >
                     <div
                       style={{
                         display: "flex",
+
                         justifyContent: "space-between",
+
                         fontSize: 13,
+
                         fontWeight: 700,
                       }}
                     >
@@ -1648,6 +2041,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                 className="secondary-btn"
                 onClick={() => {
                   setCheckoutOpen(false)
+
                   setOrderConfirmed(null)
                 }}
               >
@@ -1693,18 +2087,26 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                   key={ord.id}
                   style={{
                     background: "#fff",
+
                     border: "1px solid var(--line)",
+
                     borderRadius: 8,
+
                     padding: 16,
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
+
                       alignItems: "center",
+
                       justifyContent: "space-between",
+
                       borderBottom: "1px solid #edf1ef",
+
                       paddingBottom: 10,
+
                       marginBottom: 12,
                     }}
                   >
@@ -1713,7 +2115,9 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                       <small
                         style={{
                           display: "block",
+
                           color: "var(--muted)",
+
                           fontSize: 10,
                         }}
                       >
@@ -1740,8 +2144,11 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                     <small
                       style={{
                         color: "var(--muted)",
+
                         fontSize: 10,
+
                         display: "block",
+
                         marginBottom: 6,
                       }}
                     >
@@ -1754,12 +2161,19 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                         key={sub.id}
                         style={{
                           background: "#f8faf9",
+
                           borderRadius: 6,
+
                           padding: "8px 12px",
+
                           display: "flex",
+
                           alignItems: "center",
+
                           justifyContent: "space-between",
+
                           marginBottom: 6,
+
                           fontSize: 12,
                         }}
                       >
@@ -1770,6 +2184,7 @@ export function MerchantStorefront({ locale, setLocale }: Props) {
                             <small
                               style={{
                                 display: "block",
+
                                 color: "var(--green)",
                               }}
                             >

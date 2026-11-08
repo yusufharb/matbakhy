@@ -92,7 +92,8 @@ export const sampleProducts: StorefrontProduct[] = [
       en: "Vine Leaves with Minced Meat & Pomegranate",
     },
     category: { ar: "محاشي وطواجن فرن", en: "Mahshi & Oven Tagines" },
-    image: "https://images.unsplash.com/photo-1628294895950-9805252327bc?w=700&auto=format&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1628294895950-9805252327bc?w=700&auto=format&fit=crop&q=80",
     brand: "مطبخ أم أحمد",
     description: {
       ar: "ورق عنب بناتي طازج محشي بالأرز المصري واللحمة المفرومة ومطبوخ بزيت زيتون بكر ودبس رمان حامض حلو.",
@@ -100,11 +101,16 @@ export const sampleProducts: StorefrontProduct[] = [
     },
     rating: 4.95,
     reviewCount: 88,
-    dietaryTags: ["سمنة بلدي", "لحم بلدي فريش", "طازج يومياً", "بدون مواد حافظة"],
+    dietaryTags: [
+      "سمنة بلدي",
+      "لحم بلدي فريش",
+      "طازج يومياً",
+      "بدون مواد حافظة",
+    ],
     specs: {
       "طريقة الطهي": "طهي بطيء على نار هادئة",
-      "التغليف": "أطباق فويل حرارية محكمة لحفظ السخونة",
-      "المنطقة": "المعادي، القاهرة",
+      التغليف: "أطباق فويل حرارية محكمة لحفظ السخونة",
+      المنطقة: "المعادي، القاهرة",
       "مدة التحضير": "3 ساعات مسبقاً",
     },
     offers: [
@@ -128,13 +134,19 @@ export const sampleProducts: StorefrontProduct[] = [
         portions: [
           {
             id: "portion-half",
-            name: { ar: "طبق نصف كيلو (تكفي شخصين)", en: "Half Kilo (2 Persons)" },
+            name: {
+              ar: "طبق نصف كيلو (تكفي شخصين)",
+              en: "Half Kilo (2 Persons)",
+            },
             price_cents: 15000,
             is_default: true,
           },
           {
             id: "portion-kilo",
-            name: { ar: "سيرفيس كيلو كامل (تكفي 4 أفراد)", en: "Full Kilo (4 Persons)" },
+            name: {
+              ar: "سيرفيس كيلو كامل (تكفي 4 أفراد)",
+              en: "Full Kilo (4 Persons)",
+            },
             price_cents: 28000,
             is_default: false,
           },
@@ -150,7 +162,8 @@ export const sampleProducts: StorefrontProduct[] = [
       en: "Oven Baked Bechamel Pasta with Minced Beef",
     },
     category: { ar: "صواني ومكرونات بيتي", en: "Oven Trays & Homemade Pastas" },
-    image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=700&auto=format&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=700&auto=format&fit=crop&q=80",
     brand: "مطبخ الست فاطمة",
     description: {
       ar: "طبقات من المكرونة القلم مغطاة بصوص البشاميل الكريمي الغني بالسمنة البلدي وحشوة اللحمة المفرومة المتبلة ومحمرة ذهبية.",
@@ -160,9 +173,9 @@ export const sampleProducts: StorefrontProduct[] = [
     reviewCount: 114,
     dietaryTags: ["سمنة بلدي", "لحم بلدي فريش", "وجبة عائلية", "مخبوز بالفرن"],
     specs: {
-      "المكونات": "لحم بلدي مفروم، لبن طبيعي، سمنة بلدي، مكرونة",
-      "التغليف": "صينية ألومنيوم حرارية جاهزة للتقديم",
-      "المنطقة": "التجمع الخامس، القاهرة الجديدة",
+      المكونات: "لحم بلدي مفروم، لبن طبيعي، سمنة بلدي، مكرونة",
+      التغليف: "صينية ألومنيوم حرارية جاهزة للتقديم",
+      المنطقة: "التجمع الخامس، القاهرة الجديدة",
       "مدة التحضير": "4 ساعات مسبقاً",
     },
     offers: [
@@ -186,13 +199,19 @@ export const sampleProducts: StorefrontProduct[] = [
         portions: [
           {
             id: "portion-med",
-            name: { ar: "صينية وسط (تكفي 2 - 3 أفراد)", en: "Medium Tray (2-3 Persons)" },
+            name: {
+              ar: "صينية وسط (تكفي 2 - 3 أفراد)",
+              en: "Medium Tray (2-3 Persons)",
+            },
             price_cents: 18000,
             is_default: true,
           },
           {
             id: "portion-fam",
-            name: { ar: "صينية عائلية كبرى (تكفي 5 - 6 أفراد)", en: "Large Family Tray (5-6 Persons)" },
+            name: {
+              ar: "صينية عائلية كبرى (تكفي 5 - 6 أفراد)",
+              en: "Large Family Tray (5-6 Persons)",
+            },
             price_cents: 34000,
             is_default: false,
           },
@@ -207,8 +226,12 @@ export const sampleProducts: StorefrontProduct[] = [
       ar: "ملوخية خضراء بالطشة مع نصف دجاجة محمرة وأرز بالشعرية",
       en: "Egyptian Molokhia with Half Roasted Chicken & Rice",
     },
-    category: { ar: "وجبات لحوم ودواجن بلدي", en: "Baladi Meat & Poultry Meals" },
-    image: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=700&auto=format&fit=crop&q=80",
+    category: {
+      ar: "وجبات لحوم ودواجن بلدي",
+      en: "Baladi Meat & Poultry Meals",
+    },
+    image:
+      "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=700&auto=format&fit=crop&q=80",
     brand: "مطبخ أم أحمد",
     description: {
       ar: "ملوخية خضراء فريش مخروطة على اليد بطشة الثوم والكزبرة الجافة، تقدم مع نصف دجاجة محمرة بالسمنة وأرز مصري بالشعرية والشوربة.",
@@ -218,8 +241,9 @@ export const sampleProducts: StorefrontProduct[] = [
     reviewCount: 97,
     dietaryTags: ["دجاج بلدي طازج", "طلب فوري متاح", "شوربة طبيعية 100%"],
     specs: {
-      "المحتويات": "نصف دجاجة محمرة + طاجن ملوخية + طبق أرز بالشعرية + شوربة + مخلل ليمون معصفر",
-      "المنطقة": "المعادي، القاهرة",
+      المحتويات:
+        "نصف دجاجة محمرة + طاجن ملوخية + طبق أرز بالشعرية + شوربة + مخلل ليمون معصفر",
+      المنطقة: "المعادي، القاهرة",
       "مدة التحضير": "ساعة واحدة (فوري متاح)",
     },
     offers: [
@@ -243,7 +267,10 @@ export const sampleProducts: StorefrontProduct[] = [
         portions: [
           {
             id: "portion-single",
-            name: { ar: "وجبة متكاملة (نصف دجاجة + ملوخية + أرز)", en: "Single Meal (Half Chicken + Molokhia + Rice)" },
+            name: {
+              ar: "وجبة متكاملة (نصف دجاجة + ملوخية + أرز)",
+              en: "Single Meal (Half Chicken + Molokhia + Rice)",
+            },
             price_cents: 16000,
             is_default: true,
           },
@@ -259,7 +286,8 @@ export const sampleProducts: StorefrontProduct[] = [
       en: "Homemade Egyptian Koshary with Fried Onions & Dakkah",
     },
     category: { ar: "كشري وأطباق شعبية", en: "Koshary & Traditional Dishes" },
-    image: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=700&auto=format&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=700&auto=format&fit=crop&q=80",
     brand: "مطبخ أم عمر",
     description: {
       ar: "أرز مصري بعدس بجودة عالية، مكرونة مشكلة، حمص شام مسلوق، صلصة طماطم مسبكة، دقة ثوم وخل، وشطة زيت حارة.",
@@ -269,9 +297,9 @@ export const sampleProducts: StorefrontProduct[] = [
     reviewCount: 215,
     dietaryTags: ["نباتي (صيامي)", "طلب فوري", "بهارات خاصة"],
     specs: {
-      "المكونات": "أرز مصري، عدس بني بجودة ممتازة، حمص، بصل ورد مكرمل",
-      "الإضافات": "دقة ثوم وخل + صلصة طماطم فريش + شطة حارة منفصلة",
-      "المنطقة": "مدينة نصر، القاهرة",
+      المكونات: "أرز مصري، عدس بني بجودة ممتازة، حمص، بصل ورد مكرمل",
+      الإضافات: "دقة ثوم وخل + صلصة طماطم فريش + شطة حارة منفصلة",
+      المنطقة: "مدينة نصر، القاهرة",
     },
     offers: [
       {
@@ -316,7 +344,8 @@ export const sampleProducts: StorefrontProduct[] = [
       en: "Baladi Hawawshi in Egyptian Bread (2 Loaves)",
     },
     category: { ar: "كشري وأطباق شعبية", en: "Koshary & Traditional Dishes" },
-    image: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=700&auto=format&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=700&auto=format&fit=crop&q=80",
     brand: "مطبخ أم عمر",
     description: {
       ar: "رغيفان من العيش البلدي الردة محشوان باللحمة المفرومة الطازجة بالبصل والفلفل الأخضر والبهارات ومسويين على الجريل بالسمنة البلدي مقرمشين.",
@@ -326,9 +355,9 @@ export const sampleProducts: StorefrontProduct[] = [
     reviewCount: 160,
     dietaryTags: ["لحم بلدي فريش", "مقرمش وساخن", "طلب فوري متاح"],
     specs: {
-      "العدد": "2 رغيف بلدي كبير + طحينة سمسم + مخلل مشكل",
-      "اللحم": "لحم كندوز بلدي مفروم طازج",
-      "المنطقة": "مدينة نصر، القاهرة",
+      العدد: "2 رغيف بلدي كبير + طحينة سمسم + مخلل مشكل",
+      اللحم: "لحم كندوز بلدي مفروم طازج",
+      المنطقة: "مدينة نصر، القاهرة",
     },
     offers: [
       {
@@ -351,7 +380,10 @@ export const sampleProducts: StorefrontProduct[] = [
         portions: [
           {
             id: "portion-2loaves",
-            name: { ar: "طلب رغيفين حواوشي بلدي مع مخلل وطحينة", en: "2 Loaves Baladi Hawawshi with Pickles & Tahini" },
+            name: {
+              ar: "طلب رغيفين حواوشي بلدي مع مخلل وطحينة",
+              en: "2 Loaves Baladi Hawawshi with Pickles & Tahini",
+            },
             price_cents: 11000,
             is_default: true,
           },
@@ -367,7 +399,8 @@ export const sampleProducts: StorefrontProduct[] = [
       en: "Golden Kunafa with Fresh Clotted Cream & Pistachios",
     },
     category: { ar: "حلويات ومخبوزات منزلية", en: "Homemade Sweets & Bakery" },
-    image: "https://images.unsplash.com/photo-1579954115545-a95591f28bfc?w=700&auto=format&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1579954115545-a95591f28bfc?w=700&auto=format&fit=crop&q=80",
     brand: "بيت الشيف مريم",
     description: {
       ar: "شعر كنافة مقرمش ذهبي بالسمنة البلدي محشو بقشطة فلاحي طازجة ومسقي بالشربات المعقود ومزين بالفسدق الحلبي.",
@@ -377,9 +410,9 @@ export const sampleProducts: StorefrontProduct[] = [
     reviewCount: 140,
     dietaryTags: ["سمنة بلدي", "قشطة فلاحي طازجة", "حلويات شرقية فاخرة"],
     specs: {
-      "المقاس": "صينية مقاس 26 تكفي 4 - 6 أفراد",
-      "القشطة": "قشطة طبيعية 100% بدون أي نشا أو إضافات صناعية",
-      "المنطقة": "الشيخ زايد، الجيزة",
+      المقاس: "صينية مقاس 26 تكفي 4 - 6 أفراد",
+      القشطة: "قشطة طبيعية 100% بدون أي نشا أو إضافات صناعية",
+      المنطقة: "الشيخ زايد، الجيزة",
     },
     offers: [
       {
@@ -402,7 +435,10 @@ export const sampleProducts: StorefrontProduct[] = [
         portions: [
           {
             id: "portion-med-kunafa",
-            name: { ar: "صينية وسط مقاس 26 (تكفي 4 - 6 أفراد)", en: "Medium Tray Size 26 (4-6 Persons)" },
+            name: {
+              ar: "صينية وسط مقاس 26 (تكفي 4 - 6 أفراد)",
+              en: "Medium Tray Size 26 (4-6 Persons)",
+            },
             price_cents: 19000,
             is_default: true,
           },
@@ -418,7 +454,8 @@ export const sampleProducts: StorefrontProduct[] = [
       en: "Traditional Om Ali with Mixed Nuts & Cream",
     },
     category: { ar: "حلويات ومخبوزات منزلية", en: "Homemade Sweets & Bakery" },
-    image: "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=700&auto=format&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=700&auto=format&fit=crop&q=80",
     brand: "بيت الشيف مريم",
     description: {
       ar: "رقائق ميلفيه هشة مخبوزة في طاجن فخار مع الحليب الطبيعي الساخن والمكسرات (بندق، لوز، زبيب، جوز هند) ومغطاة بالقشطة ومحمرة الوجه.",
@@ -428,9 +465,9 @@ export const sampleProducts: StorefrontProduct[] = [
     reviewCount: 185,
     dietaryTags: ["طاجن فخار ساخن", "قشطة فلاحي", "مكسرات فاخرة"],
     specs: {
-      "التقديم": "طاجن فخار حراري يصلك ساخناً ومدفأ",
-      "المكسرات": "لوز، بندق، زبيب إيراني، جوز هند خشن",
-      "المنطقة": "الشيخ زايد، الجيزة",
+      التقديم: "طاجن فخار حراري يصلك ساخناً ومدفأ",
+      المكسرات: "لوز، بندق، زبيب إيراني، جوز هند خشن",
+      المنطقة: "الشيخ زايد، الجيزة",
     },
     offers: [
       {
@@ -453,7 +490,10 @@ export const sampleProducts: StorefrontProduct[] = [
         portions: [
           {
             id: "portion-pot",
-            name: { ar: "طاجن فخار فردين غني بالقشطة والمكسرات", en: "Clay Pot for 2 Persons with Nuts & Cream" },
+            name: {
+              ar: "طاجن فخار فردين غني بالقشطة والمكسرات",
+              en: "Clay Pot for 2 Persons with Nuts & Cream",
+            },
             price_cents: 9500,
             is_default: true,
           },

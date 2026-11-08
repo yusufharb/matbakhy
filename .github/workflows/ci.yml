@@ -41,7 +41,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Verify Migrations (000001 - 000015) & Seeds
+      - name: Verify Migrations (000001 - 000016) & Seeds
         env:
           PGPASSWORD: postgres_ci_password
         run: |
@@ -55,6 +55,8 @@ jobs:
           psql -h localhost -U postgres -d marketplace_core -f backend/db/seeds/demo_seed.sql
           echo "Applying MRO industrial client seed..."
           psql -h localhost -U postgres -d marketplace_core -f backend/db/seeds/mro_industrial_seed.sql
+          echo "Applying Matbakhy Egypt food marketplace seed..."
+          psql -h localhost -U postgres -d marketplace_core -f backend/db/seeds/matbakhy_egypt_seed.sql
 
       - name: Verify Backend Modules & Build
         run: |

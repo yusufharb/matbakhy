@@ -68,7 +68,8 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [showPayoutModal, setShowPayoutModal] = useState(false)
-  const [payoutMethod, setPayoutMethod] = useState<"vodafone_cash" | "instapay" | "bank">("instapay")
+  const [payoutMethod, setPayoutMethod] =
+    useState<"vodafone_cash" | "instapay" | "bank">("instapay")
   const [payoutAddress, setPayoutAddress] = useState("01012345678@instapay")
   const [payoutAmount, setPayoutAmount] = useState("2500")
 
@@ -122,7 +123,9 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
       district: "المعادي / Maadi",
       address: "شارع النصر، عمارة 22، الدور 5",
       orderMode: "scheduled",
-      scheduledDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+      scheduledDate: new Date(Date.now() + 86400000)
+        .toISOString()
+        .split("T")[0],
       slotStartTime: "15:00",
       slotEndTime: "17:00",
       dishName: "صينية مكرونة فرن بالبشاميل البلدي واللحمة المعصجة",
@@ -187,13 +190,19 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
           customerPhone: "01099887766",
           district: "المعادي / Cairo",
           address: "شارع النصر، المعادي، القاهرة",
-          orderMode: (so.order_mode === "instant" ? "instant" : "scheduled") as any,
-          scheduledDate: so.scheduled_date || new Date().toISOString().split("T")[0],
+          orderMode: (so.order_mode === "instant"
+            ? "instant"
+            : "scheduled") as any,
+          scheduledDate:
+            so.scheduled_date || new Date().toISOString().split("T")[0],
           slotStartTime: so.slot_start_time || "13:00",
           slotEndTime: so.slot_end_time || "15:00",
-          dishName: (so.items && so.items.length > 0) ? "وجبة أكل بيتي مصري طازج" : "محشي ورق عنب بلدي",
+          dishName:
+            so.items && so.items.length > 0
+              ? "وجبة أكل بيتي مصري طازج"
+              : "محشي ورق عنب بلدي",
           portionName: "طبق عائلي",
-          quantity: (so.items && so.items.length > 0) ? so.items[0].quantity : 1,
+          quantity: so.items && so.items.length > 0 ? so.items[0].quantity : 1,
           totalEGP: so.subtotal_cents / 100,
           prepStatus: (so.prep_status || "cooking") as any,
           fulfillmentType: (so.fulfillment_type || "platform_delivery") as any,
@@ -217,30 +226,37 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
       showToast(
         nextState
           ? "تم فتح المطبخ بنجاح! أنتِ الآن تستقبلين طلبات فورية ومجدولة 🟢"
-          : "تم إغلاق المطبخ مؤقتاً للراحة. لن تظهر وجباتك للطلب الفوري الآن ⏸️"
+          : "تم إغلاق المطبخ مؤقتاً للراحة. لن تظهر وجباتك للطلب الفوري الآن ⏸️",
       )
     } catch {
       showToast(
         nextState
           ? "تم تفعيل استقبال الطلبات في المطبخ 🟢"
-          : "تم إيقاف استقبال الطلبات مؤقتاً ⏸️"
+          : "تم إيقاف استقبال الطلبات مؤقتاً ⏸️",
       )
     }
   }
 
-  const handleUpdatePrepStatus = async (orderId: string, nextStatus: CookOrder["prepStatus"]) => {
+  const handleUpdatePrepStatus = async (
+    orderId: string,
+    nextStatus: CookOrder["prepStatus"],
+  ) => {
     try {
       await api.updateSuborderPrepStatus(orderId, nextStatus)
     } catch {}
 
     setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, prepStatus: nextStatus } : o))
+      prev.map((o) =>
+        o.id === orderId ? { ...o, prepStatus: nextStatus } : o,
+      ),
     )
 
     if (nextStatus === "cooking") {
       showToast("تسلم إيدك! بدأ طهي الوجبة وتم إشعار العميل بالبدء 👩‍🍳")
     } else if (nextStatus === "ready_for_pickup") {
-      showToast("الوجبة جاهزة وساخنة! تم إخطار مندوب مطبخي للتوجه للمطبخ واستلامها 🛵")
+      showToast(
+        "الوجبة جاهزة وساخنة! تم إخطار مندوب مطبخي للتوجه للمطبخ واستلامها 🛵",
+      )
     }
   }
 
@@ -249,7 +265,9 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
     if (isNaN(amt) || amt <= 0) return
     setShowPayoutModal(false)
     showToast(
-      `تم إرسال طلب سحب ${amt.toLocaleString()} ج.م بنجاح إلى حساب ${payoutMethod === "instapay" ? "إنستاباي" : "فودافون كاش"} (${payoutAddress}). التحويل فوري خلال دقائق! 💸`
+      `تم إرسال طلب سحب ${amt.toLocaleString()} ج.م بنجاح إلى حساب ${
+        payoutMethod === "instapay" ? "إنستاباي" : "فودافون كاش"
+      } (${payoutAddress}). التحويل فوري خلال دقائق! 💸`,
     )
   }
 
@@ -341,9 +359,27 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
               <ChefHat size={34} color="#ffffff" />
             </div>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: "#fafaf9" }}>
-                  {kitchen ? (isRtl ? kitchen.kitchen_name.ar : kitchen.kitchen_name.en) : "مطبخ أم أحمد للأكلات المصرية"}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <h1
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 900,
+                    margin: 0,
+                    color: "#fafaf9",
+                  }}
+                >
+                  {kitchen
+                    ? isRtl
+                      ? kitchen.kitchen_name.ar
+                      : kitchen.kitchen_name.en
+                    : "مطبخ أم أحمد للأكلات المصرية"}
                 </h1>
                 <span
                   style={{
@@ -380,7 +416,14 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                   <span>{kitchen?.district || "المعادي، القاهرة"}</span>
                 </span>
                 <span>•</span>
-                <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#fbbf24" }}>
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    color: "#fbbf24",
+                  }}
+                >
                   <Star size={15} fill="#fbbf24" />
                   <span>{kitchen?.hygiene_rating || 4.95} (تقييم ممتاز)</span>
                 </span>
@@ -404,11 +447,21 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
             }}
           >
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: isOpen ? "#4ade80" : "#f87171" }}>
-                {isOpen ? "المطبخ يستقبل طلبات الآن 🟢" : "المطبخ مغلق مؤقتاً للراحة ⏸️"}
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: isOpen ? "#4ade80" : "#f87171",
+                }}
+              >
+                {isOpen
+                  ? "المطبخ يستقبل طلبات الآن 🟢"
+                  : "المطبخ مغلق مؤقتاً للراحة ⏸️"}
               </div>
               <div style={{ fontSize: 11, color: "#a8a29e", marginTop: 2 }}>
-                {isOpen ? "الوجبات ظاهرة للعملاء في نطاق المعادي" : "الوجبات مخفية من نتائج البحث الفوري"}
+                {isOpen
+                  ? "الوجبات ظاهرة للعملاء في نطاق المعادي"
+                  : "الوجبات مخفية من نتائج البحث الفوري"}
               </div>
             </div>
             <button
@@ -426,7 +479,9 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                 alignItems: "center",
                 gap: 8,
                 transition: "all 0.2s ease",
-                boxShadow: isOpen ? "0 4px 12px rgba(34, 197, 94, 0.4)" : "0 4px 12px rgba(239, 68, 68, 0.4)",
+                boxShadow: isOpen
+                  ? "0 4px 12px rgba(34, 197, 94, 0.4)"
+                  : "0 4px 12px rgba(239, 68, 68, 0.4)",
               }}
             >
               <Power size={16} />
@@ -455,14 +510,24 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
             <Flame size={20} color="#e05638" />
             <div>
               <span style={{ fontSize: 13, fontWeight: 800, color: "#fafaf9" }}>
-                سعة الطهي المتاحة لليوم: {dailyPortionsTotal} من أصل {dailyPortionsMax} وجبة محجوزة
+                سعة الطهي المتاحة لليوم: {dailyPortionsTotal} من أصل{" "}
+                {dailyPortionsMax} وجبة محجوزة
               </span>
               <span style={{ fontSize: 12, color: "#a8a29e", marginRight: 8 }}>
-                (متبقي {dailyPortionsMax - dailyPortionsTotal} وجبات قبل الإغلاق التلقائي للمطبخ لمنع التكدس)
+                (متبقي {dailyPortionsMax - dailyPortionsTotal} وجبات قبل الإغلاق
+                التلقائي للمطبخ لمنع التكدس)
               </span>
             </div>
           </div>
-          <div style={{ width: 220, height: 8, background: "#292524", borderRadius: 4, overflow: "hidden" }}>
+          <div
+            style={{
+              width: 220,
+              height: 8,
+              background: "#292524",
+              borderRadius: 4,
+              overflow: "hidden",
+            }}
+          >
             <div
               style={{
                 width: `${(dailyPortionsTotal / dailyPortionsMax) * 100}%`,
@@ -535,7 +600,10 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                borderBottom: activeTab === t.id ? "3px solid #e05638" : "3px solid transparent",
+                borderBottom:
+                  activeTab === t.id
+                    ? "3px solid #e05638"
+                    : "3px solid transparent",
                 transition: "all 0.15s ease",
                 whiteSpace: "nowrap",
               }}
@@ -599,7 +667,8 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                       cursor: "pointer",
                       borderWidth: 1,
                       borderStyle: "solid",
-                      borderColor: statusFilter === f.id ? "#e05638" : "#292524",
+                      borderColor:
+                        statusFilter === f.id ? "#e05638" : "#292524",
                       transition: "all 0.15s ease",
                     }}
                   >
@@ -621,10 +690,14 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 11, color: "#a8a29e", fontWeight: 700 }}>
+                  <div
+                    style={{ fontSize: 11, color: "#a8a29e", fontWeight: 700 }}
+                  >
                     مبيعات اليوم المحققة
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: "#4ade80" }}>
+                  <div
+                    style={{ fontSize: 18, fontWeight: 900, color: "#4ade80" }}
+                  >
                     {todayEarnings.toLocaleString()} ج.م
                   </div>
                 </div>
@@ -656,16 +729,29 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                   color: "#a8a29e",
                 }}
               >
-                <Utensils size={48} style={{ margin: "0 auto 16px auto", opacity: 0.4 }} />
-                <h3 style={{ fontSize: 18, fontWeight: 800, color: "#fafaf9", margin: "0 0 8px 0" }}>
+                <Utensils
+                  size={48}
+                  style={{ margin: "0 auto 16px auto", opacity: 0.4 }}
+                />
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 800,
+                    color: "#fafaf9",
+                    margin: "0 0 8px 0",
+                  }}
+                >
                   لا توجد طلبات في هذا القسم حالياً
                 </h3>
                 <p style={{ fontSize: 14, margin: 0 }}>
-                  عندما يطلب العملاء وجبات بيتي من مطبخك ستظهر هنا فوراً مع تنبيه صوتي وإشعار مباشر.
+                  عندما يطلب العملاء وجبات بيتي من مطبخك ستظهر هنا فوراً مع تنبيه
+                  صوتي وإشعار مباشر.
                 </p>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
+              <div
+                style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}
+              >
                 {filteredTodayOrders.map((ord) => (
                   <div
                     key={ord.id}
@@ -684,8 +770,21 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                   >
                     {/* Left / Main Details */}
                     <div style={{ flex: "1 1 500px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 16, fontWeight: 900, color: "#fafaf9" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 900,
+                            color: "#fafaf9",
+                          }}
+                        >
                           طلب رقم {ord.suborderNumber}
                         </span>
                         <span
@@ -694,7 +793,10 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                               ord.orderMode === "instant"
                                 ? "rgba(224, 86, 56, 0.15)"
                                 : "rgba(59, 130, 246, 0.15)",
-                            color: ord.orderMode === "instant" ? "#f87171" : "#60a5fa",
+                            color:
+                              ord.orderMode === "instant"
+                                ? "#f87171"
+                                : "#60a5fa",
                             border: `1px solid ${
                               ord.orderMode === "instant"
                                 ? "rgba(224, 86, 56, 0.3)"
@@ -709,8 +811,16 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                             gap: 5,
                           }}
                         >
-                          {ord.orderMode === "instant" ? <Flame size={13} /> : <Calendar size={13} />}
-                          <span>{ord.orderMode === "instant" ? "طلب فوري ساخن ⚡" : "طلب مجدول لموعد محدد 📅"}</span>
+                          {ord.orderMode === "instant" ? (
+                            <Flame size={13} />
+                          ) : (
+                            <Calendar size={13} />
+                          )}
+                          <span>
+                            {ord.orderMode === "instant"
+                              ? "طلب فوري ساخن ⚡"
+                              : "طلب مجدول لموعد محدد 📅"}
+                          </span>
                         </span>
 
                         <span
@@ -719,8 +829,8 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                               ord.prepStatus === "new"
                                 ? "#e05638"
                                 : ord.prepStatus === "cooking"
-                                ? "#f59e0b"
-                                : "#22c55e",
+                                  ? "#f59e0b"
+                                  : "#22c55e",
                             color: "#ffffff",
                             padding: "3px 10px",
                             borderRadius: 14,
@@ -731,18 +841,31 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                           {ord.prepStatus === "new"
                             ? "جديد بانتظار التأكيد"
                             : ord.prepStatus === "cooking"
-                            ? "قيد الطهي في المطبخ 👩‍🍳"
-                            : "جاهز للتسليم 🛵"}
+                              ? "قيد الطهي في المطبخ 👩‍🍳"
+                              : "جاهز للتسليم 🛵"}
                         </span>
                       </div>
 
                       {/* Dish title & portion */}
                       <div style={{ marginTop: 12 }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: "#e05638" }}>
+                        <div
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 800,
+                            color: "#e05638",
+                          }}
+                        >
                           {ord.dishName}
                         </div>
-                        <div style={{ fontSize: 13, color: "#d6d3d1", marginTop: 4 }}>
-                          الحجم: <b>{ord.portionName}</b> × الكمية: <b>{ord.quantity}</b>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#d6d3d1",
+                            marginTop: 4,
+                          }}
+                        >
+                          الحجم: <b>{ord.portionName}</b> × الكمية:{" "}
+                          <b>{ord.quantity}</b>
                         </div>
                       </div>
 
@@ -763,7 +886,9 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                           }}
                         >
                           <Info size={14} />
-                          <span><b>ملاحظة العميل:</b> {ord.cookNotes}</span>
+                          <span>
+                            <b>ملاحظة العميل:</b> {ord.cookNotes}
+                          </span>
                         </div>
                       )}
 
@@ -779,19 +904,46 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                           flexWrap: "wrap",
                         }}
                       >
-                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
                           <Clock size={14} color="#f59e0b" />
-                          <span>نافذة التسليم: <b>{ord.slotStartTime} - {ord.slotEndTime}</b></span>
+                          <span>
+                            نافذة التسليم:{" "}
+                            <b>
+                              {ord.slotStartTime} - {ord.slotEndTime}
+                            </b>
+                          </span>
                         </span>
                         <span>•</span>
-                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
                           <MapPin size={14} color="#e05638" />
-                          <span>{ord.district} - {ord.address}</span>
+                          <span>
+                            {ord.district} - {ord.address}
+                          </span>
                         </span>
                         <span>•</span>
-                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
                           <Phone size={14} />
-                          <span>{ord.customerName} ({ord.customerPhone})</span>
+                          <span>
+                            {ord.customerName} ({ord.customerPhone})
+                          </span>
                         </span>
                       </div>
                     </div>
@@ -807,8 +959,16 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                       }}
                     >
                       <div style={{ textAlign: isRtl ? "left" : "right" }}>
-                        <div style={{ fontSize: 11, color: "#a8a29e" }}>صافي مستحق الست</div>
-                        <div style={{ fontSize: 22, fontWeight: 900, color: "#fafaf9" }}>
+                        <div style={{ fontSize: 11, color: "#a8a29e" }}>
+                          صافي مستحق الست
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 22,
+                            fontWeight: 900,
+                            color: "#fafaf9",
+                          }}
+                        >
                           {ord.totalEGP} ج.م
                         </div>
                       </div>
@@ -816,9 +976,12 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                       {/* Status Action Buttons */}
                       {ord.prepStatus === "new" && (
                         <button
-                          onClick={() => handleUpdatePrepStatus(ord.id, "cooking")}
+                          onClick={() =>
+                            handleUpdatePrepStatus(ord.id, "cooking")
+                          }
                           style={{
-                            background: "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
+                            background:
+                              "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
                             color: "#ffffff",
                             border: 0,
                             padding: "10px 20px",
@@ -841,9 +1004,12 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
 
                       {ord.prepStatus === "cooking" && (
                         <button
-                          onClick={() => handleUpdatePrepStatus(ord.id, "ready_for_pickup")}
+                          onClick={() =>
+                            handleUpdatePrepStatus(ord.id, "ready_for_pickup")
+                          }
                           style={{
-                            background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                            background:
+                              "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
                             color: "#ffffff",
                             border: 0,
                             padding: "10px 20px",
@@ -893,11 +1059,19 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
         {activeTab === "schedule" && (
           <div>
             <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 900, color: "#fafaf9", margin: "0 0 6px 0" }}>
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 900,
+                  color: "#fafaf9",
+                  margin: "0 0 6px 0",
+                }}
+              >
                 جدول الحجوزات المسبقة للأيام القادمة 📅
               </h2>
               <p style={{ fontSize: 13, color: "#a8a29e", margin: 0 }}>
-                خططي لمشتريات اللحوم والخضار البلدي مسبقاً بناءً على طلبات العزومات والعائلات المحجوزة.
+                خططي لمشتريات اللحوم والخضار البلدي مسبقاً بناءً على طلبات
+                العزومات والعائلات المحجوزة.
               </p>
             </div>
 
@@ -912,13 +1086,18 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                   color: "#a8a29e",
                 }}
               >
-                <Calendar size={42} style={{ margin: "0 auto 14px auto", opacity: 0.4 }} />
+                <Calendar
+                  size={42}
+                  style={{ margin: "0 auto 14px auto", opacity: 0.4 }}
+                />
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: "#fafaf9" }}>
                   لا توجد طلبات مجدولة لأيام لاحقة حالياً
                 </h3>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }}>
+              <div
+                style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }}
+              >
                 {futureOrders.map((ord) => (
                   <div
                     key={ord.id}
@@ -935,7 +1114,13 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                     }}
                   >
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
                         <span
                           style={{
                             background: "#e05638",
@@ -948,22 +1133,46 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                         >
                           تاريخ التسليم: {ord.scheduledDate}
                         </span>
-                        <span style={{ fontSize: 13, color: "#f59e0b", fontWeight: 700 }}>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "#f59e0b",
+                            fontWeight: 700,
+                          }}
+                        >
                           نافذة التسليم: {ord.slotStartTime} - {ord.slotEndTime}
                         </span>
                       </div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#fafaf9", marginTop: 8 }}>
+                      <div
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 800,
+                          color: "#fafaf9",
+                          marginTop: 8,
+                        }}
+                      >
                         {ord.dishName} ({ord.portionName})
                       </div>
-                      <div style={{ fontSize: 12, color: "#a8a29e", marginTop: 4 }}>
-                        العميل: {ord.customerName} • {ord.district} • {ord.cookNotes}
+                      <div
+                        style={{ fontSize: 12, color: "#a8a29e", marginTop: 4 }}
+                      >
+                        العميل: {ord.customerName} • {ord.district} •{" "}
+                        {ord.cookNotes}
                       </div>
                     </div>
                     <div style={{ textAlign: isRtl ? "left" : "right" }}>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: "#4ade80" }}>
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 900,
+                          color: "#4ade80",
+                        }}
+                      >
                         {ord.totalEGP} ج.م
                       </div>
-                      <div style={{ fontSize: 12, color: "#a8a29e" }}>مؤكد ومحجوز</div>
+                      <div style={{ fontSize: 12, color: "#a8a29e" }}>
+                        مؤكد ومحجوز
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -976,7 +1185,14 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
         {activeTab === "dishes" && (
           <div>
             <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 900, color: "#fafaf9", margin: "0 0 6px 0" }}>
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 900,
+                  color: "#fafaf9",
+                  margin: "0 0 6px 0",
+                }}
+              >
                 وجبات مطبخك المسجلة في مطبخي
               </h2>
               <p style={{ fontSize: 13, color: "#a8a29e", margin: 0 }}>
@@ -984,7 +1200,13 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
               </p>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                gap: 16,
+              }}
+            >
               {sampleProducts.slice(0, 4).map((p) => {
                 const off = p.offers[0]
                 return (
@@ -1003,15 +1225,36 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                       style={{ width: "100%", height: 160, objectFit: "cover" }}
                     />
                     <div style={{ padding: 16 }}>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#fafaf9" }}>
+                      <div
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 800,
+                          color: "#fafaf9",
+                        }}
+                      >
                         {p.name.ar}
                       </div>
-                      <div style={{ fontSize: 12, color: "#a8a29e", marginTop: 4 }}>
+                      <div
+                        style={{ fontSize: 12, color: "#a8a29e", marginTop: 4 }}
+                      >
                         {p.description.ar}
                       </div>
 
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #292524" }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#e05638", marginBottom: 6 }}>
+                      <div
+                        style={{
+                          marginTop: 12,
+                          paddingTop: 12,
+                          borderTop: "1px solid #292524",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#e05638",
+                            marginBottom: 6,
+                          }}
+                        >
                           الأحجام والأسعار في المنيو:
                         </div>
                         {(off?.portions || []).map((port) => (
@@ -1026,7 +1269,9 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                             }}
                           >
                             <span>• {port.name.ar}</span>
-                            <b style={{ color: "#4ade80" }}>{port.price_cents / 100} ج.م</b>
+                            <b style={{ color: "#4ade80" }}>
+                              {port.price_cents / 100} ج.م
+                            </b>
                           </div>
                         ))}
                       </div>
@@ -1041,8 +1286,13 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                           color: "#a8a29e",
                         }}
                       >
-                        <span>الحد اليومي: <b>{off?.dailyPortionLimit || 15} وجبة</b></span>
-                        <span style={{ color: "#4ade80", fontWeight: 700 }}>معتمد ونشط ✓</span>
+                        <span>
+                          الحد اليومي:{" "}
+                          <b>{off?.dailyPortionLimit || 15} وجبة</b>
+                        </span>
+                        <span style={{ color: "#4ade80", fontWeight: 700 }}>
+                          معتمد ونشط ✓
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1066,20 +1316,36 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
               {/* Available for Payout */}
               <div
                 style={{
-                  background: "linear-gradient(135deg, #1c1917 0%, #141210 100%)",
+                  background:
+                    "linear-gradient(135deg, #1c1917 0%, #141210 100%)",
                   border: "1px solid #292524",
                   padding: 24,
                   borderRadius: 16,
                   boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "#a8a29e", fontWeight: 700 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{ fontSize: 13, color: "#a8a29e", fontWeight: 700 }}
+                  >
                     الرصيد المتاح للسحب الفوري
                   </span>
                   <Wallet size={20} color="#4ade80" />
                 </div>
-                <div style={{ fontSize: 32, fontWeight: 900, color: "#4ade80", marginTop: 10 }}>
+                <div
+                  style={{
+                    fontSize: 32,
+                    fontWeight: 900,
+                    color: "#4ade80",
+                    marginTop: 10,
+                  }}
+                >
                   4,200.00 <span style={{ fontSize: 18 }}>ج.م</span>
                 </div>
                 <div style={{ fontSize: 12, color: "#a8a29e", marginTop: 4 }}>
@@ -1090,7 +1356,8 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                   style={{
                     marginTop: 16,
                     width: "100%",
-                    background: "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
+                    background:
+                      "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
                     color: "#ffffff",
                     border: 0,
                     padding: "12px",
@@ -1114,13 +1381,28 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                   borderRadius: 16,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "#a8a29e", fontWeight: 700 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{ fontSize: 13, color: "#a8a29e", fontWeight: 700 }}
+                  >
                     رصيد تحت الطهي والتسليم (معلق)
                   </span>
                   <Clock size={20} color="#f59e0b" />
                 </div>
-                <div style={{ fontSize: 32, fontWeight: 900, color: "#f59e0b", marginTop: 10 }}>
+                <div
+                  style={{
+                    fontSize: 32,
+                    fontWeight: 900,
+                    color: "#f59e0b",
+                    marginTop: 10,
+                  }}
+                >
                   650.00 <span style={{ fontSize: 18 }}>ج.م</span>
                 </div>
                 <div style={{ fontSize: 12, color: "#a8a29e", marginTop: 4 }}>
@@ -1137,13 +1419,28 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                   borderRadius: 16,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "#a8a29e", fontWeight: 700 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{ fontSize: 13, color: "#a8a29e", fontWeight: 700 }}
+                  >
                     إجمالي أرباح الشهر الحالية
                   </span>
                   <TrendingUp size={20} color="#60a5fa" />
                 </div>
-                <div style={{ fontSize: 32, fontWeight: 900, color: "#fafaf9", marginTop: 10 }}>
+                <div
+                  style={{
+                    fontSize: 32,
+                    fontWeight: 900,
+                    color: "#fafaf9",
+                    marginTop: 10,
+                  }}
+                >
                   18,450.00 <span style={{ fontSize: 18 }}>ج.م</span>
                 </div>
                 <div style={{ fontSize: 12, color: "#4ade80", marginTop: 4 }}>
@@ -1161,10 +1458,19 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                 padding: 20,
               }}
             >
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: "#fafaf9", margin: "0 0 16px 0" }}>
+              <h3
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  color: "#fafaf9",
+                  margin: "0 0 16px 0",
+                }}
+              >
                 سجل التحويلات السابقة
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+              <div
+                style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}
+              >
                 {[
                   {
                     id: "pay-1",
@@ -1196,18 +1502,34 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: "#fafaf9" }}>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 800,
+                          color: "#fafaf9",
+                        }}
+                      >
                         سحب أرباح عبر {p.method}
                       </div>
-                      <div style={{ fontSize: 12, color: "#a8a29e", marginTop: 2 }}>
+                      <div
+                        style={{ fontSize: 12, color: "#a8a29e", marginTop: 2 }}
+                      >
                         {p.date} • الحساب: {p.dest}
                       </div>
                     </div>
                     <div style={{ textAlign: isRtl ? "left" : "right" }}>
-                      <div style={{ fontSize: 16, fontWeight: 900, color: "#4ade80" }}>
+                      <div
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 900,
+                          color: "#4ade80",
+                        }}
+                      >
                         +{p.amount} ج.م
                       </div>
-                      <div style={{ fontSize: 11, color: "#4ade80" }}>{p.status}</div>
+                      <div style={{ fontSize: 11, color: "#4ade80" }}>
+                        {p.status}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1241,7 +1563,14 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
               boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
             }}
           >
-            <h3 style={{ fontSize: 20, fontWeight: 900, color: "#fafaf9", margin: "0 0 8px 0" }}>
+            <h3
+              style={{
+                fontSize: 20,
+                fontWeight: 900,
+                color: "#fafaf9",
+                margin: "0 0 8px 0",
+              }}
+            >
               سحب الأرباح لحسابك الشخصي 💸
             </h3>
             <p style={{ fontSize: 13, color: "#a8a29e", margin: "0 0 20px 0" }}>
@@ -1250,10 +1579,24 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
 
             {/* Method Chooser */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: "#d6d3d1", display: "block", marginBottom: 8 }}>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#d6d3d1",
+                  display: "block",
+                  marginBottom: 8,
+                }}
+              >
                 طريقة استلام الأموال:
               </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 10,
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => {
@@ -1261,8 +1604,13 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                     setPayoutAddress("01012345678@instapay")
                   }}
                   style={{
-                    background: payoutMethod === "instapay" ? "rgba(224, 86, 56, 0.2)" : "#141210",
-                    border: `1px solid ${payoutMethod === "instapay" ? "#e05638" : "#292524"}`,
+                    background:
+                      payoutMethod === "instapay"
+                        ? "rgba(224, 86, 56, 0.2)"
+                        : "#141210",
+                    border: `1px solid ${
+                      payoutMethod === "instapay" ? "#e05638" : "#292524"
+                    }`,
                     color: payoutMethod === "instapay" ? "#e05638" : "#a8a29e",
                     padding: 12,
                     borderRadius: 10,
@@ -1280,9 +1628,15 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                     setPayoutAddress("01098765432")
                   }}
                   style={{
-                    background: payoutMethod === "vodafone_cash" ? "rgba(224, 86, 56, 0.2)" : "#141210",
-                    border: `1px solid ${payoutMethod === "vodafone_cash" ? "#e05638" : "#292524"}`,
-                    color: payoutMethod === "vodafone_cash" ? "#e05638" : "#a8a29e",
+                    background:
+                      payoutMethod === "vodafone_cash"
+                        ? "rgba(224, 86, 56, 0.2)"
+                        : "#141210",
+                    border: `1px solid ${
+                      payoutMethod === "vodafone_cash" ? "#e05638" : "#292524"
+                    }`,
+                    color:
+                      payoutMethod === "vodafone_cash" ? "#e05638" : "#a8a29e",
                     padding: 12,
                     borderRadius: 10,
                     fontSize: 13,
@@ -1297,8 +1651,18 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
 
             {/* Address Input */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: "#d6d3d1", display: "block", marginBottom: 6 }}>
-                {payoutMethod === "instapay" ? "عنوان إنستاباي (IPA):" : "رقم محفظة فودافون كاش:"}
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#d6d3d1",
+                  display: "block",
+                  marginBottom: 6,
+                }}
+              >
+                {payoutMethod === "instapay"
+                  ? "عنوان إنستاباي (IPA):"
+                  : "رقم محفظة فودافون كاش:"}
               </label>
               <input
                 type="text"
@@ -1320,7 +1684,15 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
 
             {/* Amount */}
             <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: "#d6d3d1", display: "block", marginBottom: 6 }}>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#d6d3d1",
+                  display: "block",
+                  marginBottom: 6,
+                }}
+              >
                 المبلغ المراد سحبه (بالجنيه المصري):
               </label>
               <input
@@ -1351,7 +1723,8 @@ export function CookPortal({ locale = "ar", onSwitchPortal }: Props) {
                 onClick={handleExecutePayout}
                 style={{
                   flex: 1,
-                  background: "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
+                  background:
+                    "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
                   color: "#ffffff",
                   border: 0,
                   padding: "12px",

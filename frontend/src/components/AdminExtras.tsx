@@ -1,4 +1,5 @@
 import { useState } from "react"
+
 import {
   Users,
   ShieldCheck,
@@ -11,6 +12,7 @@ import {
   MoreHorizontal,
   ArrowDownRight,
 } from "lucide-react"
+
 import type { Locale } from "../types"
 
 interface ScreenProps {
@@ -19,48 +21,79 @@ interface ScreenProps {
 
 export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
   const isRtl = locale === "ar"
+
   const [showInvite, setShowInvite] = useState(false)
+
   const [inviteSent, setInviteSent] = useState(false)
 
   const members = [
     {
       name: isRtl ? "أمل منصور" : "Amal Mansour",
+
       email: "amal@nexus.market",
+
       role: isRtl ? "مدير نظام عام (Super Admin)" : "Super Administrator",
+
       scope: isRtl ? "كامل المنصة" : "Platform-wide",
+
       lastActive: isRtl ? "الآن" : "Just now",
+
       status: "Active",
     },
+
     {
       name: isRtl ? "رامي خوري" : "Rami Khoury",
+
       email: "rami.k@nexus.market",
+
       role: isRtl ? "مسؤول مالي" : "Finance Admin",
+
       scope: isRtl ? "الدفتر المالي والتحويلات" : "Ledger & Payouts",
+
       lastActive: isRtl ? "قبل 14 دقيقة" : "14 min ago",
+
       status: "Active",
     },
+
     {
       name: isRtl ? "ليلى محفوظ" : "Layla Mahfouz",
+
       email: "layla.m@nexus.market",
+
       role: isRtl ? "مديرة الكتالوج" : "Catalog Manager",
+
       scope: isRtl ? "الفئات وتدقيق المنتجات" : "Categories & Moderation",
+
       lastActive: isRtl ? "قبل ساعة" : "1 hour ago",
+
       status: "Active",
     },
+
     {
       name: isRtl ? "طارق السيد" : "Tariq Al-Sayed",
+
       email: "tariq@nexus.market",
+
       role: isRtl ? "مسؤول الامتثال والمخاطر" : "Compliance Officer",
+
       scope: isRtl ? "تأهيل الموردين KYC والمخاطر" : "Supplier KYC & Risk",
+
       lastActive: isRtl ? "أمس" : "Yesterday",
+
       status: "Active",
     },
+
     {
       name: isRtl ? "سارة جنكينز" : "Sarah Jenkins",
+
       email: "sarah.j@external.com",
+
       role: isRtl ? "مسؤولة دعم العملاء" : "Customer Support Lead",
+
       scope: isRtl ? "النزاعات والتذاكر" : "Disputes & Tickets",
+
       lastActive: isRtl ? "قبل 3 أيام" : "3 days ago",
+
       status: "Suspended",
     },
   ]
@@ -223,7 +256,9 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
                   <p
                     style={{
                       color: "var(--muted)",
+
                       fontSize: 13,
+
                       marginTop: 4,
                     }}
                   >
@@ -241,10 +276,15 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
                     <input
                       style={{
                         width: "100%",
+
                         height: 38,
+
                         border: "1px solid var(--line)",
+
                         borderRadius: 6,
+
                         padding: "0 10px",
+
                         marginTop: 4,
                       }}
                       placeholder={
@@ -259,10 +299,15 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
                     <input
                       style={{
                         width: "100%",
+
                         height: 38,
+
                         border: "1px solid var(--line)",
+
                         borderRadius: 6,
+
                         padding: "0 10px",
+
                         marginTop: 4,
                       }}
                       placeholder="zaid@nexus.market"
@@ -275,10 +320,15 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
                     <select
                       style={{
                         width: "100%",
+
                         height: 38,
+
                         border: "1px solid var(--line)",
+
                         borderRadius: 6,
+
                         padding: "0 10px",
+
                         marginTop: 4,
                       }}
                     >
@@ -307,12 +357,19 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
                   <div
                     style={{
                       background: "var(--green-soft)",
+
                       padding: 12,
+
                       borderRadius: 6,
+
                       fontSize: 12,
+
                       color: "var(--green)",
+
                       display: "flex",
+
                       gap: 8,
+
                       alignItems: "center",
                     }}
                   >
@@ -358,70 +415,115 @@ export function TeamRolesScreen({ locale = "en" }: ScreenProps) {
 
 export function AuditLogScreen({ locale = "en" }: ScreenProps) {
   const isRtl = locale === "ar"
+
   const [filterAction, setFilterAction] = useState("All actions")
 
   const logs = [
     {
       id: "AUD-99120",
+
       actor: isRtl ? "أمل منصور" : "Amal Mansour",
+
       role: isRtl ? "مدير عام" : "Super Admin",
+
       action: "KYC_SUPPLIER_APPROVED",
+
       target: isRtl
         ? "مؤسسة نورة للمنتجات (SA-1010847291)"
         : "Noura Foods Trading (SA-1010847291)",
+
       ip: "192.168.1.12 · Riyadh",
+
       time: isRtl ? "18 يونيو · 15:42:19" : "18 Jun · 15:42:19",
+
       hash: "0x8f2a...1e4c",
+
       status: "Verified",
     },
+
     {
       id: "AUD-99119",
+
       actor: isRtl ? "رامي خوري" : "Rami Khoury",
+
       role: isRtl ? "مسؤول مالي" : "Finance Admin",
+
       action: "PAYOUT_BATCH_APPROVED",
+
       target: isRtl
         ? "3 تسويات مالية (إجمالي $75,412.00)"
         : "3 Payouts ($75,412.00 total)",
+
       ip: "10.0.4.81 · Internal Gateway",
+
       time: isRtl ? "18 يونيو · 15:10:04" : "18 Jun · 15:10:04",
+
       hash: "0x17b3...990f",
+
       status: "Verified",
     },
+
     {
       id: "AUD-99118",
+
       actor: isRtl ? "ليلى محفوظ" : "Layla Mahfouz",
+
       role: isRtl ? "مديرة الكتالوج" : "Catalog Manager",
+
       action: "PRODUCT_MODERATION_APPROVED",
+
       target: isRtl
         ? "سماعات نوفا إكس 1 (NV-X1-BLK)"
         : "Nova X1 Headphones (NV-X1-BLK)",
+
       ip: "192.168.1.44 · Dubai",
+
       time: isRtl ? "18 يونيو · 14:55:31" : "18 Jun · 14:55:31",
+
       hash: "0x33e8...77ab",
+
       status: "Verified",
     },
+
     {
       id: "AUD-99117",
+
       actor: isRtl ? "محرك النظام" : "System Engine",
+
       role: isRtl ? "خدمة تلقائية" : "Automated Service",
+
       action: "LEDGER_ENTRY_POSTED",
+
       target: "JE-884291 ($8,420.00)",
+
       ip: "127.0.0.1 · Transaction Worker",
+
       time: isRtl ? "18 يونيو · 14:32:00" : "18 Jun · 14:32:00",
+
       hash: "0x91df...00ac",
+
       status: "Verified",
     },
+
     {
       id: "AUD-99116",
+
       actor: isRtl ? "أمل منصور" : "Amal Mansour",
+
       role: isRtl ? "مدير عام" : "Super Admin",
+
       action: "COMMISSION_RULE_UPDATED",
+
       target: isRtl
         ? "استثناء فئة الإلكترونيات (7.0%)"
         : "Electronics Override (7.0%)",
+
       ip: "192.168.1.12 · Riyadh",
+
       time: isRtl ? "18 يونيو · 12:18:44" : "18 Jun · 12:18:44",
+
       hash: "0xbb44...9981",
+
       status: "Verified",
     },
   ]
@@ -537,12 +639,18 @@ export function AuditLogScreen({ locale = "en" }: ScreenProps) {
 
 export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
   const isRtl = locale === "ar"
+
   const [features, setFeatures] = useState({
     wallet: true,
+
     chat: true,
+
     rfq: false,
+
     moq: true,
+
     reviews: true,
+
     multiWarehouse: true,
   })
 
@@ -554,6 +662,7 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
 
   const handleSave = () => {
     setSaved(true)
+
     setTimeout(() => setSaved(false), 1500)
   }
 
@@ -563,7 +672,9 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
         <div
           style={{
             borderBottom: "1px solid var(--line)",
+
             paddingBottom: 12,
+
             marginBottom: 16,
           }}
         >
@@ -587,10 +698,15 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
               defaultValue={isRtl ? "سوق نكسوس الموحد" : "NEXUS MARKETPLACE"}
               style={{
                 width: "100%",
+
                 height: 38,
+
                 border: "1px solid var(--line)",
+
                 borderRadius: 6,
+
                 padding: "0 10px",
+
                 marginTop: 4,
               }}
             />
@@ -606,10 +722,15 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
                 defaultValue="USD"
                 style={{
                   width: "100%",
+
                   height: 38,
+
                   border: "1px solid var(--line)",
+
                   borderRadius: 6,
+
                   padding: "0 10px",
+
                   marginTop: 4,
                 }}
               >
@@ -633,10 +754,15 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
                 defaultValue="ar"
                 style={{
                   width: "100%",
+
                   height: 38,
+
                   border: "1px solid var(--line)",
+
                   borderRadius: 6,
+
                   padding: "0 10px",
+
                   marginTop: 4,
                 }}
               >
@@ -654,8 +780,11 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
             <div
               style={{
                 display: "flex",
+
                 alignItems: "center",
+
                 gap: 8,
+
                 marginTop: 4,
               }}
             >
@@ -664,10 +793,15 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
                 defaultValue={10}
                 style={{
                   width: 100,
+
                   height: 38,
+
                   border: "1px solid var(--line)",
+
                   borderRadius: 6,
+
                   padding: "0 10px",
+
                   fontFamily: "DM Mono",
                 }}
               />
@@ -700,7 +834,9 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
         <div
           style={{
             borderBottom: "1px solid var(--line)",
+
             paddingBottom: 12,
+
             marginBottom: 16,
           }}
         >
@@ -719,54 +855,71 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
           {[
             {
               key: "wallet" as const,
+
               label: isRtl
                 ? "المحفظة التجارية والدفتر المالي المزدوج"
                 : "Merchant Wallet & Financial Ledger",
+
               desc: isRtl
                 ? "السماح للتجار بإيداع الأموال والدفع المباشر من الأرصدة الداخلية"
                 : "Allow buyers to deposit funds and pay using internal balances",
             },
+
             {
               key: "moq" as const,
+
               label: isRtl
                 ? "محرك الحد الأدنى للطلب (MOQ)"
                 : "Minimum Order Quantity (MOQ) Engine",
+
               desc: isRtl
                 ? "فرض حدود الشراء الدنيا لتجارة الجملة ونموذج B2B"
                 : "Enforce volume threshold purchasing for wholesale/B2B models",
             },
+
             {
               key: "chat" as const,
+
               label: isRtl
                 ? "المراسلة الفورية بين التاجر والمورد"
                 : "Buyer-Supplier Realtime Messaging",
+
               desc: isRtl
                 ? "محادثات مباشرة داخل التطبيق مرتبطة بالطلبات الفرعية"
                 : "Enable direct in-app conversations attached to suborders",
             },
+
             {
               key: "reviews" as const,
+
               label: isRtl
                 ? "التقييمات والسمعة التجارية الموثقة"
                 : "Verified Customer Reviews & Ratings",
+
               desc: isRtl
                 ? "السماح للتجار الذين استلموا الطلب بنشر التقييمات"
                 : "Allow buyers who completed delivery to post ratings",
             },
+
             {
               key: "multiWarehouse" as const,
+
               label: isRtl
                 ? "إدارة المخزون في مستودعات متعددة"
                 : "Multi-Warehouse Inventory Allocation",
+
               desc: isRtl
                 ? "تمكين الموردين من إدارة مراكز توزيع وشحن متعددة"
                 : "Allow vendors to manage multiple fulfillment hubs",
             },
+
             {
               key: "rfq" as const,
+
               label: isRtl
                 ? "محرك عروض الأسعار المخصصة (RFQ)"
                 : "RFQ & Custom Quotations Engine",
+
               desc: isRtl
                 ? "السماح للشركات بطلب عروض أسعار تفاوضية للكميات الضخمة"
                 : "Allow business buyers to request tailored bulk quotes",
@@ -776,11 +929,17 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
               key={item.key}
               style={{
                 display: "flex",
+
                 alignItems: "center",
+
                 justifyContent: "space-between",
+
                 padding: "10px 12px",
+
                 border: "1px solid var(--line)",
+
                 borderRadius: 6,
+
                 background: features[item.key] ? "#fff" : "#f7f9f8",
               }}
             >
@@ -789,7 +948,9 @@ export function PlatformSettingsScreen({ locale = "en" }: ScreenProps) {
                 <small
                   style={{
                     color: "var(--muted)",
+
                     fontSize: 10,
+
                     display: "block",
                   }}
                 >

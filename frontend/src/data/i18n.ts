@@ -320,6 +320,7 @@ export interface TranslationDictionary {
 
     success: string
   }
+
   b2b: {
     brandTitle: string
 
@@ -935,7 +936,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
 
       featuredCategories: "تصفح حسب نوع الأكل",
 
-      searchPlaceholder: "ابحث عن طبق، مطبخ بيتي، أو منطقة في القاهرة والجيزة...",
+      searchPlaceholder:
+        "ابحث عن طبق، مطبخ بيتي، أو منطقة في القاهرة والجيزة...",
 
       addToCartBtn: "إضافة للوجبة",
 
@@ -943,7 +945,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
 
       retailPrice: "السعر شامل التحضير",
 
-      emptyCartMsg: "سلة الوجبات فارغة، اختر أشهى الأطباق البيتية وأضفها للسلة!",
+      emptyCartMsg:
+        "سلة الوجبات فارغة، اختر أشهى الأطباق البيتية وأضفها للسلة!",
 
       checkoutBtn: "تأكيد الطلب وتحديد موعد التسليم",
 
@@ -1429,7 +1432,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
 
       featuredCategories: "Browse by Cuisine",
 
-      searchPlaceholder: "Search dishes, home kitchens, or Cairo/Giza districts…",
+      searchPlaceholder:
+        "Search dishes, home kitchens, or Cairo/Giza districts…",
 
       addToCartBtn: "Add to Order",
 
@@ -1437,7 +1441,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
 
       retailPrice: "Price per Portion",
 
-      emptyCartMsg: "Your meal cart is empty. Pick your favorite homemade dishes!",
+      emptyCartMsg:
+        "Your meal cart is empty. Pick your favorite homemade dishes!",
 
       checkoutBtn: "Confirm Order & Choose Delivery Time",
 

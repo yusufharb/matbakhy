@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react"
+
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -52,91 +53,136 @@ import {
   WalletCards,
   X,
 } from "lucide-react"
+
 import { PortalSwitcher } from "./components/PortalSwitcher"
+
 import { MerchantStorefront } from "./components/MerchantStorefront"
+
 import { B2BPortal } from "./components/b2b/B2BPortal"
+
 import { B2CPortal } from "./components/b2c/B2CPortal"
+
 import { CookPortal } from "./components/cook/CookPortal"
+
 import {
   TeamRolesScreen,
   AuditLogScreen,
   PlatformSettingsScreen,
 } from "./components/AdminExtras"
+
 import { api } from "./services/api"
+
 import { translations } from "./data/i18n"
+
 import type { PortalMode, Locale } from "./types"
 
 type Page = "overview" | "kyc" | "catalog" | "finance" | "cms" | "supplier" | "team" | "audit" | "settings"
 
 const nav: {
   id: Page
+
   label: string
+
   icon: typeof LayoutDashboard
+
   badge?: string
 }[] = [
   { id: "overview", label: "Command Center", icon: LayoutDashboard },
+
   { id: "kyc", label: "Supplier KYC", icon: ShieldCheck, badge: "12" },
+
   { id: "catalog", label: "Catalog Governance", icon: Box, badge: "35" },
+
   { id: "finance", label: "Finance & Ledger", icon: ReceiptText, badge: "3" },
+
   { id: "cms", label: "Storefront CMS", icon: Languages },
+
   { id: "supplier", label: "Supplier Portal", icon: Store },
 ]
 
 const pageMeta: Record<Page, {
   eyebrow: string
+
   title: string
+
   description: string
 }> = {
   overview: {
     eyebrow: "LIVE PLATFORM CONTROL",
+
     title: "Executive overview",
+
     description:
       "Platform health, revenue flow, and operational risk at a glance.",
   },
+
   kyc: {
     eyebrow: "TRUST & COMPLIANCE",
+
     title: "Supplier applications",
+
     description:
       "Review identity, registration, banking, and risk verification.",
   },
+
   catalog: {
     eyebrow: "CATALOG OPERATIONS",
+
     title: "Catalog governance",
+
     description:
       "Control taxonomy, schemas, and supplier-submitted product quality.",
   },
+
   finance: {
     eyebrow: "FINANCIAL CONTROL",
+
     title: "Ledger & commission engine",
+
     description:
       "Audit journal activity, configure take rates, and approve payouts.",
   },
+
   cms: {
     eyebrow: "STORE EXPERIENCE",
+
     title: "Multilingual storefront",
+
     description:
       "Curate homepage merchandising and localized customer content.",
   },
+
   supplier: {
     eyebrow: "VENDOR OPERATIONS",
+
     title: "Supplier portal",
+
     description:
       "Manage offers, inventory, fulfillment, and marketplace earnings.",
   },
+
   team: {
     eyebrow: "ACCESS & GOVERNANCE",
+
     title: "Team & roles",
+
     description:
       "Manage marketplace administrators and fine-grained RBAC permissions.",
   },
+
   audit: {
     eyebrow: "SECURITY & COMPLIANCE",
+
     title: "Audit trail",
+
     description: "Immutable cryptographically verifiable activity log.",
   },
+
   settings: {
     eyebrow: "PLATFORM CONFIGURATION",
+
     title: "Platform settings",
+
     description:
       "Multi-currency, localization, tax, and modular feature flags.",
   },
@@ -145,68 +191,112 @@ const pageMeta: Record<Page, {
 const suppliers = [
   {
     name: "Noura Foods Trading",
+
     reg: "SA-1010847291",
+
     country: "Saudi Arabia",
+
     flag: "SA",
+
     date: "18 Jun 2025",
+
     status: "Review required",
+
     risk: "Low",
   },
+
   {
     name: "Atlas Industrial GmbH",
+
     reg: "HRB 918245",
+
     country: "Germany",
+
     flag: "DE",
+
     date: "18 Jun 2025",
+
     status: "Documents pending",
+
     risk: "Low",
   },
+
   {
     name: "Apex Digital Supplies",
+
     reg: "AE-7791032",
+
     country: "UAE",
+
     flag: "AE",
+
     date: "17 Jun 2025",
+
     status: "Review required",
+
     risk: "Medium",
   },
+
   {
     name: "Maison & Marché SAS",
+
     reg: "RCS 892 310",
+
     country: "France",
+
     flag: "FR",
+
     date: "16 Jun 2025",
+
     status: "Verified",
+
     risk: "Low",
   },
+
   {
     name: "Cedar Medical Co.",
+
     reg: "JO-20041935",
+
     country: "Jordan",
+
     flag: "JO",
+
     date: "16 Jun 2025",
+
     status: "Escalated",
+
     risk: "High",
   },
+
   {
     name: "Eastbridge Textiles",
+
     reg: "GB-14810293",
+
     country: "United Kingdom",
+
     flag: "GB",
+
     date: "15 Jun 2025",
+
     status: "Verified",
+
     risk: "Low",
   },
 ]
 
 interface LogoProps {
   collapsed: boolean
+
   locale: Locale
 }
 
 function Logo({ collapsed, locale }: LogoProps) {
   const isRtl = locale === "ar"
+
   const t = translations[locale].brand
+
   return (
     <div className="brand">
       <div className="brand-mark">
@@ -224,9 +314,11 @@ function Logo({ collapsed, locale }: LogoProps) {
 
 function Badge({
   children,
+
   tone = "neutral",
 }: {
   children: ReactNode
+
   tone?: "green" | "amber" | "red" | "blue" | "neutral"
 }) {
   return (
@@ -239,9 +331,11 @@ function Badge({
 
 function Card({
   children,
+
   className = "",
 }: {
   children: ReactNode
+
   className?: string
 }) {
   return <section className={`card ${className}`}>{children}</section>
@@ -249,11 +343,15 @@ function Card({
 
 function CardTitle({
   title,
+
   hint,
+
   action,
 }: {
   title: string
+
   hint?: string
+
   action?: ReactNode
 }) {
   return (
@@ -269,13 +367,17 @@ function CardTitle({
 
 type HeaderProps = {
   page: Page
+
   onMenu: () => void
+
   locale: Locale
 }
 
 function Header({ page, onMenu, locale }: HeaderProps) {
   const isRtl = locale === "ar"
+
   const meta = translations[locale].pages[page] || pageMeta[page]
+
   return (
     <header className="topbar">
       <div className="page-heading">
@@ -326,17 +428,27 @@ function Header({ page, onMenu, locale }: HeaderProps) {
 
 function Stat({
   label,
+
   value,
+
   note,
+
   up,
+
   icon: Icon,
+
   tone = "emerald",
 }: {
   label: string
+
   value: string
+
   note: string
+
   up?: boolean
+
   icon: any
+
   tone?: "emerald" | "blue" | "purple" | "amber" | "rose"
 }) {
   return (
@@ -362,12 +474,15 @@ function Stat({
 
 function Overview({
   navigate,
+
   locale,
 }: {
   navigate: (page: Page) => void
+
   locale: Locale
 }) {
   const isRtl = locale === "ar"
+
   const t = translations[locale].overview
 
   return (
@@ -468,35 +583,59 @@ function Overview({
               {(isRtl
                 ? [
                     "يوليو",
+
                     "أغسطس",
+
                     "سبتمبر",
+
                     "أكتوبر",
+
                     "نوفمبر",
+
                     "ديسمبر",
+
                     "يناير",
+
                     "فبراير",
+
                     "مارس",
+
                     "أبريل",
+
                     "مايو",
+
                     "يونيو",
                   ]
                 : [
                     "Jul",
+
                     "Aug",
+
                     "Sep",
+
                     "Oct",
+
                     "Nov",
+
                     "Dec",
+
                     "Jan",
+
                     "Feb",
+
                     "Mar",
+
                     "Apr",
+
                     "May",
+
                     "Jun",
                   ]
-              ).map((m) => (
-                <span key={m}>{m}</span>
-              ))}
+              )
+
+                .map((m) => (
+                  <span key={m}>{m}</span>
+                ))}
             </div>
           </div>
         </Card>
@@ -658,32 +797,51 @@ function Overview({
               {[
                 [
                   isRtl ? "الإلكترونيات والتقنية" : "Electronics",
+
                   "32%",
+
                   "$908.9K",
+
                   "green",
                 ],
+
                 [
                   isRtl ? "المنزل والمفروشات" : "Home & living",
+
                   "24%",
+
                   "$681.7K",
+
                   "blue",
                 ],
+
                 [
                   isRtl ? "المستلزمات التجارية" : "Business supplies",
+
                   "19%",
+
                   "$539.7K",
+
                   "purple",
                 ],
+
                 [
                   isRtl ? "الأغذية والمشروبات" : "Food & beverage",
+
                   "15%",
+
                   "$426.1K",
+
                   "amber",
                 ],
+
                 [
                   isRtl ? "فئات أخرى متنوعة" : "Other",
+
                   "10%",
+
                   "$284.0K",
+
                   "slate",
                 ],
               ].map((x) => (
@@ -747,21 +905,30 @@ function Overview({
 
 function KycScreen({ locale = "en" }: { locale?: Locale }) {
   const isRtl = locale === "ar"
+
   const t = translations[locale].kyc
+
   const [selected, setSelected] = useState<any | null>(null)
+
   const [filter, setFilter] = useState("All statuses")
+
   const [message, setMessage] = useState("")
+
   const [supplierList, setSupplierList] = useState<any[]>(suppliers)
 
   useEffect(() => {
     async function loadSuppliers() {
       try {
         const orgs = await api.getAdminSuppliers()
+
         if (orgs && orgs.length > 0) {
           const mapped = orgs.map((o) => ({
             id: o.id,
+
             name: o.legal_name || o.name?.en || "Supplier Co.",
+
             reg: o.commercial_reg_no || "CR-102948",
+
             country:
               o.country_code === "SA"
                 ? isRtl
@@ -774,22 +941,28 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
                   : isRtl
                     ? "الإمارات العربية المتحدة"
                     : "United Arab Emirates",
+
             flag: o.country_code || "SA",
+
             date: new Date(o.created_at).toLocaleDateString(),
+
             status:
               o.status === "approved"
                 ? "Verified"
                 : o.status === "submitted"
                   ? "Review required"
                   : "Documents pending",
+
             risk: "Low",
           }))
+
           setSupplierList(mapped)
         }
       } catch (e) {
         console.warn("Using sample suppliers:", e)
       }
     }
+
     loadSuppliers()
   }, [locale, isRtl])
 
@@ -799,6 +972,7 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
 
   const act = async (text: string, actionType?: "approve" | "reject") => {
     setMessage(text)
+
     if (selected && selected.id && actionType) {
       try {
         if (actionType === "approve") {
@@ -806,11 +980,13 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
         } else if (actionType === "reject") {
           await api.rejectSupplier(selected.id)
         }
+
         setSupplierList((prev) =>
           prev.map((s) =>
             s.id === selected.id
               ? {
                   ...s,
+
                   status: actionType === "approve" ? "Verified" : "Escalated",
                 }
               : s,
@@ -820,11 +996,14 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
         console.warn("Supplier action failed:", e)
       }
     }
+
     window.setTimeout(() => {
       setSelected(null)
+
       setMessage("")
     }, 1200)
   }
+
   return (
     <>
       <div className="toolbar">
@@ -1149,6 +1328,7 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
                     isRtl
                       ? "تم اعتماد المورد وتفعيله بنجاح"
                       : "Supplier approved successfully",
+
                     "approve",
                   )
                 }
@@ -1165,49 +1345,73 @@ function KycScreen({ locale = "en" }: { locale?: Locale }) {
 
 function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
   const isRtl = locale === "ar"
+
   const [category, setCategory] = useState(isRtl ? "إلكترونيات" : "Electronics")
+
   const [attributes, setAttributes] = useState(
     isRtl
       ? ["العلامة التجارية", "رقم الموديل", "فترة الضمان", "بلد المنشأ"]
       : ["Brand", "Model number", "Warranty period", "Country of origin"],
   )
+
   const [approved, setApproved] = useState(false)
 
   const categories = [
     { name: isRtl ? "إلكترونيات" : "Electronics", count: "42", top: true },
+
     {
       name: isRtl ? "كمبيوتر وأجهزة لوحية" : "Computers & tablets",
+
       count: "14",
+
       top: false,
     },
+
     {
       name: isRtl ? "أجهزة وهواتف ذكية" : "Mobile devices",
+
       count: "11",
+
       top: false,
     },
+
     {
       name: isRtl ? "صوتيات ومرئيات" : "Audio & video",
+
       count: "17",
+
       top: false,
     },
+
     {
       name: isRtl ? "مستلزمات المنزل" : "Home & living",
+
       count: "36",
+
       top: true,
     },
+
     {
       name: isRtl ? "مستلزمات الأعمال والشركات" : "Business supplies",
+
       count: "28",
+
       top: true,
     },
+
     {
       name: isRtl ? "أغذية ومشروبات" : "Food & beverage",
+
       count: "19",
+
       top: true,
     },
+
     {
       name: isRtl ? "صحة وعناية شخصية" : "Health & beauty",
+
       count: "24",
+
       top: true,
     },
   ]
@@ -1325,6 +1529,7 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
             onClick={() =>
               setAttributes([
                 ...attributes,
+
                 isRtl
                   ? `خاصية مخصصة ${attributes.length + 1}`
                   : `Custom attribute ${attributes.length + 1}`,
@@ -1504,82 +1709,132 @@ function CatalogScreen({ locale = "en" }: { locale?: Locale }) {
 
 function FinanceScreen({ locale = "en" }: { locale?: Locale }) {
   const isRtl = locale === "ar"
+
   const t = translations[locale].finance
+
   const [globalRate, setGlobalRate] = useState(10)
+
   const [tab, setTab] = useState<"ledger" | "commission" | "payouts">("ledger")
+
   const [approved, setApproved] = useState<string[]>([])
+
   const entries = [
     [
       "JE-884291",
+
       "Order #OR-48291",
+
       "Gateway clearing",
+
       "Supplier escrow",
+
       "$8,420.00",
+
       "18 Jun · 14:32",
+
       "Posted",
     ],
+
     [
       "JE-884290",
+
       "Order #OR-48290",
+
       "Gateway clearing",
+
       "Commission revenue",
+
       "$842.00",
+
       "18 Jun · 14:31",
+
       "Posted",
     ],
+
     [
       "JE-884289",
+
       "Refund #RF-01982",
+
       "Refund liability",
+
       "Customer wallet",
+
       "$129.50",
+
       "18 Jun · 14:27",
+
       "Posted",
     ],
+
     [
       "JE-884288",
+
       "Payout #PO-06218",
+
       "Supplier escrow",
+
       "Bank settlement",
+
       "$24,810.00",
+
       "18 Jun · 13:58",
+
       "Posted",
     ],
+
     [
       "JE-884287",
+
       "Order #OR-48287",
+
       "Gateway clearing",
+
       "Tax payable",
+
       "$611.40",
+
       "18 Jun · 13:44",
+
       "Posted",
     ],
   ]
 
   const [liveEntries, setLiveEntries] = useState(entries)
+
   useEffect(() => {
     async function loadLedger() {
       try {
         const res = await api.getLedgerEntries()
+
         if (res && res.journal_entries && res.journal_entries.length > 0) {
           const mapped = res.journal_entries.map((je) => [
             je.entry_number,
+
             je.action || (isRtl ? "تسوية طلب شراء" : "Order settlement"),
+
             isRtl ? "حساب تسوية البوابة (1010)" : "Gateway Clearing (1010)",
+
             isRtl ? "حساب ضمان الموردين (2020)" : "Supplier Escrow (2020)",
+
             `$${((je.lines?.[0]?.amount || 0) / 100).toFixed(2)}`,
+
             new Date(je.posted_at).toLocaleTimeString([], {
               hour: "2-digit",
+
               minute: "2-digit",
             }),
+
             isRtl ? "مقيد" : "Posted",
           ])
+
           setLiveEntries(mapped)
         }
       } catch (e) {
         console.warn("Could not load ledger from API:", e)
       }
     }
+
     loadLedger()
   }, [locale, isRtl])
 
@@ -1766,21 +2021,33 @@ function FinanceScreen({ locale = "en" }: { locale?: Locale }) {
               {[
                 [
                   "Electronics override",
+
                   "All electronics",
+
                   "7.0%",
+
                   "01 Jan 2025",
                 ],
+
                 ["Enterprise Gold tier", "18 suppliers", "6.5%", "01 Apr 2025"],
+
                 [
                   "Fresh food category",
+
                   "Food & beverage",
+
                   "8.0%",
+
                   "15 May 2025",
                 ],
+
                 [
                   "Atlas custom agreement",
+
                   "Atlas Industrial GmbH",
+
                   "5.5%",
+
                   "01 Jun 2025",
                 ],
               ].map((r, i) => (
@@ -1872,34 +2139,57 @@ function FinanceScreen({ locale = "en" }: { locale?: Locale }) {
                 {[
                   [
                     "PO-6218",
+
                     "Noura Foods Trading",
+
                     "82",
+
                     "$24,810.00",
+
                     "Clear",
+
                     "20 Jun",
                   ],
+
                   [
                     "PO-6217",
+
                     "Atlas Industrial GmbH",
+
                     "41",
+
                     "$18,492.00",
+
                     "Velocity spike",
+
                     "20 Jun",
                   ],
+
                   [
                     "PO-6216",
+
                     "Maison & Marché SAS",
+
                     "106",
+
                     "$32,110.00",
+
                     "Clear",
+
                     "20 Jun",
                   ],
+
                   [
                     "PO-6215",
+
                     "Cedar Medical Co.",
+
                     "19",
+
                     "$8,920.00",
+
                     "Bank changed",
+
                     "21 Jun",
                   ],
                 ].map((r) => (
@@ -1944,36 +2234,54 @@ function FinanceScreen({ locale = "en" }: { locale?: Locale }) {
 
 function CmsScreen({ locale = "en" }: { locale?: Locale }) {
   const isRtl = locale === "ar"
+
   const [sections, setSections] = useState([
     {
       name: isRtl ? "سلايدر العروض الترويجية" : "Hero carousel",
+
       type: isRtl ? "3 شرائح · تدوير تلقائي" : "3 slides · Auto-rotate",
+
       active: true,
     },
+
     {
       name: isRtl ? "شبكة الفئات المميزة" : "Category grid",
+
       type: isRtl ? "8 فئات رئيسية" : "8 featured categories",
+
       active: true,
     },
+
     {
       name: isRtl ? "المنتجات المختارة للتوريد" : "Featured products",
+
       type: isRtl ? "مجموعة مخصصة للمشتري" : "Personalized collection",
+
       active: true,
     },
+
     {
       name: isRtl ? "موردون معتمدون ومميزون" : "Supplier spotlight",
+
       type: isRtl ? "4 موردين مختارين" : "4 curated suppliers",
+
       active: false,
     },
   ])
+
   const [saved, setSaved] = useState(false)
+
   const move = (i: number, dir: number) => {
     const next = [...sections]
+
     const j = i + dir
+
     if (j < 0 || j >= next.length) return
     ;[next[i], next[j]] = [next[j], next[i]]
+
     setSections(next)
   }
+
   return (
     <div className="cms-layout">
       <div>
@@ -1993,6 +2301,7 @@ function CmsScreen({ locale = "en" }: { locale?: Locale }) {
               className="primary-btn"
               onClick={() => {
                 setSaved(true)
+
                 setTimeout(() => setSaved(false), 1500)
               }}
             >
@@ -2197,104 +2506,172 @@ function CmsScreen({ locale = "en" }: { locale?: Locale }) {
 }
 
 type SupplierTab = "home" | "offers" | "inventory" | "orders" | "wallet"
+
 type SupplierModal = null | "sell" | "request" | "adjust" | "dispatch" | "payout"
 
 const supplierOffers = [
   [
     "NF-ANC-X1",
+
     "Nova X1 Noise-Cancelling Headphones",
+
     "$149.00",
+
     "3 tiers",
+
     "128",
+
     "12",
+
     "116",
   ],
+
   [
     "NF-DOCK-8",
+
     "Orbit 8-in-1 USB-C Docking Station",
+
     "$84.50",
+
     "—",
+
     "42",
+
     "8",
+
     "34",
   ],
+
   [
     "NF-KEY-M2",
+
     "Motion M2 Mechanical Keyboard",
+
     "$119.00",
+
     "2 tiers",
+
     "18",
+
     "4",
+
     "14",
   ],
+
   [
     "NF-CAM-4K",
+
     "Vista Pro 4K Conference Camera",
+
     "$229.00",
+
     "3 tiers",
+
     "7",
+
     "3",
+
     "4",
   ],
+
   ["NF-HUB-12", "Twelve-Port Industrial USB Hub", "$96.00", "—", "0", "0", "0"],
 ]
 
 const supplierOrders = [
   {
     id: "SO-10482",
+
     buyer: "Meridian Labs",
+
     items: "3 items · 14 units",
+
     value: "$1,284.00",
+
     time: "18 min ago",
+
     stage: "New",
   },
+
   {
     id: "SO-10479",
+
     buyer: "Acme Retail Group",
+
     items: "1 item · 8 units",
+
     value: "$676.00",
+
     time: "42 min ago",
+
     stage: "New",
   },
+
   {
     id: "SO-10461",
+
     buyer: "Northstar Office",
+
     items: "4 items · 22 units",
+
     value: "$2,418.50",
+
     time: "Today, 09:14",
+
     stage: "Packing",
   },
+
   {
     id: "SO-10444",
+
     buyer: "Sable Hospitality",
+
     items: "2 items · 10 units",
+
     value: "$1,091.00",
+
     time: "Yesterday",
+
     stage: "Ready",
   },
+
   {
     id: "SO-10431",
+
     buyer: "Verto Systems",
+
     items: "1 item · 30 units",
+
     value: "$3,570.00",
+
     time: "Yesterday",
+
     stage: "Shipped",
   },
 ]
 
 function SupplierKpi({
   label,
+
   value,
+
   detail,
+
   icon: Icon,
+
   featured,
+
   tone = "emerald",
 }: {
   label: string
+
   value: string
+
   detail: string
+
   icon: any
+
   featured?: boolean
+
   tone?: "emerald" | "blue" | "purple" | "amber" | "rose"
 }) {
   return (
@@ -2313,16 +2690,23 @@ function SupplierKpi({
 
 function SupplierOverview({
   openOrders,
+
   setOpenOrders,
+
   openOrder,
+
   locale = "en",
 }: {
   openOrders: string[]
+
   setOpenOrders: (orders: string[]) => void
+
   openOrder: (id: string) => void
+
   locale?: Locale
 }) {
   const isRtl = locale === "ar"
+
   return (
     <>
       <div className="supplier-kpis">
@@ -2561,6 +2945,7 @@ function SupplierOffers({
   setModal: (modal: SupplierModal) => void
 }) {
   const [active, setActive] = useState([true, true, true, true, false])
+
   return (
     <>
       <div className="supplier-toolbar">
@@ -2696,9 +3081,12 @@ function PricingInventory({
 }) {
   const [tiers, setTiers] = useState([
     ["1", "9", "15.00"],
+
     ["10", "49", "13.00"],
+
     ["50", "+", "11.00"],
   ])
+
   return (
     <>
       <div className="supplier-toolbar">
@@ -2850,7 +3238,9 @@ function PricingInventory({
           </div>
           {[
             ["Riyadh Central", "RUH-01", "128", "12", "116"],
+
             ["Jeddah West", "JED-02", "42", "8", "34"],
+
             ["Dammam Hub", "DMM-01", "7", "3", "4"],
           ].map((w, i) => (
             <div className="warehouse-row" key={w[0]}>
@@ -2883,7 +3273,9 @@ function PricingInventory({
             <h4>Recent adjustments</h4>
             {[
               ["Received shipment", "+50", "18 Jun · RK"],
+
               ["Order reservation", "−8", "18 Jun · System"],
+
               ["Inventory audit", "−2", "17 Jun · LM"],
             ].map((x) => (
               <div key={x[0]}>
@@ -2906,18 +3298,25 @@ function PricingInventory({
 
 function SupplierOrders({
   openOrder,
+
   setModal,
 }: {
   openOrder: (id: string) => void
+
   setModal: (modal: SupplierModal) => void
 }) {
   const columns = [
     ["New suborders", "New", "2"],
+
     ["Packing & processing", "Packing", "1"],
+
     ["Ready for pickup", "Ready", "1"],
+
     ["Shipped", "Shipped", "1"],
+
     ["Delivered", "Delivered", "12"],
   ]
+
   return (
     <>
       <div className="supplier-toolbar">
@@ -2958,7 +3357,9 @@ function SupplierOrders({
               <MoreHorizontal size={14} />
             </div>
             {supplierOrders
+
               .filter((o) => o.stage === col[1])
+
               .map((order) => (
                 <button
                   className="order-card"
@@ -3023,38 +3424,63 @@ function SupplierWallet({
   const ledger = [
     [
       "19 Jun 2025",
+
       "SO-10482",
+
       "$1,284.00",
+
       "−$128.40",
+
       "$1,155.60",
+
       "$18,642.50",
     ],
+
     [
       "18 Jun 2025",
+
       "SO-10461",
+
       "$2,418.50",
+
       "−$241.85",
+
       "$2,176.65",
+
       "$17,486.90",
     ],
+
     [
       "18 Jun 2025",
+
       "SO-10444",
+
       "$1,091.00",
+
       "−$109.10",
+
       "$981.90",
+
       "$15,310.25",
     ],
+
     ["17 Jun 2025", "PO-00982", "—", "—", "−$8,000.00", "$14,328.35"],
+
     [
       "16 Jun 2025",
+
       "SO-10412",
+
       "$3,570.00",
+
       "−$357.00",
+
       "$3,213.00",
+
       "$22,328.35",
     ],
   ]
+
   return (
     <>
       <div className="wallet-kpis">
@@ -3177,20 +3603,29 @@ function SupplierWallet({
 
 function SupplierDialog({
   modal,
+
   close,
 }: {
   modal: Exclude<SupplierModal, null>
+
   close: () => void
 }) {
   const [step, setStep] = useState(1)
+
   const [confirmed, setConfirmed] = useState(false)
+
   const titles = {
     sell: "Sell an existing product",
+
     request: "Request a new global product",
+
     adjust: "Adjust warehouse stock",
+
     dispatch: "Dispatch shipment",
+
     payout: "Request a payout",
   }
+
   return (
     <div className="supplier-dialog-layer">
       <div className="scrim" onClick={close} />
@@ -3217,17 +3652,25 @@ function SupplierDialog({
               {[
                 [
                   "Nova X2 Wireless Headphones",
+
                   "Nova Audio · GTIN 6291108472295",
+
                   "Electronics",
                 ],
+
                 [
                   "Orbit Pro USB-C Dock",
+
                   "Orbit · GTIN 6291182159333",
+
                   "Computers",
                 ],
+
                 [
                   "Vista 2K Conference Camera",
+
                   "Vista · GTIN 6291847201032",
+
                   "Electronics",
                 ],
               ].map((p, i) => (
@@ -3283,9 +3726,13 @@ function SupplierDialog({
             <div className="wizard-steps">
               {[
                 "Basic info",
+
                 "Category",
+
                 "Variants",
+
                 "Images",
+
                 "Technical specs",
               ].map((x, i) => (
                 <div
@@ -3330,8 +3777,11 @@ function SupplierDialog({
                   <div>
                     {[
                       "Electronics",
+
                       "Computers & accessories",
+
                       "Printers & scanners",
+
                       "Label printers",
                     ].map((x, i) => (
                       <button className={i === 3 ? "selected" : ""} key={x}>
@@ -3365,10 +3815,15 @@ function SupplierDialog({
                     <span>6 variants generated</span>
                     {[
                       "Standard / Black",
+
                       "Standard / White",
+
                       "Standard / Silver",
+
                       "Large / Black",
+
                       "Large / White",
+
                       "Large / Silver",
                     ].map((x) => (
                       <Badge key={x}>{x}</Badge>
@@ -3606,44 +4061,69 @@ function SupplierDialog({
 
 function SupplierPortal({ locale = "en" }: { locale?: Locale }) {
   const isRtl = locale === "ar"
+
   const t = translations[locale].supplierPortal
+
   const [tab, setTab] = useState<SupplierTab>("home")
+
   const [modal, setModal] = useState<SupplierModal>(null)
+
   const [openOrders, setOpenOrders] = useState(["SO-10482", "SO-10479"])
+
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null)
+
   const tabs: {
     id: SupplierTab
+
     label: string
+
     icon: typeof Store
+
     badge?: string
   }[] = [
     {
       id: "home",
+
       label: isRtl ? "نظرة عامة على العمليات" : "Operations overview",
+
       icon: LayoutDashboard,
     },
+
     {
       id: "offers",
+
       label: isRtl ? "الكتالوج والعروض" : "Catalog & offers",
+
       icon: Box,
     },
+
     {
       id: "inventory",
+
       label: isRtl ? "التسعير والمخزون" : "Pricing & inventory",
+
       icon: Warehouse,
     },
+
     {
       id: "orders",
+
       label: isRtl ? "تجهيز وشحن الطلبات" : "Fulfillment",
+
       icon: Truck,
+
       badge: "5",
     },
+
     {
       id: "wallet",
+
       label: isRtl ? "المحفظة والأرباح" : "Wallet & earnings",
+
       icon: WalletCards,
     },
   ]
+
   return (
     <div className="supplier-portal">
       <div className="supplier-context">
@@ -3743,7 +4223,9 @@ function SupplierPortal({ locale = "en" }: { locale?: Locale }) {
                 </div>
                 {[
                   ["Nova X1 Headphones", "8 × $119.00", "$952.00"],
+
                   ["Orbit USB-C Dock", "2 × $84.50", "$169.00"],
+
                   ["USB-C Cable 2m", "4 × $40.75", "$163.00"],
                 ].map((x) => (
                   <div className="order-line" key={x[0]}>
@@ -3796,6 +4278,7 @@ function SupplierPortal({ locale = "en" }: { locale?: Locale }) {
                 className="primary-btn"
                 onClick={() => {
                   setSelectedOrder(null)
+
                   setModal("dispatch")
                 }}
               >
@@ -3820,21 +4303,28 @@ export default function App() {
   const [portal, setPortal] = useState<PortalMode>(
     localStorage.getItem("nexus_active_portal") as PortalMode || "b2c",
   )
+
   const [locale, setLocale] = useState<Locale>(
     localStorage.getItem("nexus_locale") as Locale || "ar",
   )
+
   const [page, setPage] = useState<Page>("overview")
+
   const [collapsed, setCollapsed] = useState(false)
+
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     api.setPortal(portal)
+
     localStorage.setItem("nexus_active_portal", portal)
   }, [portal])
 
   useEffect(() => {
     document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
+
     document.documentElement.lang = locale
+
     localStorage.setItem("nexus_locale", locale)
   }, [locale])
 
@@ -3844,8 +4334,11 @@ export default function App() {
 
   const handlePortalChange = (p: PortalMode) => {
     setPortal(p)
+
     api.setPortal(p)
+
     localStorage.setItem("nexus_active_portal", p)
+
     if (p === "supplier") {
       setPage("supplier")
     } else if (p === "admin" && page === "supplier") {
@@ -3855,11 +4348,13 @@ export default function App() {
 
   const navigate = (id: Page) => {
     setPage(id)
+
     if (id === "supplier") {
       setPortal("supplier")
     } else {
       setPortal("admin")
     }
+
     setMobileOpen(false)
   }
 
@@ -3939,35 +4434,55 @@ export default function App() {
             {[
               {
                 id: "overview" as Page,
+
                 label: translations[locale].nav.overview,
+
                 icon: LayoutDashboard,
               },
+
               {
                 id: "kyc" as Page,
+
                 label: translations[locale].nav.kyc,
+
                 icon: ShieldCheck,
+
                 badge: "12",
               },
+
               {
                 id: "catalog" as Page,
+
                 label: translations[locale].nav.catalog,
+
                 icon: Box,
+
                 badge: "35",
               },
+
               {
                 id: "finance" as Page,
+
                 label: translations[locale].nav.finance,
+
                 icon: ReceiptText,
+
                 badge: "3",
               },
+
               {
                 id: "cms" as Page,
+
                 label: translations[locale].nav.cms,
+
                 icon: Store,
               },
+
               {
                 id: "supplier" as Page,
+
                 label: translations[locale].nav.supplier,
+
                 icon: Store,
               },
             ].map((item) => (
