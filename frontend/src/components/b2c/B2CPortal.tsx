@@ -69,7 +69,24 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
   const [selectedPortions, setSelectedPortions] = useState<Record<string, string>>({})
   const [customerNotes, setCustomerNotes] = useState<string>("")
   const [selectedProduct, setSelectedProduct] = useState<StorefrontProduct | null>(null)
+  const [modalPortion, setModalPortion] = useState<DishPortion | null>(null)
+  const [modalQty, setModalQty] = useState<number>(1)
+  const [modalNotes, setModalNotes] = useState<string>("")
   const [cart, setCart] = useState<CartItem[]>([])
+
+  const openProductModal = (product: StorefrontProduct) => {
+    setSelectedProduct(product)
+    const offer = product.offers[0]
+    const currentPortionId = selectedPortions[product.id]
+    const initialPortion =
+      offer?.portions?.find((p) => p.id === currentPortionId) ||
+      offer?.portions?.find((p) => p.is_default) ||
+      offer?.portions?.[0] ||
+      null
+    setModalPortion(initialPortion)
+    setModalQty(1)
+    setModalNotes("")
+  }
   const [addresses, setAddresses] = useState<B2CCustomerAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string>("")
   const [wallet, setWallet] = useState<WalletAccount | null>(null)
@@ -395,14 +412,31 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
     )
   }
 
+  const foodCategories = [
+    { id: "All", ar: "جميع الأصناف 🥘", en: "All Dishes 🥘" },
+    { id: "محاشي وطواجن فرن", ar: "محاشي وطواجن 🍲", en: "Mahshi & Tagines 🍲" },
+    { id: "صواني ومكرونات بيتي", ar: "صواني وعزومات 🥩", en: "Trays & Bakes 🥩" },
+    { id: "دواجن ومحمرات", ar: "دواجن ومحمرات 🍗", en: "Poultry & Roasted 🍗" },
+    { id: "كشري وأكلات شعبية", ar: "كشري وشعبيات 🥣", en: "Koshary & Classics 🥣" },
+    { id: "حلويات ومخبوزات بيتي", ar: "حلويات شرقية 🍯", en: "Eastern Sweets 🍯" },
+  ]
+
   const filteredProducts = products.filter((p) => {
+    const query = searchQuery.toLowerCase().trim()
     const matchSearch =
-      searchQuery === "" ||
-      p.name.en.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.name.ar.includes(searchQuery)
+      query === "" ||
+      p.name.en.toLowerCase().includes(query) ||
+      p.name.ar.includes(query) ||
+      p.brand.toLowerCase().includes(query) ||
+      (p.dietaryTags && p.dietaryTags.some((tag) => tag.toLowerCase().includes(query)))
     const matchCat =
-      selectedCategory === "All" || p.category.en === selectedCategory
-    return matchSearch && matchCat
+      selectedCategory === "All" ||
+      p.category.en === selectedCategory ||
+      p.category.ar === selectedCategory
+    const matchKitchen =
+      !selectedKitchenId ||
+      p.offers.some((o) => o.supplierId === selectedKitchenId)
+    return matchSearch && matchCat && matchKitchen
   })
 
   return (
@@ -865,6 +899,65 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
               <div style={{ fontSize: 80, opacity: 0.9 }}>🍲</div>
             </div>
 
+            {/* 2.5 Food Categories Selector Pills */}
+            <div style={{ marginBottom: 28, overflowX: "auto", paddingBottom: 4 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {foodCategories.map((cat) => {
+                  const isSelected = selectedCategory === cat.id
+                  const count =
+                    cat.id === "All"
+                      ? products.length
+                      : products.filter(
+                          (p) =>
+                            p.category.ar === cat.id ||
+                            p.category.en === cat.id,
+                        ).length
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat.id)}
+                      style={{
+                        border: `1px solid ${isSelected ? "#e05638" : "#292524"}`,
+                        background: isSelected
+                          ? "rgba(224, 86, 56, 0.2)"
+                          : "#141210",
+                        color: isSelected ? "#f87171" : "#d6d3d1",
+                        padding: "8px 16px",
+                        borderRadius: 20,
+                        fontSize: 13,
+                        fontWeight: 800,
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        boxShadow: isSelected
+                          ? "0 4px 14px rgba(224, 86, 56, 0.25)"
+                          : "none",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <span>{isRtl ? cat.ar : cat.en}</span>
+                      <span
+                        style={{
+                          background: isSelected
+                            ? "rgba(224, 86, 56, 0.4)"
+                            : "#292524",
+                          color: isSelected ? "#ffffff" : "#a8a29e",
+                          padding: "1px 6px",
+                          borderRadius: 10,
+                          fontSize: 11,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             {/* 3. Certified Home Kitchens Showcase (مطابخ الستات) */}
             <div style={{ marginBottom: 32 }}>
               <div
@@ -966,6 +1059,120 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                 })}
               </div>
             </div>
+
+            {/* Active Kitchen Spotlight Banner (when filtered) */}
+            {selectedKitchenId && (() => {
+              const activeK = kitchens.find(
+                (k) => (k.organizationId || k.id) === selectedKitchenId,
+              )
+              if (!activeK) return null
+              return (
+                <div
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(224, 86, 56, 0.15) 0%, #141210 100%)",
+                    border: "1px solid #e05638",
+                    borderRadius: 14,
+                    padding: "18px 24px",
+                    marginBottom: 24,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 16,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: "50%",
+                        background:
+                          "linear-gradient(135deg, #e05638, #b91c1c)",
+                        display: "grid",
+                        placeItems: "center",
+                        color: "#ffffff",
+                        fontSize: 24,
+                      }}
+                    >
+                      👩‍🍳
+                    </div>
+                    <div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            margin: 0,
+                            fontSize: 17,
+                            fontWeight: 900,
+                            color: "#ffffff",
+                          }}
+                        >
+                          {activeK.chefName} ({activeK.kitchenName.ar})
+                        </h3>
+                        <span
+                          style={{
+                            background: "rgba(34, 197, 94, 0.2)",
+                            color: "#4ade80",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: 12,
+                          }}
+                        >
+                          ★ {activeK.hygieneRating} مطبخ معتمد ومفتش صحياً
+                        </span>
+                      </div>
+                      <p
+                        style={{
+                          margin: "5px 0 0 0",
+                          fontSize: 12,
+                          color: "#a8a29e",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {activeK.bio} • 📍 {activeK.district} • 🛵 توصيل حتى{" "}
+                        {activeK.deliveryRadiusKm} كم
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedKitchenId(null)}
+                    style={{
+                      background: "#292524",
+                      color: "#fafaf9",
+                      border: "1px solid #44403c",
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span>✕</span>
+                    <span>
+                      {isRtl ? "إلغاء التحديد وعرض كل المطابخ" : "Show All Kitchens"}
+                    </span>
+                  </button>
+                </div>
+              )
+            })()}
 
             {/* 4. Trending Food Dishes Grid with Portions & EGP */}
             <div
@@ -1153,7 +1360,7 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           </div>
                         )}
 
-                        {/* Price in EGP */}
+                        {/* Price & Action Buttons */}
                         <div
                           style={{
                             display: "flex",
@@ -1167,17 +1374,406 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                             style={{
                               fontSize: 22,
                               fontWeight: 900,
-                              color: "#4ade80",
+                              color: "#e05638",
                             }}
                           >
                             {displayPrice.toLocaleString()} <span style={{ fontSize: 13 }}>ج.م</span>
                           </span>
                         </div>
 
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(p, 1, chosenPortion)}
+                            style={{
+                              flex: 1,
+                              background:
+                                "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
+                              color: "#ffffff",
+                              border: 0,
+                              padding: "10px",
+                              borderRadius: 8,
+                              fontWeight: 800,
+                              fontSize: 13,
+                              cursor: "pointer",
+                              boxShadow: "0 4px 12px rgba(224, 86, 56, 0.3)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <ShoppingCart size={15} />
+                            <span>{tc.addToCartBtn}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openProductModal(p)}
+                            style={{
+                              background: "#1c1917",
+                              color: "#d6d3d1",
+                              border: "1px solid #334155",
+                              padding: "10px 12px",
+                              borderRadius: 8,
+                              fontWeight: 700,
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                            title={isRtl ? "تفاصيل الوجبة والمكونات" : "Dish Details"}
+                          >
+                            🔍
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+
+            {/* 5. Trust & Quality Guarantee Section */}
+            <div
+              style={{
+                marginTop: 48,
+                marginBottom: 24,
+                background: "#141210",
+                border: "1px solid #292524",
+                borderRadius: 16,
+                padding: "32px 28px",
+              }}
+            >
+              <div style={{ textAlign: "center", maxWidth: 650, margin: "0 auto 28px auto" }}>
+                <h3 style={{ fontSize: 22, fontWeight: 900, color: "#ffffff", margin: "0 0 8px 0" }}>
+                  {isRtl ? "ليه تطلب من مطبخي؟ (ضمان الطعم والنظافة 100%)" : "Why Choose Matbakhy?"}
+                </h3>
+                <p style={{ color: "#a8a29e", fontSize: 13, margin: 0 }}>
+                  {isRtl
+                    ? "أول منصة مصرية متخصصة في تمكين ستات البيوت الماهرات وتقديم أكل بيتي مصري أصيل بأعلى معايير النظافة والاحترافية."
+                    : "Certified home-cooked food by talented Egyptian housewives delivered fresh to your dining table."}
+                </p>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 20,
+                }}
+              >
+                {[
+                  {
+                    icon: "🏅",
+                    title: isRtl ? "مطابخ بيوت معتمدة" : "Certified Kitchens",
+                    desc: isRtl
+                      ? "تفتيش صحي دوري وشهادات صحية موثقة لكل ست بيت قبل الانضمام للمنصة."
+                      : "Regular hygiene inspections and health certificates for every cook.",
+                  },
+                  {
+                    icon: "🧈",
+                    title: isRtl ? "سمنة بلدي ومكونات طازجة" : "100% Baladi Ingredients",
+                    desc: isRtl
+                      ? "بدون زيوت مهدرجة، بدون مواد حافظة، ولحوم بلدي فريش يومياً."
+                      : "Fresh Egyptian meat, no preservatives, and pure local butter.",
+                  },
+                  {
+                    icon: "📦",
+                    title: isRtl ? "تغليف حراري فندقي" : "Thermal Packaging",
+                    desc: isRtl
+                      ? "صواني وأطباق فويل حرارية محكمة تصلك ساخنة بحرارة الفرن."
+                      : "Sealed thermal containers to keep your meal steaming hot.",
+                  },
+                  {
+                    icon: "⏱️",
+                    title: isRtl ? "التزام بالمواعيد بالدقيقة" : "On-Time Delivery",
+                    desc: isRtl
+                      ? "تجهيز طازة بالطلب وتوصيل مباشر لميعاد سفرة غداك أو عزومتك."
+                      : "Cooked to order and scheduled right for your lunch or dinner.",
+                  },
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "#1c1917",
+                      border: "1px solid #292524",
+                      borderRadius: 12,
+                      padding: "20px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: 32, marginBottom: 10 }}>{item.icon}</div>
+                    <h4 style={{ fontSize: 14, fontWeight: 800, color: "#ffffff", margin: "0 0 6px 0" }}>
+                      {item.title}
+                    </h4>
+                    <p style={{ fontSize: 12, color: "#a8a29e", margin: 0, lineHeight: 1.5 }}>
+                      {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* RETAIL CATALOG TAB */}
+        {activeTab === "catalog" && (
+          <div>
+            <div style={{ marginBottom: 20 }}>
+              <h1
+                style={{
+                  fontSize: 26,
+                  fontWeight: 900,
+                  color: "#ffffff",
+                  margin: "0 0 6px 0",
+                }}
+              >
+                {isRtl ? "منيو الأكلات البيتي المصرية 🍲" : tc.navCatalog}
+              </h1>
+              <p style={{ color: "#a8a29e", fontSize: 14, margin: 0 }}>
+                {isRtl
+                  ? `استعراض ${filteredProducts.length} صنف طازج بالسمنة البلدي من أفضل شيفات بيوت القاهرة والجيزة`
+                  : `Browse ${filteredProducts.length} authentic homemade dishes cooked fresh in Cairo & Giza`}
+              </p>
+            </div>
+
+            {/* Food Categories Selector in Catalog */}
+            <div style={{ marginBottom: 24, overflowX: "auto", paddingBottom: 4 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {foodCategories.map((cat) => {
+                  const isSelected = selectedCategory === cat.id
+                  const count =
+                    cat.id === "All"
+                      ? products.length
+                      : products.filter(
+                          (p) =>
+                            p.category.ar === cat.id ||
+                            p.category.en === cat.id,
+                        ).length
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat.id)}
+                      style={{
+                        border: `1px solid ${isSelected ? "#e05638" : "#292524"}`,
+                        background: isSelected
+                          ? "rgba(224, 86, 56, 0.2)"
+                          : "#141210",
+                        color: isSelected ? "#f87171" : "#d6d3d1",
+                        padding: "8px 16px",
+                        borderRadius: 20,
+                        fontSize: 13,
+                        fontWeight: 800,
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        boxShadow: isSelected
+                          ? "0 4px 14px rgba(224, 86, 56, 0.25)"
+                          : "none",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <span>{isRtl ? cat.ar : cat.en}</span>
+                      <span
+                        style={{
+                          background: isSelected
+                            ? "rgba(224, 86, 56, 0.4)"
+                            : "#292524",
+                          color: isSelected ? "#ffffff" : "#a8a29e",
+                          padding: "1px 6px",
+                          borderRadius: 10,
+                          fontSize: 11,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: 20,
+              }}
+            >
+              {filteredProducts.map((p) => {
+                const offer = p.offers[0]
+                const portions = offer?.portions || []
+                const currentPortionId = selectedPortions[p.id] || portions[0]?.id
+                const chosenPortion = portions.find((po) => po.id === currentPortionId) || portions[0]
+                const displayPrice = chosenPortion ? chosenPortion.price_cents / 100 : offer.price
+
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      background: "#141210",
+                      borderRadius: 14,
+                      border: "1px solid #292524",
+                      overflow: "hidden",
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                  >
+                    <div
+                      onClick={() => openProductModal(p)}
+                      style={{
+                        height: 190,
+                        background: "#1e293b",
+                        position: "relative",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <img
+                        src={p.image}
+                        alt={p.name.ar}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 10,
+                          right: isRtl ? "auto" : 10,
+                          left: isRtl ? 10 : "auto",
+                          background: offer?.isInstant ? "rgba(224, 86, 56, 0.9)" : "rgba(37, 99, 235, 0.9)",
+                          color: "#ffffff",
+                          padding: "3px 9px",
+                          borderRadius: 12,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {offer?.isInstant ? <Flame size={12} /> : <Calendar size={12} />}
+                        <span>{offer?.isInstant ? "طلب فوري" : "حجز مسبق"}</span>
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "16px",
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#e05638",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{p.category.ar}</span>
+                        <span style={{ color: "#a8a29e" }}>{p.brand}</span>
+                      </div>
+                      <h4
+                        onClick={() => openProductModal(p)}
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 800,
+                          margin: "6px 0 8px 0",
+                          color: "#ffffff",
+                          lineHeight: 1.4,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {isRtl ? p.name.ar : p.name.en}
+                      </h4>
+
+                      {/* Dietary Tags */}
+                      {p.dietaryTags && p.dietaryTags.length > 0 && (
+                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
+                          {p.dietaryTags.slice(0, 3).map((tag, tIdx) => (
+                            <span
+                              key={tIdx}
+                              style={{
+                                background: "#1c1917",
+                                color: "#d6d3d1",
+                                border: "1px solid #292524",
+                                padding: "2px 7px",
+                                borderRadius: 4,
+                                fontSize: 11,
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Portion Selector Pills if available */}
+                      {portions.length > 1 && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 11, color: "#a8a29e", marginBottom: 5 }}>
+                            {isRtl ? "اختيار الحجم والكمية:" : "Portion Size:"}
+                          </div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {portions.map((po) => (
+                              <button
+                                key={po.id}
+                                type="button"
+                                onClick={() => setSelectedPortions({ ...selectedPortions, [p.id]: po.id })}
+                                style={{
+                                  border: 0,
+                                  background: chosenPortion?.id === po.id ? "rgba(224, 86, 56, 0.25)" : "#1c1917",
+                                  borderWidth: 1,
+                                  borderStyle: "solid",
+                                  borderColor: chosenPortion?.id === po.id ? "#e05638" : "#292524",
+                                  color: chosenPortion?.id === po.id ? "#f87171" : "#a8a29e",
+                                  padding: "4px 8px",
+                                  borderRadius: 6,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {po.name.ar}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Price in EGP */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "baseline",
+                          gap: 6,
+                          margin: "auto 0 14px 0",
+                          paddingTop: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 22,
+                            fontWeight: 900,
+                            color: "#e05638",
+                          }}
+                        >
+                          {displayPrice.toLocaleString()} <span style={{ fontSize: 13 }}>ج.م</span>
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", gap: 8 }}>
                         <button
+                          type="button"
                           onClick={() => handleAddToCart(p, 1, chosenPortion)}
                           style={{
-                            width: "100%",
+                            flex: 1,
                             background:
                               "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
                             color: "#ffffff",
@@ -1197,130 +1793,22 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
                           <ShoppingCart size={15} />
                           <span>{tc.addToCartBtn}</span>
                         </button>
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
-          </div>
-        )}
-
-        {/* RETAIL CATALOG TAB */}
-        {activeTab === "catalog" && (
-          <div>
-            <div style={{ marginBottom: 24 }}>
-              <h1
-                style={{
-                  fontSize: 24,
-                  fontWeight: 900,
-                  color: "#ffffff",
-                  margin: "0 0 6px 0",
-                }}
-              >
-                {tc.navCatalog}
-              </h1>
-              <p style={{ color: "#94a3b8", fontSize: 14, margin: 0 }}>
-                Showing {filteredProducts.length} verified products with
-                individual unit pricing
-              </p>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                gap: 20,
-              }}
-            >
-              {filteredProducts.map((p) => {
-                const offer = p.offers[0]
-                return (
-                  <div
-                    key={p.id}
-                    style={{
-                      background: "#111827",
-                      borderRadius: 12,
-                      border: "1px solid #1f2937",
-                      overflow: "hidden",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: 190,
-                        background: "#1e293b",
-                        position: "relative",
-                      }}
-                    >
-                      <img
-                        src={p.image}
-                        alt={p.name.en}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      style={{
-                        padding: "18px",
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                      }}
-                    >
-                      <div
-                        style={{
-                          color: "#94a3b8",
-                          fontSize: 11,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {p.category.en} • {p.brand}
-                      </div>
-                      <h4
-                        style={{
-                          fontSize: 16,
-                          fontWeight: 800,
-                          margin: "6px 0 10px 0",
-                          color: "#ffffff",
-                        }}
-                      >
-                        {isRtl ? p.name.ar : p.name.en}
-                      </h4>
-                      <div
-                        style={{
-                          fontSize: 20,
-                          fontWeight: 900,
-                          color: "#e05638",
-                          margin: "6px 0 14px 0",
-                        }}
-                      >
-                        {offer.price.toFixed(2)} {isRtl ? "ج.م" : "EGP"}
-                      </div>
-
-                      <div
-                        style={{ display: "flex", gap: 8, marginTop: "auto" }}
-                      >
                         <button
-                          onClick={() => handleAddToCart(p, 1)}
+                          type="button"
+                          onClick={() => openProductModal(p)}
                           style={{
-                            flex: 1,
-                            background:
-                              "linear-gradient(135deg, #10b981, #059669)",
-                            color: "#ffffff",
-                            border: 0,
-                            padding: "10px",
+                            background: "#1c1917",
+                            color: "#d6d3d1",
+                            border: "1px solid #334155",
+                            padding: "10px 12px",
                             borderRadius: 8,
-                            fontWeight: 800,
-                            fontSize: 13,
+                            fontWeight: 700,
+                            fontSize: 12,
                             cursor: "pointer",
                           }}
+                          title={isRtl ? "تفاصيل الوجبة والمكونات" : "Dish Details"}
                         >
-                          {tc.addToCartBtn}
+                          🔍
                         </button>
                       </div>
                     </div>
@@ -2379,6 +2867,539 @@ export function B2CPortal({ locale, setLocale, onSwitchPortal }: Props) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* DISH CUSTOMIZATION MODAL (Food Quick-View & Customization) */}
+      {selectedProduct && (() => {
+        const offer = selectedProduct.offers[0]
+        const portions = offer?.portions || []
+        const currentPortion =
+          modalPortion ||
+          portions.find((p) => p.is_default) ||
+          portions[0] ||
+          null
+        const unitPrice = currentPortion
+          ? currentPortion.price_cents / 100
+          : offer.price
+        const totalPrice = (unitPrice * modalQty).toFixed(2)
+
+        return (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.75)",
+              backdropFilter: "blur(6px)",
+              zIndex: 110,
+              display: "grid",
+              placeItems: "center",
+              padding: 16,
+              overflowY: "auto",
+            }}
+            onClick={() => setSelectedProduct(null)}
+          >
+            <div
+              style={{
+                background: "#141210",
+                border: "1px solid #292524",
+                borderRadius: 16,
+                width: "100%",
+                maxWidth: 540,
+                maxHeight: "92vh",
+                overflowY: "auto",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.8)",
+                position: "relative",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Dish Image Banner */}
+              <div
+                style={{
+                  height: 230,
+                  position: "relative",
+                  background: "#1e293b",
+                }}
+              >
+                <img
+                  src={selectedProduct.image}
+                  alt={selectedProduct.name.ar}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setSelectedProduct(null)}
+                  style={{
+                    position: "absolute",
+                    top: 14,
+                    [isRtl ? "left" : "right"]: 14,
+                    background: "rgba(0,0,0,0.6)",
+                    color: "#ffffff",
+                    border: 0,
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    display: "grid",
+                    placeItems: "center",
+                    cursor: "pointer",
+                    fontSize: 16,
+                    fontWeight: 900,
+                  }}
+                >
+                  ✕
+                </button>
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 12,
+                    right: isRtl ? 16 : "auto",
+                    left: isRtl ? "auto" : 16,
+                    display: "flex",
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      background: "rgba(0,0,0,0.7)",
+                      color: "#fafaf9",
+                      padding: "4px 10px",
+                      borderRadius: 12,
+                      fontSize: 11,
+                      fontWeight: 800,
+                    }}
+                  >
+                    ★ {selectedProduct.rating} ({selectedProduct.reviewCount} تقييم)
+                  </span>
+                  <span
+                    style={{
+                      background: offer?.isInstant
+                        ? "rgba(224, 86, 56, 0.9)"
+                        : "rgba(37, 99, 235, 0.9)",
+                      color: "#ffffff",
+                      padding: "4px 10px",
+                      borderRadius: 12,
+                      fontSize: 11,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {offer?.isInstant ? "طلب فوري ساخن ⚡" : "حجز مسبق 📅"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: "20px 24px" }}>
+                {/* Cook Attribution */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>👩‍🍳</span>
+                  <span
+                    style={{
+                      color: "#e05638",
+                      fontSize: 12,
+                      fontWeight: 800,
+                    }}
+                  >
+                    بإيدين {selectedProduct.brand} •{" "}
+                    {selectedProduct.specs["المنطقة"] || "القاهرة"}
+                  </span>
+                </div>
+
+                <h3
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 900,
+                    color: "#ffffff",
+                    margin: "0 0 10px 0",
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {isRtl ? selectedProduct.name.ar : selectedProduct.name.en}
+                </h3>
+
+                <p
+                  style={{
+                    color: "#d6d3d1",
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    margin: "0 0 16px 0",
+                  }}
+                >
+                  {isRtl
+                    ? selectedProduct.description.ar
+                    : selectedProduct.description.en}
+                </p>
+
+                {/* Dietary Tags */}
+                {selectedProduct.dietaryTags &&
+                  selectedProduct.dietaryTags.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 6,
+                        flexWrap: "wrap",
+                        marginBottom: 18,
+                      }}
+                    >
+                      {selectedProduct.dietaryTags.map((tag, tIdx) => (
+                        <span
+                          key={tIdx}
+                          style={{
+                            background: "#1c1917",
+                            color: "#fca5a5",
+                            border: "1px solid #292524",
+                            padding: "3px 9px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                {/* Portion Sizes Selector */}
+                {portions.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: "#fafaf9",
+                        marginBottom: 10,
+                      }}
+                    >
+                      {isRtl ? "اختر الحجم والكمية المناسبة:" : "Select Portion Size:"}
+                    </label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {portions.map((po) => {
+                        const isChosen = currentPortion?.id === po.id
+                        return (
+                          <div
+                            key={po.id}
+                            onClick={() => setModalPortion(po)}
+                            style={{
+                              border: `1px solid ${isChosen ? "#e05638" : "#292524"}`,
+                              background: isChosen
+                                ? "rgba(224, 86, 56, 0.15)"
+                                : "#1c1917",
+                              padding: "12px 16px",
+                              borderRadius: 10,
+                              cursor: "pointer",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              transition: "all 0.15s ease",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: "50%",
+                                  border: `2px solid ${isChosen ? "#e05638" : "#78716c"}`,
+                                  display: "grid",
+                                  placeItems: "center",
+                                }}
+                              >
+                                {isChosen && (
+                                  <div
+                                    style={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: "50%",
+                                      background: "#e05638",
+                                    }}
+                                  />
+                                )}
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 800,
+                                  color: isChosen ? "#ffffff" : "#d6d3d1",
+                                }}
+                              >
+                                {po.name.ar}
+                              </span>
+                            </div>
+                            <span
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 900,
+                                color: "#e05638",
+                              }}
+                            >
+                              {(po.price_cents / 100).toFixed(2)} ج.م
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reheating & Packaging Advice */}
+                <div
+                  style={{
+                    background: "#1c1917",
+                    border: "1px solid #292524",
+                    borderRadius: 10,
+                    padding: "12px 14px",
+                    marginBottom: 18,
+                    display: "flex",
+                    gap: 10,
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>💡</span>
+                  <div style={{ fontSize: 12, color: "#a8a29e", lineHeight: 1.5 }}>
+                    <b style={{ color: "#fafaf9" }}>نصيحة الست للتقديم والتسخين: </b>
+                    {selectedProduct.specs["طريقة الطهي"] ||
+                      "يُفضل تسخين الصينية في فرن ساخن على 180° لمدة 10 دقائق لتعود مقرمشة وطازجة كما خرجت من الفرن."}
+                  </div>
+                </div>
+
+                {/* Chef Special Notes Input */}
+                <div style={{ marginBottom: 20 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#a8a29e",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {isRtl
+                      ? "ملاحظاتك الخاصة للشيف (مثال: ملح خفيف، شطة زيادة...):"
+                      : "Special instructions for the chef:"}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={
+                      isRtl
+                        ? "اكتب أي طلب خاص لتحضير الوجبة..."
+                        : "Any dietary or spice preferences..."
+                    }
+                    value={modalNotes}
+                    onChange={(e) => setModalNotes(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#0b0f19",
+                      color: "#ffffff",
+                      border: "1px solid #334155",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      fontSize: 13,
+                    }}
+                  />
+                </div>
+
+                {/* Stepper & Add to Cart Sticky Button */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    borderTop: "1px solid #292524",
+                    paddingTop: 16,
+                  }}
+                >
+                  {/* Quantity Stepper */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      background: "#1c1917",
+                      border: "1px solid #292524",
+                      borderRadius: 8,
+                      padding: "4px 8px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setModalQty(Math.max(1, modalQty - 1))}
+                      style={{
+                        background: "transparent",
+                        border: 0,
+                        color: "#fafaf9",
+                        fontSize: 18,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                        width: 28,
+                        height: 28,
+                      }}
+                    >
+                      -
+                    </button>
+                    <span
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 900,
+                        color: "#ffffff",
+                        minWidth: 20,
+                        textAlign: "center",
+                      }}
+                    >
+                      {modalQty}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setModalQty(modalQty + 1)}
+                      style={{
+                        background: "transparent",
+                        border: 0,
+                        color: "#fafaf9",
+                        fontSize: 18,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                        width: 28,
+                        height: 28,
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Add to Cart CTA */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalNotes) {
+                        setCustomerNotes(
+                          customerNotes
+                            ? `${customerNotes} | ${selectedProduct.name.ar}: ${modalNotes}`
+                            : `${selectedProduct.name.ar}: ${modalNotes}`,
+                        )
+                      }
+                      handleAddToCart(
+                        selectedProduct,
+                        modalQty,
+                        currentPortion || undefined,
+                      )
+                      setSelectedProduct(null)
+                    }}
+                    style={{
+                      flex: 1,
+                      background:
+                        "linear-gradient(135deg, #e05638 0%, #c2410c 100%)",
+                      color: "#ffffff",
+                      border: 0,
+                      padding: "12px",
+                      borderRadius: 10,
+                      fontWeight: 900,
+                      fontSize: 14,
+                      cursor: "pointer",
+                      boxShadow: "0 6px 16px rgba(224, 86, 56, 0.4)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <ShoppingCart size={16} />
+                    <span>
+                      {isRtl
+                        ? `إضافة للطلب (${totalPrice} ج.م)`
+                        : `Add to Cart (${totalPrice} EGP)`}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* STICKY FLOATING CART BAR */}
+      {cart.length > 0 && activeTab !== "cart" && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 20,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 90,
+            width: "calc(100% - 40px)",
+            maxWidth: 780,
+            background: "linear-gradient(135deg, #1c1917 0%, #141210 100%)",
+            border: "1px solid #e05638",
+            borderRadius: 16,
+            padding: "12px 22px",
+            boxShadow:
+              "0 12px 30px rgba(0,0,0,0.7), 0 0 20px rgba(224, 86, 56, 0.25)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                background: "#e05638",
+                color: "#ffffff",
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <ShoppingCart size={20} />
+            </div>
+            <div>
+              <div style={{ color: "#ffffff", fontWeight: 900, fontSize: 14 }}>
+                {isRtl
+                  ? `سلة الطعام (${cart.reduce((s, i) => s + i.quantity, 0)} وجبات)`
+                  : `Your Cart (${cart.reduce((s, i) => s + i.quantity, 0)} items)`}
+              </div>
+              <div style={{ color: "#e05638", fontWeight: 800, fontSize: 13 }}>
+                {isRtl ? "المجموع:" : "Total:"}{" "}
+                {cart
+                  .reduce((s, i) => s + i.offer.price * i.quantity, 0)
+                  .toFixed(2)}{" "}
+                {isRtl ? "ج.م" : "EGP"}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("cart")}
+            style={{
+              background: "linear-gradient(135deg, #e05638, #b83d25)",
+              color: "#ffffff",
+              border: 0,
+              padding: "10px 22px",
+              borderRadius: 10,
+              fontWeight: 900,
+              fontSize: 13,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              boxShadow: "0 4px 12px rgba(224, 86, 56, 0.3)",
+            }}
+          >
+            <span>{isRtl ? "متابعة الطلب والدفع" : "Proceed to Checkout"}</span>
+            <span>{isRtl ? "←" : "→"}</span>
+          </button>
         </div>
       )}
     </div>
