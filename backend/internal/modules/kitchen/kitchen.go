@@ -238,8 +238,22 @@ func (h *Handler) UpdateSuborderPrepStatus(w http.ResponseWriter, r *http.Reques
 		http.Error(w, `{"error": "invalid json"}`, http.StatusBadRequest)
 		return
 	}
+
+	validPrepStatuses := map[string]bool{
+		"new":              true,
+		"accepted":         true,
+		"cooking":          true,
+		"ready_for_pickup": true,
+		"dispatched":       true,
+		"rejected":         true,
+	}
+	if !validPrepStatuses[req.PrepStatus] {
+		http.Error(w, `{"error": "invalid prep_status: must be one of new, accepted, cooking, ready_for_pickup, dispatched, rejected"}`, http.StatusBadRequest)
+		return
+	}
+
 	if err := h.repo.UpdateSuborderPrepStatus(r.Context(), suborderID, claims.OrgID, req.PrepStatus, req.CookNotes); err != nil {
-		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

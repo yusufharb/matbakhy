@@ -2,13 +2,34 @@ package auth
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
 type Handler struct {
 	repo    *Repository
 	limiter *LoginRateLimiter
+}
+
+func getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if len(parts) > 0 {
+			ip := strings.TrimSpace(parts[0])
+			if ip != "" {
+				return ip
+			}
+		}
+	}
+	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+		return strings.TrimSpace(xrip)
+	}
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 func NewHandler(repo *Repository) *Handler {
@@ -33,8 +54,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check brute-force lockout
-	if h.limiter != nil && h.limiter.IsBlocked(req.Email) {
+	clientIP := getClientIP(r)
+	ipKey := "ip:" + clientIP
+
+	// Check brute-force lockout by email or client IP
+	if h.limiter != nil && (h.limiter.IsBlocked(req.Email) || h.limiter.IsBlocked(ipKey)) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte(`{"error": "Too many failed login attempts. Account temporarily locked.", "code": 429}`))
@@ -45,6 +69,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if h.limiter != nil {
 			h.limiter.RecordFailure(req.Email)
+			h.limiter.RecordFailure(ipKey)
 		}
 		http.Error(w, `{"error": "Invalid email or password"}`, http.StatusUnauthorized)
 		return
@@ -54,6 +79,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if !CheckPasswordHash(req.Password, user.PasswordHash) {
 		if h.limiter != nil {
 			h.limiter.RecordFailure(req.Email)
+			h.limiter.RecordFailure(ipKey)
 		}
 		http.Error(w, `{"error": "Invalid email or password"}`, http.StatusUnauthorized)
 		return
@@ -62,6 +88,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	// Reset failed attempts upon successful authentication
 	if h.limiter != nil {
 		h.limiter.RecordSuccess(req.Email)
+		h.limiter.RecordSuccess(ipKey)
 	}
 
 	memberships, _ := h.repo.GetMembershipsForUser(r.Context(), user.ID)

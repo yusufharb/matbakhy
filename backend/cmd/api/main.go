@@ -117,7 +117,32 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// CORS Middleware with Production Origin Whitelisting
+	// 1. Security Headers Middleware (OWASP defensive headers)
+	securityHeadersMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("X-XSS-Protection", "1; mode=block")
+			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+			if os.Getenv("ENV") == "production" {
+				w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	// 2. Request Body Size Limiter Middleware (Prevents DoS / OOM via oversized payloads)
+	maxBytesMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil {
+				r.Body = http.MaxBytesReader(w, r.Body, 5*1024*1024) // 5 MB max
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	// 3. CORS Middleware with Production Origin Whitelisting
 	allowedOriginsEnv := os.Getenv("CORS_ALLOWED_ORIGINS")
 	corsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -285,8 +310,8 @@ func main() {
 	// Ledger Accounts (Platform Admin & Finance only)
 	mux.HandleFunc("GET /api/v1/ledger/accounts", wrap(walletHandler.ListAccounts, adminOnly))
 
-	// Global Handler Pipeline: CORS -> Auth Context Extraction -> Router
-	handler := corsMiddleware(auth.AuthMiddleware(mux))
+	// Global Handler Pipeline: Security Headers -> CORS -> Body Limiter -> Auth -> Router
+	handler := securityHeadersMiddleware(corsMiddleware(maxBytesMiddleware(auth.AuthMiddleware(mux))))
 
 	server := &http.Server{
 		Addr:         ":" + port,

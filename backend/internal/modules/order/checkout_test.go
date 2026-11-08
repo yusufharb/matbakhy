@@ -88,3 +88,45 @@ func TestSuccessfulCheckoutAndSplitting(t *testing.T) {
 		t.Fatalf("expected confirmed status, got %s", parentOrder.Status)
 	}
 }
+
+func TestCheckoutNegativeAndZeroQuantityRejected(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	db, err := database.Connect(ctx)
+	if err != nil {
+		t.Skipf("skipping database test: %v", err)
+	}
+	defer db.Close()
+
+	commRepo := commission.NewRepository(db.Pool)
+	orderRepo := order.NewRepository(db.Pool, commRepo)
+
+	// Test zero quantity
+	reqZero := order.CheckoutRequest{
+		OrderType:     "b2c",
+		Currency:      "EGP",
+		PaymentMethod: "card",
+		Items: []order.CheckoutItemInput{
+			{OfferID: "f0000000-0000-0000-0000-000000000001", Quantity: 0},
+		},
+	}
+	_, err = orderRepo.ProcessCheckout(ctx, reqZero, "a0000000-0000-0000-0000-000000000004")
+	if err == nil {
+		t.Fatalf("expected error for zero quantity, but checkout succeeded")
+	}
+
+	// Test negative quantity
+	reqNeg := order.CheckoutRequest{
+		OrderType:     "b2c",
+		Currency:      "EGP",
+		PaymentMethod: "card",
+		Items: []order.CheckoutItemInput{
+			{OfferID: "f0000000-0000-0000-0000-000000000001", Quantity: -5},
+		},
+	}
+	_, err = orderRepo.ProcessCheckout(ctx, reqNeg, "a0000000-0000-0000-0000-000000000004")
+	if err == nil {
+		t.Fatalf("expected error for negative quantity, but checkout succeeded")
+	}
+}

@@ -105,6 +105,9 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 	var resolvedItems []ResolvedItem
 
 	for _, item := range req.Items {
+		if item.Quantity <= 0 {
+			return nil, fmt.Errorf("invalid quantity for item %s: must be greater than zero", item.OfferID)
+		}
 		query := `
 			SELECT o.id, o.supplier_id, coalesce(org.legal_name, org.name->>'en'),
 			       p.id as product_id, p.category_id, p.name->>'en', p.sku, coalesce(b.name, ''),
@@ -138,6 +141,9 @@ func (r *Repository) ProcessCheckout(ctx context.Context, req CheckoutRequest, u
 				return nil, fmt.Errorf("item %s is not available for retail purchase", prodTitle)
 			}
 			moq = 1 // Single unit retail purchase
+			if item.Quantity < moq {
+				return nil, fmt.Errorf("item %s does not meet minimum order quantity (MOQ: %d, requested: %d)", prodTitle, moq, item.Quantity)
+			}
 			unitPrice = retailPrice
 		} else {
 			if !b2bEnabled {

@@ -71,8 +71,13 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Object-level isolation: Non-admin users can only place orders for their own organization
-	if claims.Role != "platform_admin" && claims.Role != "super_admin" {
+	// Object-level isolation:
+	// For B2C retail orders (or users with role "customer"), merchant organization is not required
+	if req.OrderType == "b2c" || claims.Role == "customer" || claims.ContextType == "b2c_customer" {
+		req.OrderType = "b2c"
+		req.MerchantID = ""
+	} else if claims.Role != "platform_admin" && claims.Role != "super_admin" {
+		// B2B wholesale orders require membership in an active merchant organization
 		if claims.OrgID == "" {
 			http.Error(w, `{"error": "Forbidden: user does not belong to an active organization"}`, http.StatusForbidden)
 			return
@@ -82,7 +87,7 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		req.MerchantID = claims.OrgID
-	} else if req.MerchantID == "" {
+	} else if req.MerchantID == "" && req.OrderType != "b2c" {
 		req.MerchantID = claims.OrgID
 	}
 
